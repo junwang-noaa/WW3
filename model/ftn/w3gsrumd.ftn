@@ -5,7 +5,7 @@
 !/                  | WAVEWATCH III           NOAA/NCEP |
 !/                  |        T. J. Campbell, NRL        |
 !/                  |                        FORTRAN 90 |
-!/                  | Last update :         06-Dec-2010 |
+!/                  | Last update :         15-Jun-2012 |
 !/                  +-----------------------------------+
 !/
 !/    30-Oct-2009 : Origination.                        ( version 3.14 )
@@ -20,6 +20,9 @@
 !/    06-Dec-2010 : Remove restriction on longitude range. Change ICLO
 !/                  to integer and remove JCLO. Implement support for
 !/                  r4 and r8 source grids.             ( version 3.14 )
+!/    15-Jun-2012 : Fixed various format statem,ents that gave compile
+!/                  warnings with Intel compiler on NCEP R&D machine
+!/                  zeus (H. L. Tolman)                 ( version 4.07 )
 !/
 !  1. Purpose :
 !
@@ -2082,6 +2085,7 @@
       'W3GFCL_R8 - BUCKET SEARCH:',IB,JB,B(JB,IB)%N, &
       XMIN+(IB-1)*DXB,YMIN+(JB-1)*DYB,XMIN+IB*DXB,YMIN+JB*DYB
       CELL_LOOP: DO K=1,B(JB,IB)%N
+
 !---------setup cell corner indices
           IS(1) = B(JB,IB)%I(K)  ;  JS(1) = B(JB,IB)%J(K)  ;
           IS(2) = B(JB,IB)%I(K)+1;  JS(2) = B(JB,IB)%J(K)  ;
@@ -3171,7 +3175,7 @@
 !/                  | WAVEWATCH III           NOAA/NCEP |
 !/                  |        T. J. Campbell, NRL        |
 !/                  |                        FORTRAN 90 |
-!/                  | Last update :         06-Dec-2010 |
+!/                  | Last update :         15-Jun-2012 |
 !/                  +-----------------------------------+
 !/
 !/    30-Oct-2009 : Origination.                        ( version 3.14 )
@@ -3180,6 +3184,8 @@
 !/    06-Dec-2010 : Remove restriction on longitude range. Change ICLO
 !/                  to integer and remove JCLO. Implement support for
 !/                  r4 and r8 source grids.             ( version 3.14 )
+!/    15-Jun-2012 : Fixing format statement that gave warning with
+!/                  Intell compiler (H. L. Tolman).     ( version 4.07 )
 !/
 !  1. Purpose :
 !
@@ -3504,7 +3510,7 @@
                   CALL W3ISRT(I,J,DD,NS,IS,JS,D)
                 END IF !list is full
               IF ( LDBG ) &
-              WRITE(*,'(A,I2,I3,I6,4(2I6,E14.6)))') &
+              WRITE(*,'(A,I2,I3,I6,4(2I6,E14.6))') &
               'W3GRMP_R4 - POINT NNBR LIST:', &
               LVL,N,NS,(IS(L),JS(L),D(L),L=1,NS)
             END DO NNBR_LOOP
@@ -3543,7 +3549,7 @@
 !/                  | WAVEWATCH III           NOAA/NCEP |
 !/                  |        T. J. Campbell, NRL        |
 !/                  |                        FORTRAN 90 |
-!/                  | Last update :         06-Dec-2010 |
+!/                  | Last update :         15-Jun-2012 |
 !/                  +-----------------------------------+
 !/
 !/    30-Oct-2009 : Origination.                        ( version 3.14 )
@@ -3552,6 +3558,8 @@
 !/    06-Dec-2010 : Remove restriction on longitude range. Change ICLO
 !/                  to integer and remove JCLO. Implement support for
 !/                  r4 and r8 source grids.             ( version 3.14 )
+!/    15-Jun-2012 : Fixing format statement that gave warning with
+!/                  Intell compiler (H. L. Tolman).     ( version 4.07 )
 !/
 !  1. Purpose :
 !
@@ -3876,7 +3884,7 @@
                   CALL W3ISRT(I,J,DD,NS,IS,JS,D)
                 END IF !list is full
               IF ( LDBG ) &
-              WRITE(*,'(A,I2,I3,I6,4(2I6,E14.6)))') &
+              WRITE(*,'(A,I2,I3,I6,4(2I6,E14.6))') &
               'W3GRMP_R8 - POINT NNBR LIST:', &
               LVL,N,NS,(IS(L),JS(L),D(L),L=1,NS)
             END DO NNBR_LOOP
