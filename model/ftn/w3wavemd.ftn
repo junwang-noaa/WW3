@@ -993,7 +993,8 @@
                           TAUWIY(ISEA), TAUWNX(ISEA),                 &
                           TAUWNY(ISEA),  PHIAW(ISEA), CHARN(ISEA),    &
                           PHIOC(ISEA), WHITECAP(ISEA,1:4),              & 
-                          D50, BEDFORMS(ISEA,1:2), PHIBBL(ISEA), TAUBBL(ISEA,1:2))
+                          D50, BEDFORMS(ISEA,1:2), PHIBBL(ISEA), TAUBBL(ISEA,1:2), &
+                          ASF(ISEA))
                   ELSE
                     UST   (ISEA) = UNDEF
                     USTDIR(ISEA) = UNDEF

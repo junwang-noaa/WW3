@@ -1,0 +1,1055 @@
+!/ ------------------------------------------------------------------- /
+      Module W3FLD1MD
+!/
+!/                  +-----------------------------------+
+!/                  | WAVEWATCH III           NOAA/NCEP |
+!/                  |           H. L. Tolman            |
+!/                  |                        FORTRAN 90 |
+!/                  | Last update :         29-May-2009 |
+!/                  +-----------------------------------+
+!/
+!/    01-Jul-2006 : Origination.                        ( version 3.09 )
+!/    29-May-2009 : Preparing distribution version.     ( version 3.14 )
+!/
+!/    Copyright 2009 National Weather Service (NWS),
+!/       National Oceanic and Atmospheric Administration.  All rights
+!/       reserved.  WAVEWATCH III is a trademark of the NWS. 
+!/       No unauthorized use without permission.
+!/
+!  1. Purpose :
+!
+!     This section of code has been designed to compute the wind
+!        stress vector from the wave spectrum and the wind speed 
+!        vector.  The calculation in this code is entirely diagnostic
+!        and has no impact on the wave spectrum calculated.  The 
+!        intended use is to calculate a sea state dependent drag 
+!        coefficient based on the wave-form stress calculations and
+!        the energy conserving vertical wind profile in Hara and 
+!        Belcher 2004.
+!
+!  2. Variables and types :
+!
+!      Name      Type  Scope    Description
+!     ----------------------------------------------------------------
+!     ----------------------------------------------------------------
+!
+!  3. Subroutines and functions :
+!
+!      Name      Type  Scope    Description
+!     ----------------------------------------------------------------
+!      W3FLD1    Subr. Public   Stress calculation (Hara and Belcher)
+!      INFLD1    Subr. Public   Corresponding initialization routine.
+!     ----------------------------------------------------------------
+!
+!  4. Subroutines and functions used :
+!
+!      Name      Type  Module   Description
+!     ----------------------------------------------------------------
+!      STRACE    Subr. W3SERVMD Subroutine tracing.
+!     ----------------------------------------------------------------
+!
+!  5. Remarks :
+!
+!     WAVEWATCH III is designed as a highly plug-compatible code.
+!     Flux modules can be included as self-contained modules,
+!     with limited changes needed to the interface of routine calls
+!     in W3SRCE, and in the point postprocessing programs only.
+!     Codes submitted for inclusion in WAVEWATCH III should be
+!     self-contained in the way described below, and might be
+!     provided with distributions fully integrated in the data
+!     structure, or as an optional version of this module to be
+!     included by the user.
+!
+!     Rules for preparing a module to be included in or distributed
+!     with WAVEWATCH III :
+!
+!      - Fully document the code following the outline given in this
+!        file, and according to all other WAVEWATCH III routines.
+!      - Provide a file with necessary modifications to W3SRCE and
+!        all other routines that require modification.
+!      - Provide a test case with expected results.
+!      - It is strongly recommended that the programming style used
+!        in WAVEWATCH III is followed, in particular 
+!          a) for readability, write as if in fixed FORTRAN format 
+!             regarding column use, even though all files are F90
+!             free format.
+!          b) I prefer upper case programming for permanent code,
+!             as I use lower case in debugging and temporary code.
+!
+!     This module needs to be self-contained in the following way.
+!
+!      a) All saved variables connected with this source term need
+!         to be declared in the module header. Upon acceptance as
+!         permanent code, they will be converted to the WAVEWATCH III
+!         dynamic data structure.  
+!      b) Provide a separate computation and initialization routine.
+!         In the submission, the initialization should be called
+!         from the computation routine upon the first call to the
+!         routine. Upon acceptance as permanent code, the
+!         initialization routine will be moved to a more appropriate
+!         location in the code (i.e., being absorbed in ww3_grid or
+!         being moved to W3IOGR). 
+!
+!     See notes in the file below where to add these elements.
+!
+!  6. Switches :
+!
+!     !/S  Enable subroutine tracing.
+!
+!  7. Source code :
+!/
+!/ ------------------------------------------------------------------- /
+!/
+!     *****************************************
+!     ***    Declare saved variables here   ***
+!     ***  public or private as appropriate ***
+!     *****************************************
+!
+      PUBLIC
+!/
+      CONTAINS
+!/ ------------------------------------------------------------------- /
+      SUBROUTINE W3FLD1( ASPC, FPI, U10, U10D, UC, UCD, ZWND, &
+                         DEPTH, UST, USTD, COEF)
+
+!/
+!/                  +-----------------------------------+
+!/                  | WAVEWATCH III           NOAA/NCEP |
+!/                  |           H. L. Tolman            |
+!/                  |                        FORTRAN 90 |
+!/                  | Last update :         01-Jul-2006 |
+!/                  +-----------------------------------+
+!/
+!/    01-Jul-2006 : Origination.                        ( version 3.09 )
+!/
+!  1. Purpose :
+!
+!     Diagnostic stress vector calculation from wave spectrum and 10
+!        meter wind speed vector.
+!
+!  2. Method :
+!
+!  3. Parameters :
+!
+!     Parameter list
+!     ----------------------------------------------------------------
+!       ASPC    Real   I   1-D Wave action spectrum.
+!       FPI     Real   I   Peak input frequency.
+!       U10     Real   I   Wind speed.    
+!       U10D    Real   I   Wind direction.
+!       UC   	Real   I   Current speed.
+!       UCD     Real   I   Current direction.
+!       ZWND    Real   I   Wind height.
+!       DEPTH   Real   I   Water depth.
+!       UST     Real   O   Friction velocity.
+!       USTD    Real   0   Direction of friction velocity.
+!     ----------------------------------------------------------------
+!
+!  4. Subroutines used :
+!
+!      Name      Type  Module   Description
+!     ----------------------------------------------------------------
+!      STRACE    Subr. W3SERVMD Subroutine tracing.
+!     ----------------------------------------------------------------
+!
+!  5. Called by :
+!
+!      Name      Type  Module   Description
+!     ----------------------------------------------------------------
+!      W3SRCE    Subr. W3SRCEMD Source term integration.
+!      W3EXPO    Subr.   N/A    Point output post-processor.
+!      GXEXPO    Subr.   N/A    GrADS point output post-processor.
+!     ----------------------------------------------------------------
+!
+!  6. Error messages :
+!
+!       None.
+!
+!  7. Remarks :
+!
+!  8. Structure :
+!
+!     See source code.
+!
+!  9. Switches :
+!
+!     !/S  Enable subroutine tracing.
+!
+! 10. Source code :
+!
+!/ ------------------------------------------------------------------- /
+      USE CONSTANTS
+      USE W3GDATMD, ONLY: NK, NTH, NSPEC, SIG, DTH, XFR, TH
+      USE W3ODATMD, ONLY: NDSE
+      USE W3SERVMD, ONLY: EXTCDE
+!/S      USE W3SERVMD, ONLY: STRACE
+!/
+      IMPLICIT NONE
+!/
+!/ ------------------------------------------------------------------- /
+!/ Parameter list
+!/
+      REAL, INTENT(IN)        :: ASPC(NSPEC), FPI, U10, U10D, UC, &
+                                 UCD, ZWND, DEPTH, COEF
+      REAL, INTENT(OUT)       :: UST, USTD
+!/
+!/ ------------------------------------------------------------------- /
+!/ Local parameters
+!/
+      REAL, PARAMETER         ::  NU=0.105/10000.0 
+      REAL, PARAMETER         ::  DELTA=0.03
+      REAL                    ::  KMAX, DTX, DTY, IT, &
+                                  USTSM, Z0SM, Z1, TAUNUX, TAUNUY,  &
+                                  WAGE, CBETA, BP, CD,&
+                                  USTRB, ANGDIF, USTAR, ZNU, UPROFV, &
+                                  VPROFV, TAUT, TAUX, TAUY, U10ADJ,&
+                                  KTAILA, KTAILB, KTAILC
+      REAL                    ::  U10_1X, U10_1Y, U10_2X, &
+                                  U10_2Y, U10_3X, U10_3Y, DIFU10XX, &
+                                  DIFU10YX, DIFU10XY, DIFU10YY, FD_A, &
+                                  FD_B, FD_C, FD_D, DU10X, DU10Y, &
+                                  APAR, CH,UITV, VITV
+      INTEGER                 ::  NKT, K, T, ITRIG, Z2, ITER, ZI, ZII, &
+                                  I, TRIGB, CTR, ITERATION, KA1, KA2, &
+                                  KA3
+      REAL, ALLOCATABLE, DIMENSION(:)   :: WN, DWN, C
+      REAL, ALLOCATABLE, DIMENSION(:,:) :: SPC2, BETAG
+      REAL, ALLOCATABLE, DIMENSION(:)   :: TLTN, TLTE, TAUD, USTL, &
+                                           TLTNDA, TLTEDA, TLTND, &
+                                           TLTED, ZOFK, UPROF, VPROF, &
+                                           FTILDE, UP1, VP1, UP, VP, &
+                                           TLTNA, TLTEA
+!/S      INTEGER, SAVE           :: IENT = 0
+      LOGICAL, SAVE           :: FIRST = .TRUE.
+!/
+!/ ------------------------------------------------------------------- /
+!/
+!/S      CALL STRACE (IENT, 'W3FLD1')
+!
+! 0.  Initializations ------------------------------------------------ *
+!
+!     **********************************************************
+!     ***    The initialization routine should include all   ***
+!     *** initialization, including reading data from files. ***
+!     **********************************************************
+!
+      IF ( FIRST ) THEN
+          CALL INFLD1
+          FIRST  = .FALSE.
+        END IF
+!
+! 1.  Attach Tail ---------------------------------------------------- *
+!
+      KMAX = SIG( NK )**2 / GRAV
+      NKT = NK
+      DO WHILE ( KMAX .LT. 366.0 )
+        NKT = NKT + 1
+        KMAX = ( KMAX * XFR**2 )
+      ENDDO
+      ALLOCATE( WN(NKT), DWN(NKT), C(NKT), SPC2(NKT,NTH), &
+                BETAG(NKT,NTH), TLTN(NKT), TLTE(NKT), &
+                TAUD(NKT), USTL(NKT), TLTNDA(NKT), TLTEDA(NKT), &
+                TLTND(NKT), TLTED(NKT), ZOFK(NKT), UPROF(NKT+1),&
+                VPROF(NKT+1), FTILDE(NKT), UP1(NKT+1),VP1(NKT+1), &
+                UP(NKT+1), VP(NKT+1), TLTNA(NKT),TLTEA(NKT))
+!
+! 1a. Build Discrete Wavenumbers for defining extended spectrum on---- *
+!
+      DO K = 1, NK
+        WN(K) = SIG(K)**2 / GRAV
+        C(K) = SQRT( GRAV / WN(K) )
+      ENDDO
+      DO K = ( NK + 1 ), ( NKT)
+        WN(K) = WN(K-1) * XFR**2.0
+        C(K) = SQRT( GRAV / WN(K) )
+      ENDDO
+      C(NKT) = SQRT( GRAV / WN(NKT) )
+      DO K = 2, NKT-1
+        DWN(K) = (WN(K+1) - WN(K-1)) / 2.0
+      ENDDO
+      DO K = 1, NKT
+        DWN(K) = WN(K)*1.1**2 - WN(K)
+      ENDDO
+!
+! 1b. Attach initial tail--------------------------------------------- *
+!
+      I=0
+      DO K=1, NK
+        DO T=1, NTH
+          I = I + 1
+          SPC2(K,T) = ASPC(I)  * SIG(K)
+        ENDDO
+      ENDDO
+      DO K=NK+1, NKT
+        DO T=1, NTH
+          SPC2(K,T)=SPC2(NK,T)*WN(NK)**3/WN(K)**(3.0)
+        ENDDO
+      ENDDO
+      DO K=NK+1, NKT
+        DO T=1, NTH
+          SPC2(K,T)=SPC2(NK,T)*WN(NK)**3.0/WN(K)**(3.0)
+        ENDDO
+      ENDDO
+      U10ADJ=U10*COEF
+!
+! 1c. Calculate transitions for new (constant saturation ) tail ------ *
+!
+!-----Wavenumber for beginning of (spectrum level) transition to tail- *
+      KTAILA = ( FPI * TPI * 1.25 )**2 / GRAV
+!-----Wavenumber for end of (spectrum level) transition to tail------- *
+      KTAILB = ( FPI * TPI * 3.00 )**2 / GRAV
+!-----Wavenumber for end of (spectrum direction) transition to tail--- *
+      KTAILC=KTAILB*2
+      KA1 = 2     ! Do not modify 1st wavenumber bin
+      KA2 = NK    ! Do not modify calculated directionality
+      KA3 = NK+2  ! Allow at least 2 bins for turning spectrum.
+      DO WHILE ( ( KTAILA .GE. WN(KA1) ) .AND. (KA1 .LT. NKT-6) )
+        KA1 = KA1 + 1
+      ENDDO
+      KA2 = MAX( KA2, KA1+2)
+      DO WHILE ( ( KTAILB .GE. WN(KA2) ) .AND. (KA2 .LT. NKT-4) )
+        KA2 = KA2 + 1
+      ENDDO
+      KA3 = MAX( KA3, KA2+2)
+      DO WHILE ( ( KTAILC .GE. WN(KA3)) .AND. (KA3 .LT. NKT-2) )
+        KA3 = KA3 + 1
+      ENDDO
+      CALL APPENDTAIL(SPC2, WN, NKT, KA1, KA2, KA3,&
+                      U10ADJ*COS(U10D), U10ADJ*SIN(U10D))
+!
+! 2.  Prepare for iterative calculation of wave-form stress----------- *
+!
+      DTX = 0.001
+      DTY = 0.001
+      ITRIG = 1
+      IT = 0.005
+      DTH = TPI / 24.0
+!
+! 2a. Calculate initial guess for viscous stress from smooth-law------ *
+!
+      Z0SM = 0.001
+      ITER = 1
+      ITERATION = 0
+      DO WHILE( ITER .EQ. 1 )
+        ITERATION = ITERATION + 1
+        Z1 = Z0SM
+        USTSM = KAPPA * U10ADJ / ( LOG( ZWND / Z1 ) )
+        Z0SM = 0.132 * NU / USTSM
+        IF ( (ABS( Z0SM - Z1 ) .GT. 10.0**(-10)) .AND.( ITERATION .LT. 5 )) THEN
+          ITER = 1
+        ELSE
+          ITER = 0
+        ENDIF
+      ENDDO
+      ITERATION = 1
+      TAUNUX = USTSM**2 * DAIR * COS( U10D )
+      TAUNUY = USTSM**2 * DAIR * SIN( U10D )
+!
+! 3.  Enter iterative calculation of wave form/skin stress----------  *
+!
+      DO WHILE (ITRIG .EQ. 1)
+        DO ITER=1, 3
+          Z2 = NKT
+          IF (ITER .EQ. 1) THEN
+            TAUNUX = TAUNUX + DTX
+          ELSEIF (ITER .EQ. 2) THEN
+            TAUNUX = TAUNUX - DTX
+            TAUNUY = TAUNUY + DTY
+          ELSEIF (ITER .EQ. 3) THEN
+            TAUNUY = TAUNUY - DTY
+          ENDIF
+          TLTN(1) = TAUNUY
+          TLTE(1) = TAUNUX
+!|---------------------------------------------------------------------|
+!|-----Calculate first guess at growth rate and local turbulent stress-|
+!|-----for integration as a function of wavedirection------------------|
+!|---------------------------------------------------------------------|
+          DO ZI = 2, NKT
+            Z2 = Z2 - 1
+            TAUD(ZI) = ATAN2( TLTN(ZI-1), TLTE(ZI-1))
+            USTL(ZI) = SQRT( SQRT( TLTN(ZI-1)**2 + TLTE(ZI-1)**2 )     &
+                       / DAIR )
+            DO T = 1, 24
+              CALL ANGLEDIFF(TAUD(ZI),TH(T),ANGDIF)
+              IF ( COS( ANGDIF ) .GE. 0.0 ) THEN
+                WAGE = SQRT( GRAV / WN(Z2) ) / USTL(ZI)
+                IF ( WAGE .LT. 10 ) THEN
+                  CBETA = 25.0
+               ELSEIF ( ( WAGE .GE. 10.0 ) .AND. &
+                          ( WAGE .LE. 25.0 ) ) THEN
+                  CBETA = 10.0 + 15.0 * COS( PI * ( WAGE - 10.0 ) &
+                          / 15.0 )
+                ELSEIF ( WAGE .GT. 25.0 ) THEN
+                  CBETA = -5.0
+                ENDIF
+              ELSE
+                CBETA = 0.0
+              ENDIF
+              BP = SQRT( (COS( TH(T) ) * COS( ANGDIF )**2)**2 &
+                       + (SIN( TH(T) ) * COS( ANGDIF )**2)**2 )
+              TLTNDA(T) =( SIN( TH(T) ) * COS( ANGDIF )**2)&
+                          * CBETA * SPC2(Z2,T) * &
+                          SQRT( TLTE(ZI-1)**2 + TLTN(ZI-1)**2.0 ) &
+                          * ( WN(Z2)**2.0 )
+              TLTEDA(T) = (COS( TH(T) ) * COS( ANGDIF )**2)&
+                          * CBETA * SPC2(Z2,T) * &
+                          SQRT( TLTE(ZI-1)**2 + TLTN(ZI-1)**2.0 ) &
+                          * ( WN(Z2)**2.0 )
+            ENDDO
+!|---------------------------------------------------------------------|
+!|-----Complete the integrations---------------------------------------|
+!|---------------------------------------------------------------------|
+            TLTND(ZI) = 0
+            TLTED(ZI) = 0
+            DO T = 1, 24
+              TLTND(ZI) = TLTND(ZI) + TLTNDA(T) * DTH
+              TLTED(ZI) = TLTED(ZI) + TLTEDA(T) * DTH
+            ENDDO
+            IF (ZI .EQ. 2) THEN
+              TLTNA(ZI) = TLTND(ZI) * DWN(Z2)
+              TLTEA(ZI) = TLTED(ZI) * DWN(Z2)
+            ELSE
+              TLTNA(ZI)=(TLTND(ZI)*0.5+TLTND(ZI-1)*0.5)*DWN(Z2)
+              TLTEA(ZI)=(TLTED(ZI)*0.5+TLTED(ZI-1)*0.5)*DWN(Z2)
+            ENDIF
+            TLTN(ZI)=TAUNUY
+            TLTE(ZI)=TAUNUX
+            DO ZII = 2, ZI
+              TLTN(ZI)=TLTN(ZI)+TLTNA(ZII)
+              TLTE(ZI)=TLTE(ZI)+TLTEA(ZII)
+            ENDDO
+          ENDDO
+          TAUY=TLTN(NKT)
+          TAUX=TLTE(NKT)
+!|---------------------------------------------------------------------|
+!|----Iterate til convergence------------------------------------------|
+!|---------------------------------------------------------------------|
+          USTRB=SQRT(SQRT(TAUY**2.0+TAUX**2.0)/DAIR)
+          TRIGB=1
+          CTR=1
+          DO WHILE ( ( TRIGB .EQ. 1 ) .AND. ( CTR .LT. 10 ) )
+           Z2=NKT+1
+            DO ZI=1, NKT
+              Z2=Z2-1
+              TAUD(ZI)=ATAN2(TLTN(ZI),TLTE(ZI))
+              USTL(ZI)=SQRT(SQRT(TLTN(ZI)**2+TLTE(ZI)**2)/DAIR)
+              DO T=1, 24
+                CALL ANGLEDIFF(TAUD(ZI),TH(T),ANGDIF)
+                IF ( COS( ANGDIF ) .GE. 0.0 ) THEN
+                  WAGE = SQRT( GRAV / WN(Z2) ) / USTL(ZI)
+                  IF ( WAGE .LT. 10.0 ) THEN
+                    CBETA = 25.0
+                  ELSEIF ( ( WAGE .GE. 10.0 ) .AND. ( WAGE .LE. 25.0 ))&
+                          THEN
+                    CBETA = 10.0 + 15.0 * COS( PI * ( WAGE - 10.0 ) &
+                            / 15.0 )
+                  ELSEIF ( WAGE .GT. 25.0 ) THEN
+                    CBETA = -5.0
+                  ENDIF
+                ELSE
+                  CBETA = 0.0
+                ENDIF
+                BP = SQRT( (COS( TH(T) ) * COS( ANGDIF )**2.0)**2.0 &
+                     + (SIN( TH(T) ) * COS( ANGDIF )**2.0)**2.0 )
+                BETAG(Z2,T)=BP*CBETA*SQRT(TLTE(ZI)**2.0+TLTN(ZI)**2.0) &
+                           /(DWAT)*SQRT(WN(Z2)**3/GRAV)
+                TLTNDA(T) = (SIN( TH(T) ) * COS( ANGDIF )**2.0)&
+                            * CBETA * SPC2(Z2,T) * SQRT( &
+                            TLTE(ZI)**2.0 + TLTN(ZI)**2.0 ) * &
+                            ( WN(Z2)**2.0 )
+                TLTEDA(T) = (COS( TH(T) ) * COS( ANGDIF )**2.0)&
+                            * CBETA * SPC2(Z2,T) * SQRT( &
+                            TLTE(ZI)**2.0 + TLTN(ZI)**2.0 ) * &
+                            ( WN(Z2)**2.0 )
+              ENDDO
+              TLTND(ZI) = 0.0
+              TLTED(ZI) = 0.0
+              DO T = 1, 24
+                TLTND(ZI)=TLTND(ZI)+TLTNDA(T)*DTH
+                TLTED(ZI)=TLTED(ZI)+TLTEDA(T)*DTH
+              ENDDO
+              IF (ZI .EQ. 1) THEN
+                TLTNA(ZI)=TLTND(ZI)*DWN(Z2)
+                TLTEA(ZI)=TLTED(ZI)*DWN(Z2)
+              ELSE
+                TLTNA(ZI)=(TLTND(ZI)*0.5+TLTND(ZI-1)*0.5)*DWN(Z2)
+                TLTEA(ZI)=(TLTED(ZI)*0.5+TLTED(ZI-1)*0.5)*DWN(Z2)
+              ENDIF
+              TLTN(ZI)=TAUNUY
+              TLTE(ZI)=TAUNUX
+              DO ZII = 1, ZI
+                TLTN(ZI)=TLTN(ZI)+TLTNA(ZII)
+                TLTE(ZI)=TLTE(ZI)+TLTEA(ZII)
+              ENDDO
+            ENDDO
+            TAUY=TLTN(NKT)
+            TAUX=TLTE(NKT)
+            TAUT=SQRT(TAUY**2.0+TAUX**2.0)
+            USTAR=SQRT(SQRT(TAUY**2.0+TAUX**2.0)/DAIR)
+            IF ((ABS(USTAR-USTRB)*100.0)/((USTAR+USTRB)*0.5) .GT. 0.1) THEN
+              TRIGB=1
+              USTRB=USTAR
+              CTR=CTR+1
+            ELSE
+              TRIGB=0
+            ENDIF
+          ENDDO
+!|---------------------------------------------------------------------|
+!|----Now begin work on wind profile-----------------------------------|
+!|---------------------------------------------------------------------|
+          DO I=1,NKT
+            ZOFK(I)=DELTA/WN(I)
+          ENDDO
+          ZNU=0.1 * 1.45E-5 / SQRT(SQRT(TAUNUX**2.0+TAUNUY**2.0)/DAIR)
+          UPROF(1:NKT)=0.0
+          VPROF(1:NKT)=0.0
+          UPROFV=0.0
+          VPROFV=0.0
+          Do ZI=1, NKT
+            FTILDE(ZI)=0.0
+            DO T=1, 24
+              FTILDE(ZI) = FTILDE(ZI) + BETAG(ZI,T) * DWAT * GRAV &
+                           * SPC2(ZI,T) * DTH
+            ENDDO
+          ENDDO
+          ZI=1
+          Z2=NKT
+          UP1(ZI) = ( ( ( WN(NKT)**2 / DELTA ) * FTILDE(NKT) ) + &
+                    ( DAIR / ( ZOFK(NKT) * KAPPA ) ) * ( SQRT( &
+                    TLTN(ZI)**2 + TLTE(ZI)**2 ) / DAIR )**(3/2) ) &
+                    * ( TLTE(ZI) ) / ( TLTE(ZI) * TAUX &
+                    + TLTN(ZI) * TAUY )
+          VP1(ZI) = ( ( ( WN(NKT)**2 / DELTA ) * FTILDE(NKT) ) + &
+                    ( DAIR / ( ZOFK(NKT) * KAPPA ) ) * ( SQRT ( &
+                    TLTN(ZI)**2 + TLTE(ZI)**2 ) / DAIR )**(3/2) ) &
+                    * ( TLTN(ZI) ) / ( TLTE(ZI) * TAUX &
+                    + TLTN(ZI) * TAUY )
+          UP(ZI) = UP1(ZI)
+          VP(ZI) = VP1(ZI)
+          UPROF(ZI) = DAIR / KAPPA * ( SQRT( TAUNUX**2.0 + TAUNUY**2.0 ) &
+                      / DAIR )**(1.5) * ( TAUNUX / ( TAUX * &
+                      TAUNUX + TAUY * TAUNUY ) ) * LOG( &
+                      ZOFK(NKT) / ZNU )
+          VPROF(ZI) = DAIR / KAPPA * ( SQRT( TAUNUX**2.0 + TAUNUY**2.0 ) &
+                      / DAIR )**(1.5) * ( TAUNUY / ( TAUX * &
+                      TAUNUX + TAUY * TAUNUY ) ) * LOG( &
+                      ZOFK(NKT) / ZNU )
+          DO ZI=2, NKT
+            Z2 = Z2 - 1
+            UP1(ZI) = ( ( ( WN(Z2)**2.0 / DELTA ) * FTILDE(Z2) ) + &
+                      ( DAIR / ( ZOFK(Z2) * KAPPA ) ) * ( SQRT( &
+                      TLTN(ZI)**2.0 + TLTE(ZI)**2.0 ) / DAIR )**(1.5) ) &
+                      * ( TLTE(ZI) ) / ( TLTE(ZI) * TAUX + &
+                      TLTN(ZI) * TAUY )
+            VP1(ZI) = ( ( ( WN(Z2)**2.0 / DELTA ) * FTILDE(Z2) ) + &
+                      ( DAIR / ( ZOFK(Z2) * KAPPA ) ) * ( SQRT( &
+                      TLTN(ZI)**2.0 + TLTE(ZI)**2.0 ) / DAIR )**(1.5) ) &
+                      * ( TLTN(ZI) ) / ( TLTE(ZI) * TAUX + &
+                      TLTN(ZI) * TAUY )
+            UP(ZI) = UP1(ZI) * 0.5 + UP1(ZI-1) * 0.5
+            VP(ZI) = VP1(ZI) * 0.5 + VP1(ZI-1) * 0.5
+            UPROF(ZI) = UPROF(ZI-1) + UP(ZI) * ( ZOFK(Z2) - ZOFK(Z2+1) )
+            VPROF(ZI) = VPROF(ZI-1) + VP(ZI) * ( ZOFK(Z2) - ZOFK(Z2+1) )
+          ENDDO
+!|---------------------------------------------------------------------|
+!|----Iteration completion/checks--------------------------------------| 
+!|---------------------------------------------------------------------|
+          ZI = ( NKT + 1 )
+          UP1(ZI) = ( ( DAIR / ( 10.0 * KAPPA ) ) * ( SQRT( TLTN(NKT)**2.0 &
+                    + TLTE(NKT)**2.0 ) / DAIR )**(1.5) ) * ( TLTE(NKT) ) &
+                    / ( TLTE(NKT) * TAUX + TLTN(NKT) * TAUY )
+          VP1(ZI) = ( ( DAIR / ( 10.0 * KAPPA ) ) * ( SQRT( TLTN(NKT)**2.0 &
+                    + TLTE(NKT)**2.0 ) / DAIR )**(1.5) ) * ( TLTN(NKT) ) &
+                    / ( TLTE(NKT) * TAUX + TLTN(NKT) * TAUY )
+          UP(ZI) = UP1(ZI) * 0.5 + UP1(ZI-1) * 0.5
+          VP(ZI) = VP1(ZI) * 0.5 + VP1(ZI-1) * 0.5
+          UPROF(ZI) = UPROF(ZI-1) + UP(ZI) * ( 10.0 - ZOFK(1) )
+          VPROF(ZI) = VPROF(ZI-1) + VP(ZI) * ( 10.0 - ZOFK(1) )
+          UPROF(ZI) = UPROF(ZI-1) + ( SQRT( SQRT( TAUY**2.0 + &
+                      TAUX**2.0 ) / DAIR ) ) / KAPPA * TAUX &
+                      / SQRT( TAUY**2.0 +TAUX**2.0 ) * LOG( 10.0 &
+                      / ZOFK(1) )
+          VPROF(ZI) = VPROF(ZI-1) + ( SQRT( SQRT( TAUY**2.0 + &
+                      TAUX**2.0 ) / DAIR ) ) / KAPPA * TAUY &
+                      / SQRT( TAUY**2.0 +TAUX**2.0 ) * LOG( 10.0 &
+                      / ZOFK(1) )
+          IF (ITER .EQ. 3) THEN
+            U10_1X = UPROF(NKT+1)
+            U10_1Y = VPROF(NKT+1)
+            if (u10_1x .GT. 1000.) then
+              write(*,*)ITERATION,DEPTH,TAUX
+              write(*,*)'U',UPROF(2)
+              write(*,*)'F',FTILDE(NKT-1)
+              write(*,*)'WN',WN(NKT-1)
+              write(*,*)'TLTE',TLTE(2)
+              write(*,*)UP1(2),UP(2)
+            endif
+          ELSEIF (ITER .EQ. 2) THEN
+            U10_2X = UPROF(NKT+1)
+            U10_2Y = VPROF(NKT+1)
+          ELSEIF (ITER .EQ. 1) THEN
+            U10_3X = UPROF(NKT+1)
+            U10_3Y = VPROF(NKT+1)
+          ENDIF
+        ENDDO
+        ITERATION = ITERATION + 1
+        CALL APPENDTAIL(SPC2, WN, NKT, KA1, KA2, KA3,&
+                      UPROF(KA3), VPROF(KA3))
+        DIFU10XX = U10_3X - U10_1X
+        DIFU10YX = U10_3Y - U10_1Y
+        DIFU10XY = U10_2X - U10_1X
+        DIFU10YY = U10_2Y - U10_1Y
+        FD_A = DIFU10XX / DTX
+        FD_B = DIFU10XY / DTY
+        FD_C = DIFU10YX / DTX
+        FD_D = DIFU10YY / DTY
+        DU10X = - U10ADJ * COS( U10D ) + U10_1X
+        DU10Y = - U10ADJ * SIN( U10D ) + U10_1Y
+        UITV = ABS( DU10X )
+        VITV = ABS( DU10Y )
+        CH = SQRT( UITV**2.0 + VITV**2.0 )
+        IF (CH .GT. 15.) THEN
+          APAR = 0.5 / ( FD_A * FD_D - FD_B * FD_C )
+        ELSE
+          APAR = 1.0 / ( FD_A * FD_D - FD_B * FD_C )
+        ENDIF
+        IF (((VITV .GT. IT) .OR. (UITV .GT. IT)) .AND. &
+                                (ITERATION .LT. 6)) THEN
+          TAUNUX = TAUNUX - APAR * ( FD_D * DU10X - FD_B * DU10Y )
+          TAUNUY = TAUNUY - APAR * ( -FD_C * DU10X +FD_A * DU10Y )
+        ELSEIF (((VITV .GT. IT) .OR. (UITV .GT. IT)) .AND. &
+                                     (ITERATION .LT. 8)) THEN
+          IT = 0.01
+          TAUNUX = TAUNUX - APAR * ( FD_D * DU10X - FD_B * DU10Y )
+          TAUNUY = TAUNUY - APAR * ( -FD_C * DU10X +FD_A * DU10Y )
+        ELSEIF (((VITV .GT. IT) .OR. (UITV .GT. IT)) .AND. &
+                                   (ITERATION .LT. 10)) THEN
+          IT = 0.05
+          TAUNUX = TAUNUX - APAR * ( FD_D * DU10X - FD_B * DU10Y )
+          TAUNUY = TAUNUY - APAR * ( -FD_C * DU10X +FD_A * DU10Y )
+        ELSEIF (((VITV .GT. IT) .OR. (UITV .GT. IT)) .AND. &
+                                   (ITERATION .LT. 12)) THEN
+          IT= 0.1
+          TAUNUX = TAUNUX - APAR * ( FD_D * DU10X - FD_B * DU10Y )
+          TAUNUY = TAUNUY - APAR * ( -FD_C * DU10X +FD_A * DU10Y )
+        ELSEIF (((VITV .GT. IT) .OR. (UITV .GT. IT)) .AND. &
+                                   (ITERATION .LT. 14)) THEN
+         IT = 0.5
+          TAUNUX = TAUNUX - APAR * ( FD_D * DU10X - FD_B * DU10Y )
+          TAUNUY = TAUNUY - APAR * ( -FD_C * DU10X +FD_A * DU10Y )
+        ELSEIF (((VITV .GT. IT) .OR. (UITV .GT. IT)) .AND. &
+                                   (ITERATION .LT. 16)) THEN
+          IT = 1.0
+          TAUNUX = TAUNUX - APAR * ( FD_D * DU10X - FD_B * DU10Y )
+          TAUNUY = TAUNUY - APAR * ( -FD_C * DU10X +FD_A * DU10Y )
+        ELSEIF (ITERATION .GE. 20) THEN
+          write(*,*)'Not converged',DEPTH,UITV
+          IT = 0.01
+          ITRIG = 0
+        ELSEIF (((VITV .LT. IT) .AND. (UITV .LT. IT)) .AND. &
+                                     (ITERATION .GE. 5)) THEN
+          ITRIG = 0
+          IT = 0.01
+        ENDIF
+      ENDDO
+!|---------------------------------------------------------------------|
+!|----Finish-----------------------------------------------------------|
+!|---------------------------------------------------------------------|
+      USTD = ATAN2(TAUY,TAUX)
+      UST = SQRT( SQRT( TAUX**2 + TAUY**2 ) / DAIR)/COEF
+      U10ADJ=MAX(U10,.01)
+      CD = UST**2 / U10ADJ**2
+      IF (CD .GT. 0.005) THEN
+        CD = 0.005
+        UST = SQRT( CD ) * U10ADJ
+      ENDIF
+      IF (CD .LT. 0.0001) THEN
+        CD=0.0001
+        UST = SQRT(CD) * U10ADJ
+      ENDIF
+      DEALLOCATE(WN, DWN, C, SPC2, BETAG, TLTN, TLTE, TAUD, &
+                 USTL, TLTNDA, TLTEDA, TLTND, TLTED, ZOFK, UPROF, &
+                 VPROF, FTILDE, UP1, VP1, UP, VP, TLTNA, TLTEA)
+!/ End of W3FLD1 ----------------------------------------------------- /
+!/
+      RETURN
+!
+      END SUBROUTINE W3FLD1
+!/ ------------------------------------------------------------------- /
+      SUBROUTINE INFLD1
+!/
+!/                  +-----------------------------------+
+!/                  | WAVEWATCH III           NOAA/NCEP |
+!/                  |           H. L. Tolman            |
+!/                  |                        FORTRAN 90 |
+!/                  | Last update :         01-Jul-2006 |
+!/                  +-----------------------------------+
+!/
+!/    01-Jul-2006 : Origination.                        ( version 3.09 )
+!/
+!  1. Purpose :
+!
+!     Initialization for source term routine.
+!
+!  2. Method :
+!
+!  3. Parameters :
+!
+!     Parameter list
+!     ----------------------------------------------------------------
+!     ----------------------------------------------------------------
+!
+!  4. Subroutines used :
+!
+!      Name      Type  Module   Description
+!     ----------------------------------------------------------------
+!      STRACE    Subr. W3SERVMD Subroutine tracing.
+!     ----------------------------------------------------------------
+!
+!  5. Called by :
+!
+!      Name      Type  Module   Description
+!     ----------------------------------------------------------------
+!      W3FLDX    Subr. W3FLDXMD Corresponding source term.
+!     ----------------------------------------------------------------
+!
+!  6. Error messages :
+!
+!       None.
+!
+!  7. Remarks :
+!
+!  8. Structure :
+!
+!     See source code.
+!
+!  9. Switches :
+!
+!     !/S  Enable subroutine tracing.
+!
+! 10. Source code :
+!
+!/ ------------------------------------------------------------------- /
+      USE W3ODATMD, ONLY: NDSE
+      USE W3SERVMD, ONLY: EXTCDE
+!/S      USE W3SERVMD, ONLY: STRACE
+!/
+      IMPLICIT NONE
+!/
+!/ ------------------------------------------------------------------- /
+!/ Parameter list
+!/
+!/
+!/ ------------------------------------------------------------------- /
+!/ Local parameters
+!/
+!/S      INTEGER, SAVE           :: IENT = 0
+!/
+!/ ------------------------------------------------------------------- /
+!/
+!/S      CALL STRACE (IENT, 'INFLD1')
+!
+! 1.  .... ----------------------------------------------------------- *
+!
+!
+!
+      RETURN
+!
+! Formats
+!
+
+!/
+!/ End of INFLD1 ----------------------------------------------------- /
+!/
+      END SUBROUTINE INFLD1
+!/
+!/ ------------------------------------------------------------------- /
+      SUBROUTINE APPENDTAIL(INSPC, WN2, NKT, KA1, KA2, KA3, U, V)
+!/
+!/                  +-----------------------------------+
+!/                  | WAVEWATCH III           NOAA/NCEP |
+!/                  |           H. L. Tolman            |
+!/                  |                        FORTRAN 90 |
+!/                  | Last update :         01-Jul-2006 |
+!/                  +-----------------------------------+
+!/
+!/    01-Jul-2012 : Written into W3FLD1MD
+!/
+!  1. Purpose :
+!
+!     Calculates an extended wave spectrum tail to be used in 
+!        explicit integration of the wave induced stress.  This wave
+!        tail converges to a constant directionally integrated 
+!        saturation spectrum of B=0.006.
+!
+!  2. Method :
+!
+!  3. Parameters :
+!
+!     Parameter list
+!     ----------------------------------------------------------------
+!     ----------------------------------------------------------------
+!
+!  4. Subroutines used :
+!
+!      Name      Type  Module   Description
+!     ----------------------------------------------------------------
+!      STRACE    Subr. W3SERVMD Subroutine tracing.
+!     ----------------------------------------------------------------
+!
+!  5. Called by :
+!
+!      Name      Type  Module   Description
+!     ----------------------------------------------------------------
+!      W3FLD1    Subr. W3FLD1MD Corresponding source term.
+!     ----------------------------------------------------------------
+!
+!  6. Error messages :
+!
+!       None.
+!
+!  7. Remarks :
+!
+!  8. Structure :
+!
+!     See source code.
+!
+!  9. Switches :
+!
+!     !/S  Enable subroutine tracing.
+!
+! 10. Source code :
+!
+!/ ------------------------------------------------------------------- /
+      USE CONSTANTS
+      USE W3GDATMD, ONLY: NTH, TH, DTH
+      USE W3ODATMD, ONLY: NDSE
+      USE W3SERVMD, ONLY: EXTCDE
+!/S      USE W3SERVMD, ONLY: STRACE
+!/
+      IMPLICIT NONE
+!/
+!/ ------------------------------------------------------------------- /
+!/ Parameter list
+!/
+      INTEGER, INTENT(IN) :: NKT, KA1, KA2, KA3
+      REAL, INTENT(IN)    :: WN2(NKT), U, V
+      REAL, INTENT(INOUT)   :: INSPC(NKT,NTH)
+!/
+!/ ------------------------------------------------------------------- /
+!/ Local parameters
+!/
+!/S      INTEGER, SAVE           :: IENT = 0
+      REAL                :: BT(NKT), IC, ANGLEWIND, ANGLE2, ANG(NKT),&
+                             NORMSPC(NTH), AVG, ANGDIF, M, MAXANG, &
+                             MAXAN, MINAN
+      INTEGER             :: MAI, I, K, T
+      REAL, ALLOCATABLE, DIMENSION(:)  :: ANGLE1
+!/
+!/ ------------------------------------------------------------------- /
+!/
+!/S      CALL STRACE (IENT, 'APPENDTAIL')
+!
+! 1.  .... ----------------------------------------------------------- *
+!
+      !|---------------------------------------------------------------|
+      !|--Get the slope of the saturation spectrum---------------------|
+      !|---------------------------------------------------------------|
+      BT(KA1) = 0
+      DO T=1, NTH
+        BT(KA1)=BT(KA1)+INSPC(KA1,T)*WN2(KA1)**3.0*DTH
+      ENDDO
+      BT(KA2) = 0.006
+      M = ( BT(KA2) - BT(KA1) ) / ( WN2(KA2) - WN2(KA1) )
+      IC = BT(KA1) - M * WN2(KA1)
+      DO K=KA1,KA2
+        BT(K)=M*WN2(K)+IC
+      ENDDO
+      !|---------------------------------------------------------------|
+      !|--Determine the directionality at each wavenumber -------------|
+      !|---------------------------------------------------------------|
+      MAXANG = 0.0
+      DO T=1, NTH
+        IF (INSPC(KA2,T) .GT. MAXANG) THEN
+          MAXANG=INSPC(KA2,T)
+        ENDIF
+      ENDDO
+      MAI = 0
+      DO T=1, NTH
+        IF (MAXANG .EQ. INSPC(KA2,T)) THEN
+          MAI = MAI+1
+        ENDIF
+      ENDDO
+      MAI = MAX(1,MAI)
+      ALLOCATE(ANGLE1(MAI))
+      K=1
+      DO T=1, NTH
+        IF (MAXANG .EQ. INSPC(KA2,T)) THEN
+          ANGLE1(K) = TH(T)
+          K=K+1
+        ENDIF
+      ENDDO
+      ANGLEWIND=ATAN2(V,U)
+     DO K=1, MAI
+        DO WHILE (ANGLE1(K) .LT. 0.0)
+          ANGLE1(K) = ANGLE1(K) + TPI
+        ENDDO
+        DO WHILE (ANGLE1(K) .GE. TPI)
+          ANGLE1(K) = ANGLE1(K) - TPI
+        ENDDO
+      ENDDO
+      DO WHILE (ANGLEWIND .LT. 0.0)
+        ANGLEWIND = ANGLEWIND + TPI
+      ENDDO
+      DO WHILE (ANGLEWIND .GE. TPI)
+        ANGLEWIND = ANGLEWIND - TPI
+      ENDDO
+      IF (MAI .GT. 1) THEN
+        MAXAN = ANGLE1(1)
+        MINAN = ANGLE1(1)
+        DO I=2, MAI
+          IF (MAXAN .LT. ANGLE1(I) )THEN
+            MAXAN = ANGLE1(I)
+          ENDIF
+          IF (MINAN .GT. ANGLE1(I) )THEN
+            MINAN = ANGLE1(I)
+          ENDIF
+        ENDDO
+        IF (MAXAN-MINAN .GT. PI) THEN
+          DO I=1, MAI
+            IF (MAXAN - ANGLE1(I) .GT. PI) THEN
+              ANGLE1(I) = ANGLE1(I) + TPI
+            ENDIF
+          ENDDO
+          CALL MEAN(ANGLE1,SIZE(ANGLE1),ANGLE2)
+        ELSE
+          CALL MEAN(ANGLE1,SIZE(ANGLE1),ANGLE2)
+        ENDIF
+      ELSE
+        ANGLE2=ANGLE1(1)
+      ENDIF
+      DO WHILE (ANGLE2 .LT. 0.0)
+        ANGLE2 = ANGLE2 + TPI
+      ENDDO
+      DO WHILE (ANGLE2 .GE. TPI)
+        ANGLE2 = ANGLE2 - TPI
+      ENDDO
+      IF ((ANGLE2 .LE. PI/2.0 .AND. ANGLEWIND .GE. 3.0*PI/2.0)) THEN
+        CALL ANGLEDIFF(ANGLE2,ANGLEWIND,ANGDIF)
+        M = ANGDIF/(WN2(KA3) - WN2(KA2))
+        IC=ANGLE2
+       DO K=KA2, KA3
+          ANG(K)=IC-M*(WN2(K)-WN2(KA2))
+        ENDDO
+      ELSEIF (ANGLE2 .GE. 3.0*PI/2.0 .AND. ANGLEWIND .LE. PI/2.0) THEN
+        CALL ANGLEDIFF(ANGLE2,ANGLEWIND,ANGDIF)
+        M = ANGDIF / ( WN2(KA3) - WN2(KA2) )
+        IC = ANGLE2
+        DO K=KA2, KA3
+          ANG(K)= IC + M*(WN2(K)-WN2(KA2))
+        ENDDO
+     ELSE
+        ANGDIF = ANGLEWIND - ANGLE2
+        M = ANGDIF / ( WN2(KA3) - WN2(KA2) )
+        IC = ANGLE2
+        DO K=KA2, KA3
+          ANG(K) = M * (WN2(K)-WN2(KA2)) + IC
+        ENDDO
+      ENDIF
+!|--------------------------------------------------------------------
+!|    Attach portion of spectrum that follows original directionality,
+!|       but transitions from B at 1.25 times the peak input frequency
+!|       to B=0.006 at 3 times the peak input frequency
+!|--------------------------------------------------------------------
+      DO K=KA1, KA2-1
+        CALL MEAN(INSPC(K,:),NTH,AVG)
+        DO T=1,NTH
+          INSPC(K,T)=BT(K)*INSPC(K,T)/TPI/(WN2(K)**3.0)/AVG
+        ENDDO
+      ENDDO
+!|--------------------------------------------------------------------
+!|    Attach portion of spectrum that has a constant B value of 0.006,
+!|       but turns to be in line with the surface wind.
+!|--------------------------------------------------------------------
+      DO K = KA2, KA3
+        DO T=1, NTH
+          CALL ANGLEDIFF(TH(T),ANG(K),ANGDIF)
+          IF (COS(ANGDIF) .GT. 0.0) THEN
+            NORMSPC(T) = COS(ANGDIF)**2.0
+          ELSE
+            NORMSPC(T)=0.0
+          ENDIF
+       ENDDO
+        CALL MEAN(NORMSPC,SIZE(NORMSPC),AVG)
+        DO T=1, NTH
+          INSPC(K,T) = 0.006 * NORMSPC(T)/TPI/(WN2(K)**3.0)/AVG
+        ENDDO
+      ENDDO
+      DO T=1, NTH
+        CALL ANGLEDIFF(TH(T),ANGLEWIND,ANGDIF)
+        IF (COS(ANGDIF) .GT. 0.0) THEN
+          NORMSPC(T) = COS(ANGDIF)**2.0
+        ELSE
+          NORMSPC(T) = 0.0
+        ENDIF
+      ENDDO
+      CALL MEAN( NORMSPC,SIZE(NORMSPC),AVG )
+!|--------------------------------------------------------------------
+!|    Attach remainder of tail, aligned with surface wind and B=0.006
+!|--------------------------------------------------------------------
+      DO K=KA3+1, NKT
+        DO T=1, NTH
+         INSPC(K,T)=NORMSPC(T)*(0.006)/TPI/(WN2(K)**3.0)/AVG
+        ENDDO
+      ENDDO
+      DEALLOCATE(ANGLE1)
+!
+! Formats
+!
+!/
+!/ End of APPENDTAIL ----------------------------------------------------- /
+!/
+      RETURN
+!
+      END SUBROUTINE APPENDTAIL
+!|---------------------------------------------------------------------|
+!|---------------------------------------------------------------------|
+!|---------------------------------------------------------------------|
+      SUBROUTINE MEAN(A,NA,C)
+        INTEGER,INTENT(IN)    :: NA
+        REAL,INTENT(IN)    :: A(NA)
+        REAL,INTENT(OUT)   :: C
+        C = SUM(A)/MAX(REAL(NA),1.)
+        RETURN 
+     END SUBROUTINE MEAN
+!|---------------------------------------------------------------------|
+!|---------------------------------------------------------------------|
+!|---------------------------------------------------------------------|
+      SUBROUTINE ANGLEDIFF(A,B,C)
+        REAL,INTENT(IN)  :: A, B
+        REAL,INTENT(OUT) :: C
+        REAL A2,B2
+        A2=A
+        B2=B
+        DO WHILE (A2 .LT. 0.)
+          A2=A2+2.0*3.141592
+        ENDDO
+        DO WHILE (B2 .LT. 0.)
+          B2=B2+2.0*3.141592
+        ENDDO
+        C = A2 - B2
+        DO WHILE (C .LT. 0.0)
+          C = 2.0*3.141592+C
+        ENDDO
+        DO WHILE (C .GT. 2.0*3.141592)
+          C = C - 2.0*3.141592
+        ENDDO
+        DO WHILE (C .GT. 3.141592)
+          C = 2.0*3.141592-C
+        ENDDO
+      RETURN
+      END SUBROUTINE ANGLEDIFF
+!/
+!/ End of module W3FLD1MD -------------------------------------------- /
+!/
+      END MODULE W3FLD1MD

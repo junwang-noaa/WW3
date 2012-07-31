@@ -89,7 +89,7 @@
   for type in mach nco grib shared mpp thr0 thr1 c90 nec lrecl grid \
               prop stress s_ln source stab s_nl s_bot s_db s_tr s_bs s_xx \
               wind windx rwind curr currx tdyn dss0 pdif miche \
-              mgwind mgprop mggse nnt mprf reflection mcp netcdf scrip
+              mgwind mgprop mggse nnt mprf reflection mcp netcdf scrip ssdcd
   do
     case $type in
       mach   ) TY='one'
@@ -132,7 +132,7 @@
                OK='PR0 PR1 PR2 PR3 PRX' ;;
       stress ) TY='one'
                ID='stress computation'
-               OK='FLX0 FLX1 FLX2 FLX3 FLXX' ;;
+               OK='FLX0 FLX1 FLX2 FLX3 FLX5 FLXX' ;;
       s_ln   ) TY='one'
                ID='linear input'
                OK='LN0 SEED LN1 LNX' ;;
@@ -229,6 +229,9 @@
                ID='grid to grid interpolation '
                TS='SCRIP'
                OK='SCRIP' ;;
+      ssdcd  ) TY='upto1'
+               ID='coupler stress calculation'
+               OK='FLD1 FLD2' ;;
     esac
 
     n_found='0'
@@ -308,6 +311,7 @@
       reflection    ) reflection=$sw ;;
       mcp    ) mcp=$sw ;;
       netcdf ) netcdf=$sw;;
+      ssdcd  ) ssdcd=$sw ;;
         *    ) ;;
     esac
   done
@@ -338,6 +342,9 @@
          flxx=$NULL ;;
    FLX3) str_st1='OK' ; str_st2='OK' ; str_st3='no'
          flx='w3flx3md'
+         flxx=$NULL ;;
+   FLX5) str_st1='OK' ; str_st2='OK' ; str_st3='no'
+         flx='w3flx5md'
          flxx=$NULL ;;
    FLXX) str_st1='no' ; str_st2='no' ; str_st3='no'
          flx='w3flxxmd'
@@ -389,7 +396,7 @@
   then
       echo ' '
       echo "   *** !/ST1 cannot be used in combination with !/$stress"
-      echo "       Choose from FLX1, FLX2 or FLX3."
+      echo "       Choose from FLX1, FLX2 ,FLX3, or FLX5."
       echo ' ' ; exit 7
   fi
 
@@ -397,7 +404,7 @@
   then
       echo ' '
       echo "   *** !/ST2 cannot be used in combination with !/$stress"
-      echo "       Choose from FLX2 or FLX3."
+      echo "       Choose from FLX2, FLX3, or FLX5."
       echo ' ' ; exit 7
   fi
 
@@ -480,6 +487,11 @@
       echo ' ' ; exit 8
   fi
 
+ case $ssdcd in
+   FLD1) fld='w3fld1md'
+         fldx=$NULL ;;
+  esac
+
 # Notes re: changing compilers (important)
 # ...1) run cleaner scrip to get rid of old .mod and .o and makefile files
 # ...2) edit and run makefile in SCRIP directory as appropriate
@@ -535,7 +547,7 @@
                core='w3fldsmd w3initmd w3wavemd w3wdasmd w3updtmd'
                data='w3gdatmd w3wdatmd w3adatmd w3idatmd w3odatmd'
                prop="$pr"
-             source="w3triamd w3srcemd $flx $ln $st $nl $bt $db $tr $bs $xx $refcode"
+             source="w3triamd w3srcemd $flx $ln $st $nl $bt $db $tr $bs $xx $refcode $fld"
                  IO='w3iogrmd w3iogomd w3iopomd w3iotrmd w3iorsmd w3iobcmd'
                  IO="$IO w3iosfmd w3partmd"
                 aux='constants w3servmd w3timemd w3arrymd w3dispmd w3cspcmd w3gsrumd' ;;
@@ -544,7 +556,7 @@
                core="$core w3fldsmd w3initmd w3wavemd w3wdasmd w3updtmd"
                data='wmmdatmd w3gdatmd w3wdatmd w3adatmd w3idatmd w3odatmd'
                prop="$pr"
-             source="w3triamd w3srcemd $flx $ln $st $nl $bt $db $tr $bs $xx $refcode"
+             source="w3triamd w3srcemd $flx $ln $st $nl $bt $db $tr $bs $xx $refcode $fld"
                  IO='w3iogrmd w3iogomd w3iopomd wmiopomd'
                  IO="$IO w3iotrmd w3iorsmd w3iobcmd w3iosfmd w3partmd"
                 aux='constants w3servmd w3timemd w3arrymd w3dispmd w3cspcmd w3gsrumd'
@@ -554,7 +566,7 @@
                core="$core w3fldsmd w3initmd w3wavemd w3wdasmd w3updtmd" 
                data='wmmdatmd w3gdatmd w3wdatmd w3adatmd w3idatmd w3odatmd' 
                prop="$pr" 
-             source="w3triamd w3srcemd $flx $ln $st $nl $bt $db $tr $bs $xx" 
+             source="w3triamd w3srcemd $flx $ln $st $nl $bt $db $tr $bs $xx $fld" 
                  IO='w3iogrmd w3iogomd w3iopomd wmiopomd' 
                  IO="$IO w3iotrmd w3iorsmd w3iobcmd w3iosfmd w3partmd" 
                 aux='constants w3servmd w3timemd w3arrymd w3dispmd w3cspcmd w3gsrumd' 
@@ -708,7 +720,7 @@
                W3IOGRMD W3IOGOMD W3IOPOMD W3IOTRMD W3IORSMD W3IOBCMD \
                W3IOSFMD W3PARTMD \
                W3PRO1MD W3PRO2MD W3PRO3MD W3PRO4MD W3PROXMD W3UQCKMD W3PROFSMD \
-               W3SRCEMD W3FLX1MD W3FLX2MD W3FLX3MD W3FLXXMD \
+               W3SRCEMD W3FLX1MD W3FLX2MD W3FLX3MD W3FLX5MD W3FLXXMD \
                W3SLN1MD W3SLNXMD W3SRC0MD W3SRC1MD W3SRC2MD W3SRC3MD W3SRC4MD W3SRCXMD \
                W3SNL1MD W3SNL2MD W3SNLXMD \
                m_xnldata serv_xnl4v5 m_fileio m_constants \
@@ -716,7 +728,8 @@
                W3STRXMD W3SBS1MD W3SBSXMD W3SXXXMD W3REF1MD \
                W3INITMD W3WAVEMD W3WDASMD W3UPDTMD W3FLDSMD W3CSPCMD \
                WMMDATMD WMINITMD WMWAVEMD WMFINLMD WMGRIDMD WMUPDTMD \
-               WMUNITMD WMINIOMD WMIOPOMD W3BULLMD m_btffac
+               WMUNITMD WMINIOMD WMIOPOMD W3BULLMD m_btffac\
+               W3FLD1MD
     do
       case $mod in
          'CONSTANTS'    ) modtest=constants.o ;;
@@ -741,6 +754,7 @@
          'W3FLX1MD'     ) modtest=w3flx1md.o ;;
          'W3FLX2MD'     ) modtest=w3flx2md.o ;;
          'W3FLX3MD'     ) modtest=w3flx3md.o ;;
+         'W3FLX5MD'     ) modtest=w3flx5md.o ;;
          'W3FLXXMD'     ) modtest=w3flxxmd.o ;;
          'W3SLN1MD'     ) modtest=w3sln1md.o ;;
          'W3SLNXMD'     ) modtest=w3slnxmd.o ;;
@@ -784,6 +798,7 @@
          'W3FLDSMD'     ) modtest=w3fldsmd.o ;;
          'W3CSPCMD'     ) modtest=w3cspcmd.o ;;
          'W3BULLMD'     ) modtest=w3bullmd.o ;;
+         'W3FLD1MD'     ) modtest=w3fld1md.o ;;
          'WMMDATMD'     ) modtest=wmmdatmd.o ;;
          'WMINITMD'     ) modtest=wminitmd.o ;;
          'WMWAVEMD'     ) modtest=wmwavemd.o ;;

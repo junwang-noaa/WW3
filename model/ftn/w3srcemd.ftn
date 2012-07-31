@@ -56,7 +56,8 @@
                           CD, Z0, DTDYN, FCUT, DTG, TAUWX, TAUWY,     &
                           TAUOX, TAUOY, TAUWIX, TAUWIY,               &
                           TAUWNX, TAUWNY, PHIAW, CHARN, PHIOC,        &
-                          WHITECAP,  D50, BEDFORM , PHIBBL, TAUBBL ) 
+                          WHITECAP,  D50, BEDFORM , PHIBBL, TAUBBL, &
+                          COEF) 
 !/
 !/                  +-----------------------------------+
 !/                  | WAVEWATCH III           NOAA/NCEP |
@@ -257,6 +258,7 @@
 !     !/FLX1  Wu (1980) stress computation.              ( Choose one )
 !     !/FLX2  T&C (1996) stress computation.
 !     !/FLX3  T&C (1996) stress computation with cap.
+!     !/FLX5  Moon et al. (2004) stress computation
 !
 !     !/LN0   No linear input.                           ( Choose one )
 !     !/LNX   User-defined bottom friction.
@@ -317,6 +319,8 @@
 !/FLX1      USE W3FLX1MD
 !/FLX2      USE W3FLX2MD
 !/FLX3      USE W3FLX3MD
+!/FLX5      USE W3FLX5MD
+!/FLD1      USE W3FLD1MD, ONLY: W3FLD1
 !/LN1      USE W3SLN1MD
 !/LNX      USE W3SLNXMD
 !/ST0      USE W3SRC0MD
@@ -355,6 +359,7 @@
       INTEGER, INTENT(IN)     :: REFLED(4)
       REAL, INTENT(IN)        :: REFLEC(4), DELX, DELY, DELA,         &
                                  TRNX, TRNY, BERG
+      REAL, INTENT(IN)        :: COEF
       REAL, INTENT(INOUT)     :: SPEC(NSPEC), ALPHA(NK), EMEAN,       &
                                  FMEAN, WNMEAN, USTAR, USTDIR, FPI,   &
                                  CD, Z0, TAUOX, TAUOY,                &
@@ -407,6 +412,9 @@
       LOGICAL                 :: SHAVE
       LOGICAL, SAVE           :: FIRST = .TRUE.
 !/NNT      CHARACTER(LEN=17), SAVE :: FNAME = 'test_data_nnn.ww3'
+!/FLD1     REAL                    :: USTAR2, USTDIR2
+!/FLD2     REAL                    :: USTAR2, USTDIR2
+      REAL                    :: TAUX,TAUY
 !/
 !/ ------------------------------------------------------------------- /
 !/
@@ -545,6 +553,8 @@
 !/FLX2                                          USTAR, USTDIR, Z0, CD )
 !/FLX3      CALL W3FLX3 ( ZWND, DEPTH, FP, U10ABS, U10DIR,            &
 !/FLX3                                          USTAR, USTDIR, Z0, CD )
+!/FLX5      CALL W3FLX5 ( ZWND, FPI, U10ABS, U10DIR, USTAR, USTDIR,   &
+!/FLX5                                          COEF, Z0, CD          )
 !
 ! 1.e Prepare cut-off 
 !
@@ -782,6 +792,8 @@
 !/FLX2                                          USTAR, USTDIR, Z0, CD )
 !/FLX3        CALL W3FLX3 ( ZWND, DEPTH, FP, U10ABS, U10DIR,           &
 !/FLX3                                          USTAR, USTDIR, Z0, CD )
+!/FLX5        CALL W3FLX5 ( ZWND, FPI, U10ABS, U10DIR, USTAR, USTDIR,  &
+!/FLX5                                          COEF, Z0, CD          )
 !
 !/ST1        FH1    = FXFM * FMEAN
 !/ST1        FHIGH  = MIN ( SIG(NK) , MAX ( FH1 , FH2 ) )
@@ -860,7 +872,12 @@
 !/ST4        CALL W3SIN4 ( SPEC, CG1, WN2, U10ABS, USTAR, DRAT, AS,      &
 !/ST4                      U10DIR, Z0, CD, TAUWX, TAUWY, TAUWAX, TAUWAY, &
 !/ST4                      ICE, VSIN, VDIN, LLWS, IX, IY )
-
+      TAUX=0
+      TAUY=0
+!/FLD1      CALL W3FLD1 (SPEC,min(FPI/TPI,2.0),U10ABS, &
+!/FLD1                    U10DIR,0.,0.,ZWIND,DEPTH,USTAR2,USTDIR2,COEF)
+!/FLD1      TAUX=(USTAR2*COS(USTDIR2))**2*DAIR
+!/FLD1      TAUY=(USTAR2*SIN(USTDIR2))**2*DAIR
 !
 ! 7.  Check if integration complete ---------------------------------- *
 !
