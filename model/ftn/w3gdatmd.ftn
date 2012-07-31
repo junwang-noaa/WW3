@@ -552,6 +552,7 @@
 !/FLX2        REAL                  :: CINXSI
 !/FLX3        INTEGER               :: NITTIN, CAP_ID
 !/FLX3        REAL                  :: CINXSI, CD_MAX
+!/FLX5        REAL                  :: DUMMY
 !/FLXX        REAL                  :: DUMMY
       END TYPE SFLP
 !

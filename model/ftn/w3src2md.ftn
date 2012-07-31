@@ -165,8 +165,13 @@
 !
 !/ ------------------------------------------------------------------- /
       USE CONSTANTS
-      USE W3GDATMD, ONLY: NK, NTH, DTH, SIG, DDEN, FTE, FTF, FTWN,    &
-                          NITTIN, ZWIND, CINXSI
+!/FLX2      USE W3GDATMD, ONLY: NK, NTH, DTH, SIG, DDEN, FTE, FTF, FTWN,    &
+!/FLX2                          NITTIN, ZWIND, CINXSI
+!/FLX3      USE W3GDATMD, ONLY: NK, NTH, DTH, SIG, DDEN, FTE, FTF, FTWN,    &
+!/FLX3                          NITTIN, ZWIND, CINXSI
+!/FLX5      USE W3GDATMD, ONLY: NK, NTH, DTH, SIG, DDEN, FTE, FTF, FTWN,    &
+!/FLX5                          ZWIND
+
 !/T      USE W3ODATMD, ONLY: NDST
 
 !/S      USE W3SERVMD, ONLY: STRACE
