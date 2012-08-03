@@ -345,6 +345,7 @@
 !/REF1     USE W3REF1MD
 !/BSX      USE W3SBSXMD
 !/XXX      USE W3SXXXMD
+!/MFB1     USE W3MFBGMD
 !/S      USE W3SERVMD, ONLY: STRACE
 !/NNT      USE W3SERVMD, ONLY: EXTCDE
 !/
@@ -415,6 +416,7 @@
 !/FLD1     REAL                    :: USTAR2, USTDIR2
 !/FLD2     REAL                    :: USTAR2, USTDIR2
       REAL                    :: TAUX,TAUY
+!/MFB1     REAL                    :: MX,MY,MFXX,MFYX,MFYY,MFXY
 !/
 !/ ------------------------------------------------------------------- /
 !/
@@ -878,6 +880,7 @@
 !/FLD1                    U10DIR,0.,0.,ZWIND,DEPTH,USTAR2,USTDIR2,COEF)
 !/FLD1      TAUX=(USTAR2*COS(USTDIR2))**2*DAIR
 !/FLD1      TAUY=(USTAR2*SIN(USTDIR2))**2*DAIR
+!/MFB1      CALL W3MFBG(SPEC,FP*TPIINV,MX,MY,MFXX,MFYX,MFYY,MFXY)
 !
 ! 7.  Check if integration complete ---------------------------------- *
 !

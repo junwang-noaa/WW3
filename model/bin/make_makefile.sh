@@ -89,7 +89,8 @@
   for type in mach nco grib shared mpp thr0 thr1 c90 nec lrecl grid \
               prop stress s_ln source stab s_nl s_bot s_db s_tr s_bs s_xx \
               wind windx rwind curr currx tdyn dss0 pdif miche \
-              mgwind mgprop mggse nnt mprf reflection mcp netcdf scrip ssdcd
+              mgwind mgprop mggse nnt mprf reflection mcp netcdf scrip ssdcd \
+              mfbg
   do
     case $type in
       mach   ) TY='one'
@@ -232,6 +233,9 @@
       ssdcd  ) TY='upto1'
                ID='coupler stress calculation'
                OK='FLD1 FLD2' ;;
+      mfbg   ) TY='upto1'
+               IS='momentum budget calculation'
+               OK='MFB1' ;;
     esac
 
     n_found='0'
@@ -312,6 +316,7 @@
       mcp    ) mcp=$sw ;;
       netcdf ) netcdf=$sw;;
       ssdcd  ) ssdcd=$sw ;;
+      mfbg   ) mfbg=$sw ;;
         *    ) ;;
     esac
   done
@@ -492,6 +497,11 @@
          fldx=$NULL ;;
   esac
 
+ case $mfbg in
+   MFB1) mfb='w3mfbgmd'
+         mfbx=$NULL ;;
+  esac
+
 # Notes re: changing compilers (important)
 # ...1) run cleaner scrip to get rid of old .mod and .o and makefile files
 # ...2) edit and run makefile in SCRIP directory as appropriate
@@ -547,7 +557,7 @@
                core='w3fldsmd w3initmd w3wavemd w3wdasmd w3updtmd'
                data='w3gdatmd w3wdatmd w3adatmd w3idatmd w3odatmd'
                prop="$pr"
-             source="w3triamd w3srcemd $flx $ln $st $nl $bt $db $tr $bs $xx $refcode $fld"
+             source="w3triamd w3srcemd $flx $ln $st $nl $bt $db $tr $bs $xx $refcode $fld $mfb"
                  IO='w3iogrmd w3iogomd w3iopomd w3iotrmd w3iorsmd w3iobcmd'
                  IO="$IO w3iosfmd w3partmd"
                 aux='constants w3servmd w3timemd w3arrymd w3dispmd w3cspcmd w3gsrumd' ;;
@@ -556,7 +566,7 @@
                core="$core w3fldsmd w3initmd w3wavemd w3wdasmd w3updtmd"
                data='wmmdatmd w3gdatmd w3wdatmd w3adatmd w3idatmd w3odatmd'
                prop="$pr"
-             source="w3triamd w3srcemd $flx $ln $st $nl $bt $db $tr $bs $xx $refcode $fld"
+             source="w3triamd w3srcemd $flx $ln $st $nl $bt $db $tr $bs $xx $refcode $fld $mfb"
                  IO='w3iogrmd w3iogomd w3iopomd wmiopomd'
                  IO="$IO w3iotrmd w3iorsmd w3iobcmd w3iosfmd w3partmd"
                 aux='constants w3servmd w3timemd w3arrymd w3dispmd w3cspcmd w3gsrumd'
@@ -566,7 +576,7 @@
                core="$core w3fldsmd w3initmd w3wavemd w3wdasmd w3updtmd" 
                data='wmmdatmd w3gdatmd w3wdatmd w3adatmd w3idatmd w3odatmd' 
                prop="$pr" 
-             source="w3triamd w3srcemd $flx $ln $st $nl $bt $db $tr $bs $xx $fld" 
+             source="w3triamd w3srcemd $flx $ln $st $nl $bt $db $tr $bs $xx $fld $mfb" 
                  IO='w3iogrmd w3iogomd w3iopomd wmiopomd' 
                  IO="$IO w3iotrmd w3iorsmd w3iobcmd w3iosfmd w3partmd" 
                 aux='constants w3servmd w3timemd w3arrymd w3dispmd w3cspcmd w3gsrumd' 
@@ -729,7 +739,7 @@
                W3INITMD W3WAVEMD W3WDASMD W3UPDTMD W3FLDSMD W3CSPCMD \
                WMMDATMD WMINITMD WMWAVEMD WMFINLMD WMGRIDMD WMUPDTMD \
                WMUNITMD WMINIOMD WMIOPOMD W3BULLMD m_btffac\
-               W3FLD1MD
+               W3FLD1MD W3MFBGMD
     do
       case $mod in
          'CONSTANTS'    ) modtest=constants.o ;;
@@ -799,6 +809,7 @@
          'W3CSPCMD'     ) modtest=w3cspcmd.o ;;
          'W3BULLMD'     ) modtest=w3bullmd.o ;;
          'W3FLD1MD'     ) modtest=w3fld1md.o ;;
+         'W3MFBGMD'     ) modtest=w3mfbgmd.o ;;
          'WMMDATMD'     ) modtest=wmmdatmd.o ;;
          'WMINITMD'     ) modtest=wminitmd.o ;;
          'WMWAVEMD'     ) modtest=wmwavemd.o ;;

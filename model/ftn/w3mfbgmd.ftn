@@ -1,0 +1,308 @@
+!/ ------------------------------------------------------------------- /
+      MODULE W3MFBGMD
+!/
+!/                  +-----------------------------------+
+!/                  | WAVEWATCH III           NOAA/NCEP |
+!/                  |           H. L. Tolman            |
+!/                  |                        FORTRAN 90 |
+!/                  | Last update :         29-May-2009 |
+!/                  +-----------------------------------+
+!/
+!/    03-Aug-2012 : Original version constructed.
+!/
+!/    Copyright 2009 National Weather Service (NWS),
+!/       National Oceanic and Atmospheric Administration.  All rights
+!/       reserved.  WAVEWATCH III is a trademark of the NWS.
+!/       No unauthorized use without permission.
+!/
+!  1. Purpose :
+!
+!     Calculates the X (east) and Y (north) momentum carried by waves
+!        as well as X-flux of X and Y momentum and the Y-flux of X
+!        and Y momentum.
+!
+!  2. Variables and types :
+!
+!      Name      Type  Scope    Description
+!     ----------------------------------------------------------------
+!     ----------------------------------------------------------------
+!
+!  3. Subroutines and functions :
+!
+!      Name      Type  Scope    Description
+!     ----------------------------------------------------------------
+!      W3MFBG    Subr. Public   User supplied source term.
+!     ----------------------------------------------------------------
+!
+!  4. Subroutines and functions used :
+!
+!      Name      Type  Module   Description
+!     ----------------------------------------------------------------
+!     ----------------------------------------------------------------
+!
+!  5. Remarks :
+!
+!     Calculations performed following Fan et al. 2010
+!
+!  6. Switches :
+!
+!
+!  7. Source code :
+!/
+!/ ------------------------------------------------------------------- /
+!/
+!
+      PUBLIC
+!/
+      CONTAINS
+      SUBROUTINE W3MFBG(SPEC,FPI,MX,MY,MFXX,MFXY,MFYX,MFYY)
+!/
+!/                  +-----------------------------------+
+!/                  | WAVEWATCH III           NOAA/NCEP |
+!/                  |           H. L. Tolman            |
+!/                  |                        FORTRAN 90 |
+!/                  | Last update :         23-Jun-2006 |
+!/                  +-----------------------------------+
+!/
+!/    03-Aug-2012: Original Implementation
+!/
+!  1. Purpose :
+!
+!     Calculate momentum and momentum flux terms for budget
+!        calculation
+!
+!  2. Method :
+!
+!     Following Fan et al. (2010)
+!
+!  3. Parameters :
+!
+!     Parameter list
+!     ----------------------------------------------------------------
+!      SPEC      I    1-D wave action spectrum
+!      FPI       I    Peak input freq
+!      MX        O    X-momentum
+!      MY        O    Y-momentum
+!      MFXX      O    X-flux of X-momentum
+!      MFXY      O    X-flux of Y-momentum
+!      MFYX      O    Y-flux of X-momentum
+!      MFYY      O    Y-flux of Y-momentum
+!     ----------------------------------------------------------------
+!
+!  4. Subroutines used :
+!
+!      Name      Type  Module   Description
+!     ----------------------------------------------------------------
+!     ----------------------------------------------------------------
+!
+!  5. Called by :
+!
+!      Name      Type  Module   Description
+!     ----------------------------------------------------------------
+!      W3SRCE    Subr. W3SRCEMD Source term integration.
+!     ----------------------------------------------------------------
+!
+!  6. Error messages :
+!
+!	None.
+!
+!  7. Remarks :
+!
+!  8. Structure :
+!
+!     See source code.
+!
+!  9. Switches :
+!
+!     !/S  Enable subroutine tracing.
+!
+! 10. Source code :
+!
+!/ ------------------------------------------------------------------- /
+      USE CONSTANTS
+      USE W3GDATMD, ONLY: NK, NTH, SIG, TH, FR1, XFR, DTH
+!/
+      IMPLICIT NONE 
+!/
+!/ ------------------------------------------------------------------- /
+!/ Parameter list
+!/
+      REAL, INTENT(IN)        :: SPEC(NK*NTH),FPI
+      REAL, INTENT(OUT)       :: MX, MY, MFXX, MFXY, MFYX, MFYY
+!/
+!/ ------------------------------------------------------------------- /
+!/ Local parameters
+!/
+      REAL, PARAMETER         ::  CBETA = 32
+      REAL, PARAMETER         ::  CTHETA = 3.0*PI/8.0
+      INTEGER                 ::  I, J, K, T, NCUT
+      REAL                    :: SPK(NK,NTH), SPF(NK,NTH), CG(NK), B, &
+                                 RN, KS, KPI, CF, FXX, FYX, FYY, &
+                                 FXY, FX, FY, G_FXX(NK), G_FYX(NK), &
+                                 G_FYY(NK), G_FXY(NK), G_FY(NK), &
+                                 G_FX(NK), KK(60), TAIL_F(60), &
+                                 TAIL_CG(60), MX_THETA(60), &
+                                 MY_THETA(60), MXX_THETA(60), &
+                                 MXY_THETA(60), MYY_THETA(60), &
+                                 MYX_THETA(60), THETA, H_THETA, FI, &
+                                 FREQ(NK), KC, FI_K, TMX, TMY, &
+                                 TMFXX, TMFXY, TMFYY, TMFYX
+!
+! 1.  Convert 1-D Wave-action spectrum to 2-D wavenumber spectrum
+!
+      I=0
+      DO K=1, NK
+        CG(K)=GRAV / SIG(K) / 2.
+        FREQ(K) = SIG(K) / TPI
+        DO T=1, NTH
+          I = I + 1
+          SPK(K,T) = SPEC(I) * SIG(K)
+          SPF(K,T) = SPK(K,T) * TPI / CG(K)
+        ENDDO
+      ENDDO
+!
+! 2. Find cut off frequency (3fpi)
+!
+      RN=LOG(3.0*FPI/FR1) / LOG(XFR) + 1
+      IF ( (RN-FLOAT(INT(RN))) .GT. 0.5 ) THEN
+          NCUT=INT(RN)+1
+      ELSE
+          NCUT=INT(RN)
+      ENDIF
+      IF ( NCUT .LT. 1 ) NCUT = 1
+      IF ( NCUT .GT. 38 ) NCUT = 38
+!
+! 3. Calculate saturation value at cut off frequency
+!
+      KC = (SIG(NCUT))**2 / GRAV
+      FI_K = 0.0
+      DO I=1,24
+         FI_K=FI_K+SPK(NCUT,I) * DTH
+      ENDDO
+      B=FI_K*KC**3*CBETA*CTHETA
+!
+! 4. Calculate shelter wave number
+!
+      KS = KC*(2.0/B-1.0)**2
+      IF (KS .GT. 999) KS = 999.0
+      KPI = (TPI*FPI*3.0)**2 / GRAV
+      CF = 3.0*FPI
+!
+! 5. Calculate peak momentum and momentum flux
+!
+         DO J=1, NK
+            FXX=0.0
+            FYX=0.0
+            FYY=0.0
+            FXY=0.0
+            FX=0.0
+            FY=0.0
+            DO I=1, NTH
+              FYY=FYY+SPF(J,I)*SIN(TH(I))*SIN(TH(I)) * DTH
+              FXY=FXY+SPF(J,I)*COS(TH(I))*SIN(TH(I)) * DTH
+              FXX=FXX+SPF(J,I)*COS(TH(I))*COS(TH(I)) * DTH
+              FYX=FYX+SPF(J,I)*COS(TH(I))*SIN(TH(I)) * DTH
+              FY=FY+SPF(J,I)*SIN(TH(I)) * DTH
+              FX=FX+SPF(J,I)*COS(TH(I)) * DTH
+            ENDDO
+            G_FYY(J) = FYY
+            G_FXY(J) = FXY
+            G_FXX(J) = FXX
+            G_FYX(J) = FYX
+            G_FX(J) = FX
+            G_FY(J) = FY
+          ENDDO
+          MFXX = DWAT * G_FXX(1) * GRAV / 2.0 * (FREQ(2)-FREQ(1))
+          MFYX = DWAT * G_FYX(1) * GRAV / 2.0 * (FREQ(2)-FREQ(1))
+          MFYY = DWAT * G_FYY(1) * GRAV / 2.0 * (FREQ(2)-FREQ(1))
+          MFXY = DWAT * G_FXY(1) * GRAV / 2.0 * (FREQ(2)-FREQ(1))
+          MX = DWAT * G_fx(1) * TPI * (FREQ(1) + FREQ(2)) &
+               / 2. * (FREQ(2)-FREQ(1))
+          MY = DWAT * G_fy(1) * TPI * (FREQ(1) + FREQ(2)) &
+               / 2. * (FREQ(2)-FREQ(1))
+          DO i=2, 39
+             IF (FREQ(i) .LT. CF) THEN
+                 MFXX = MFXX + DWAT * G_FXX(i) * GRAV / 2.0 * &
+                        (FREQ(I+1)-FREQ(I-1)) / 2.0
+                 MFYX = MFYX + DWAT * G_FYX(i) * GRAV / 2.0 * &
+                        (FREQ(I+1)-FREQ(I-1)) / 2.0
+                 MFYY = MFYY + DWAT * G_FYY(i) * GRAV / 2.0 * &
+                        (FREQ(I+1)-FREQ(I-1)) / 2.0
+                 MFXY = MFXY + DWAT * G_FXY(i) * GRAV / 2.0 * &
+                        (FREQ(I+1)-FREQ(I-1)) / 2.0
+                 MX = MX + DWAT * G_FX(I) * SIG(I) * &
+                      (SIG(I+1)-FREQ(I-1)) / 2.0
+                 MY = MY + DWAT * G_FY(I) * SIG(I) * &
+                      (SIG(I+1)-FREQ(I-1)) / 2.0
+             ENDIF
+           ENDDO
+!---------------------- Tail momentum flux calculation
+        DO J=1, 60
+           TAIL_F(J)=CF*XFR**(J-1)
+           KK(J)=(TPI*TAIL_F(J))**2 / GRAV
+           TAIL_CG(J)=0.5*GRAV/(TPI*TAIL_F(J))
+           MX_THETA(J)=0
+           MY_THETA(J)=0
+           MXX_THETA(J)=0
+           MXY_THETA(J)=0
+           MYY_THETA(J)=0
+           MYX_THETA(J)=0
+           DO K=1, 25
+             THETA = -pi/2.0 + (K-1)*PI / 24.0
+             H_THETA=COS(THETA)*COS(THETA)
+             B=SQRT(H_THETA)/(1+SQRT(KS/KK(J)))/(CBETA*CTHETA)
+             FI=B/(KK(J)**3)
+             MX_THETA(J)=MX_THETA(J)+FI*COS(THETA)*PI/24.0
+             MY_THETA(J)=MY_THETA(J)+FI*SIN(THETA)*PI/24.0
+             MXX_THETA(J)=MXX_THETA(J)+FI*COS(THETA)*COS(THETA)*PI/24.0
+             MXY_THETA(J)=MXY_THETA(J)+FI*COS(THETA)*SIN(THETA)*PI/24.0
+             MYY_THETA(J)=MYY_THETA(J)+FI*SIN(THETA)*SIN(THETA)*PI/24.0
+             MYX_THETA(J)=MYX_THETA(J)+FI*COS(THETA)*SIN(THETA)*PI/24.0
+           ENDDO
+         ENDDO
+         TMX=DWAT*TAIL_F(1)*MX_THETA(1)*(TAIL_F(2)-TAIL_F(1))
+         TMY=DWAT*TAIL_F(1)*MY_THETA(1)*(TAIL_F(2)-TAIL_F(1))
+         TMFXX=DWAT*TAIL_F(1)*TAIL_CG(1)*MXX_THETA(1)*&
+              (TAIL_F(2)-TAIL_F(1))
+         TMFXY=DWAT*TAIL_F(1)*TAIL_CG(1)*MXY_THETA(1)*&
+              (TAIL_F(2)-TAIL_F(1))
+         TMFYY=DWAT*TAIL_F(1)*TAIL_CG(1)*MYY_THETA(1)*&
+              (TAIL_F(2)-TAIL_F(1))
+         TMFYX=DWAT*TAIL_F(1)*TAIL_CG(1)*MYX_THETA(1)*&
+              (TAIL_F(2)-TAIL_F(1))
+
+
+         DO K=2,59
+            TMFXX=TMFXX+DWAT*TAIL_F(K)*TAIL_CG(K)*MXX_THETA(K)*&
+                 (TAIL_F(K+1)-TAIL_F(K-1))/2.
+            TMFXY=TMFXY+DWAT*TAIL_F(K)*TAIL_CG(K)*MXY_THETA(K)*&
+                 (TAIL_F(K+1)-TAIL_F(K-1))/2.
+            TMFYY=TMFYY+DWAT*TAIL_F(K)*TAIL_CG(K)*MYY_THETA(K)*&
+                 (TAIL_F(K+1)-TAIL_F(K-1))/2.
+            TMFYX=TMFYX+DWAT*TAIL_F(K)*TAIL_CG(K)*MYX_THETA(K)*&
+                 (TAIL_F(K+1)-TAIL_F(K-1))/2.
+            TMX=TMX+DWAT*TAIL_F(K)*MX_THETA(K)*&
+               (TAIL_F(K+1)-TAIL_F(K-1))/2.
+            TMY=TMY+DWAT*TAIL_F(K)*MY_THETA(K)*&
+               (TAIL_F(K+1)-TAIL_F(K-1))/2.
+         ENDDO
+
+         MX=MX+TMX
+         MY=MY+TMY
+         MFXX=MFXX+TMFXX
+         MFYX=MFYX+TMFYX
+         MFYY=MFYY+TMFYY
+         MFXY=MFXY+TMFXY
+        write(*,*)'x',TMX,MX
+        write(*,*)'y',TMY,MY
+        write(*,*)'xx',TMFXX,MFXX
+        write(*,*)'yx',TMFYX,MFYX
+        write(*,*)'yy',TMFYY,MFYY
+        write(*,*)'xy',TMFXY,MFXY
+        RETURN
+!/        
+      END SUBROUTINE W3MFBG
+!/
+      END MODULE W3MFBGMD
+
+
