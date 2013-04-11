@@ -12,6 +12,8 @@ $
 $   Format types :  AI    Transfer field 'as is'. (ITYPE 1)
 $                   LL    Field defined on regular longitude-latitude
 $                         or Cartesian grid. (ITYPE 2)
+$   Format types :  AT    Transfer field 'as is', performs tidal 
+$                         analysis on the time series (ITYPE 6)
 $
 $        - Format type not used for field type 'DAT'.
 $
@@ -22,6 +24,9 @@ $                   incremental generation of a data file.)
 $
   'WND' 'LL' T T
 $
+$ Name of dimensions ------------------------------------------------- $
+$
+ longitude latitude
 $
 $ Variables to use --------------------------------------------------- $
 $

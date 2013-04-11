@@ -16,9 +16,9 @@
 # programs used :                                                             #
 #                                                                             #
 #                                                      Hendrik L. Tolman      #
-#                                                      May 2009               #
+#                                                      July 2012              #
 #                                                                             #
-#    Copyright 2009 National Weather Service (NWS),                           #
+#    Copyright 2009-2012 National Weather Service (NWS),                      #
 #       National Oceanic and Atmospheric Administration.  All rights          #
 #       reserved.  WAVEWATCH III is a trademark of the NWS.                   #
 #       No unauthorized use without permission.                               #
@@ -158,6 +158,16 @@
                                    touch ww3_prep.ftn
                                    touch ww3_outp.ftn
                                    touch gx_outp.ftn ;;
+     'snls'   ) cd $main_dir/ftn ; touch w3gdatmd.ftn
+                                   touch w3adatmd.ftn
+                                   touch w3srcemd.ftn
+                                   touch w3iogrmd.ftn
+                                   touch wminitmd.ftn
+                                   touch ww3_grid.ftn
+                                   touch ww3_strt.ftn
+                                   touch ww3_prep.ftn
+                                   touch ww3_outp.ftn
+                                   touch gx_outp.ftn ;;
      's_bot'  ) cd $main_dir/ftn ; touch w3gdatmd.ftn
                                    touch w3srcemd.ftn
                                    touch w3iogrmd.ftn
@@ -224,6 +234,11 @@
                                    touch ww3_ounp.ftn
                                    touch ww3_prnc.ftn ;;
       'reflection' )  cd $main_dir/ftn ; touch w3ref1md.ftn ;;
+      'tide' )        cd $main_dir/ftn ; touch w3tidemd.ftn 
+                                         touch w3updtmd.ftn 
+                                         touch w3idatmd.ftn 
+                                         touch w3fldsmd.ftn 
+                                         touch ww3_shel.ftn ;;
        *      ) echo "w3_new: keyword [$key] not recognized" ;;
     esac
   done

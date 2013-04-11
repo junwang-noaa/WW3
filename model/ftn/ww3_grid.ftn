@@ -7,7 +7,7 @@
 !/                  |           J. H. Alves             |
 !/                  |            F. Ardhuin             |
 !/                  |                        FORTRAN 90 |
-!/                  | Last update :         16-Sep-2011 |
+!/                  | Last update :         02-Sep-2012 |
 !/                  +-----------------------------------+
 !/
 !/    14-Jan-1999 : Final FORTRAN 77                    ( version 1.18 )
@@ -73,8 +73,12 @@
 !/    16-Sep-2011 : Clean up.                           ( version 4.05 )
 !/    01-Dec-2011 : New namelist for reflection         ( version 4.05 )
 !/    01-Mar-2012 : Bug correction for NLPROP in ST2    ( version 4.05 )
+!/    13-Jul-2012 : Move data structures GMD (SNL3) and nonlinear
+!/                  filter (SNLS) from 3.15 (HLT).      ( version 4.08 )
+!/    02-Sep-2012 : Clean up of reflection and UG grids ( version 4.08 )
+!/    05-Mar-2013 : Adjusted default roughness for rocks( version 4.09 )
 !/
-!/    Copyright 2009 National Weather Service (NWS),
+!/    Copyright 2009-2012 National Weather Service (NWS),
 !/       National Oceanic and Atmospheric Administration.  All rights
 !/       reserved.  WAVEWATCH III is a trademark of the NWS. 
 !/       No unauthorized use without permission.
@@ -326,7 +330,9 @@
 !     !/NL0   No nonlinear interactions.
 !     !/NL1   Discrete interaction approximation (DIA).
 !     !/NL2   Exact interactions (WRT).
+!     !/NL3   Generalized Multiple DIA (GMD).
 !     !/NLX   Open slot.
+!     !/NLS   Snl based HF filter.
 !
 !     !/BT0   No bottom friction included.
 !     !/BT1   JONSWAP bottom friction package.
@@ -388,6 +394,9 @@
                           IPBPO, ISBPO, XBPO, YBPO, RDBPO, FNMPRE,    &
                           IHMAX, HSPMIN, WSMULT, WSCUT, FLCOMB
 !
+!/NL3      USE W3SNL3MD, ONLY: LAMMAX, DELTHM
+!/NLS      USE W3SNLSMD, ONLY: ABMAX
+!
       IMPLICIT NONE
 !/
 !/ ------------------------------------------------------------------- /
@@ -431,16 +440,20 @@
 !/ST2      REAL                    :: PHIMIN, FPIA, FPIB, DPHID
 !/NL1      REAL                    :: NLPROP
 !/NL2      REAL                    :: DPTFAC, DEPTHS(100)
+!/NL3      REAL                    :: QPARMS(500)
+!/NLS      REAL                    :: A34, FHFC, DNM, FC1, FC2, FC3
 !/BT1      REAL                    :: GAMMA
 !/PR2      REAL                    :: LATMIN
       REAL, ALLOCATABLE       :: XGRDIN(:,:), YGRDIN(:,:)
       REAL, ALLOCATABLE       :: ZBIN(:,:), OBSX(:,:), OBSY(:,:)
       REAL, ALLOCATABLE       :: REFD(:,:), REFD2(:,:), REFS(:,:)
 !/BT4      REAL, ALLOCATABLE  :: SED_D50FILE(:,:), SED_POROFILE(:,:)
-!/BT4      LOGICAL            :: SEDMAPD50, SEDMAPPORO
-!/BT4      REAL               :: SED_D50_UNIFORM, SED_DSTAR, RIPFAC1, RIPFAC2, RIPFAC3, RIPFAC4
+!/BT4      LOGICAL            :: SEDMAPD50
+!/BT4      REAL               :: SED_D50_UNIFORM, SED_DSTAR, RIPFAC1, &
+!/BT4                            RIPFAC2, RIPFAC3, RIPFAC4, SIGDEPTH, &
+!/BT4                            BOTROUGHMIN, BOTROUGHFAC
       LOGICAL                 :: FLLIN, FLINDS, FLNL, FLBT, FLDB,     &
-                                 FLTR, FLBS, FLXX, FLPROP,            &
+                                 FLTR, FLBS, FLXX, FLPROP, FLREF,     &
                                  FIRST, CONNCT, FLNEW, INGRID
       LOGICAL                 :: FLTC96 = .FALSE.
       LOGICAL                 :: FLNMLO = .FALSE.
@@ -499,12 +512,15 @@
 !/NL1                                 SNLCS1, SNLCS2, SNLCS3
 !/NL2      INTEGER                 :: IQTYPE, NDEPTH
 !/NL2      REAL                    :: TAILNL
+!/NL3      INTEGER                 :: NQDEF
+!/NL3      REAL                    :: MSC, NSC, KDFD, KDFS
 !/DB1      REAL                    :: BJALFA, BJGAM
 !/DB1      LOGICAL                 :: BJFLAG
 !/PR2      REAL                    :: DTIME
 !/PR3      REAL                    :: WDTHCG, WDTHTH
-           LOGICAL                 :: UGCONT, EXPFSN, EXPFSPSI,     &
-                                      EXPFSFCT,IMPFSNIMP,TSTC
+           REAL                    :: UGOBCDEPTH
+           LOGICAL                 :: UGOBCAUTO, EXPFSN, EXPFSPSI,     &
+                                      EXPFSFCT,IMPFSNIMP
            LOGICAL                 :: COU_2D, COU_RAD3D
 !
 !/FLX3      NAMELIST /FLX3/ CDMAX, CTYPE
@@ -521,6 +537,9 @@
 !/NL1                      SNLCS1, SNLCS2, SNLCS3
 !/NL2      NAMELIST /SNL2/ IQTYPE, TAILNL, NDEPTH
 !/NL2      NAMELIST /ANL2/ DEPTHS
+!/NL3      NAMELIST /SNL3/ NQDEF, MSC, NSC, KDFD, KDFS
+!/NL3      NAMELIST /ANL3/ QPARMS
+!/NLS      NAMELIST /SNLS/ A34, FHFC, DNM, FC1, FC2, FC3
 !/ST1      NAMELIST /SDS1/ CDIS, APM
 !/ST2      NAMELIST /SDS2/ SDSA0, SDSA1, SDSA2, SDSB0, SDSB1, PHIMIN
 !/ST3      NAMELIST /SDS3/ SDSC1, WNMEANP, FXPM3, FXFM3, SDSDELTA1,   &
@@ -532,18 +551,21 @@
 !/ST4                      SDSDTH, SDSCOS, SDSBRF1, SDSBRF2, SDSBRFDF,     &
 !/ST4                      SDSBM0, SDSBM1, SDSBM2, SDSBM3, SDSBM4, WHITECAPWIDTH
 !/BT1      NAMELIST /SBT1/ GAMMA
-!/BT4      NAMELIST /SBT4/ SEDMAPD50,SEDMAPPORO,SED_D50_UNIFORM,RIPFAC1,RIPFAC2,RIPFAC3,RIPFAC4
+!/BT4      NAMELIST /SBT4/ SEDMAPD50, SED_D50_UNIFORM, RIPFAC1,            &
+!/BT4                      RIPFAC2, RIPFAC3, RIPFAC4, SIGDEPTH,            &
+!/BT4                      BOTROUGHMIN, BOTROUGHFAC
 !/DB1      NAMELIST /SDB1/ BJALFA, BJGAM, BJFLAG
 !/PR1      NAMELIST /PRO1/ CFLTM
 !/PR2      NAMELIST /PRO2/ CFLTM, DTIME, LATMIN
 !/PR3      NAMELIST /PRO3/ CFLTM, WDTHCG, WDTHTH
-           NAMELIST /UG/   UGCONT, EXPFSN, EXPFSPSI, EXPFSFCT,        &
-                           IMPFSNIMP, TSTC
+           NAMELIST /UG/   UGOBCAUTO, UGOBCDEPTH,                     &
+                           EXPFSN, EXPFSPSI, EXPFSFCT,                &
+                           IMPFSNIMP
            NAMELIST /MISC/ CICE0, CICEN, LICE, XSEED, FLAGTR, XP, XR, & 
                       XFILT, PMOVE, IHM, HSPM, WSM, WSC, FLC, FMICHE, &
                       RWNDC, FLAGICESOURCE, P2SF, I1P2SF, I2P2SF,     &
                       US3D_OUNF, I1US3D_OUNF, I2US3D_OUNF,            &
-                      FACBERG, COU_2D, COU_RAD3D
+                      FACBERG, COU_2D, COU_RAD3D, GSHIFT
 !/REF1           NAMELIST /REF1/ REFCOAST, REFFREQ, REFMAP,  REFMAPD,       &
 !/REF1                          REFSUBGRID, REFICEBERG,                     &
 !/REF1                          REFCOSP_STRAIGHT, REFSLOPE, REFRMAX,        &
@@ -751,6 +773,7 @@
       FLDB   = .TRUE.
       FLTR   = .TRUE.
       FLBS   = .TRUE.
+      FLREF  = .FALSE.
       FLXX   = .TRUE.
 !
 !/LN0      NRLIN  = NRLIN + 1
@@ -773,6 +796,7 @@
 !/NL0      FLNL   = .FALSE.
 !/NL1      NRNL   = NRNL + 1
 !/NL2      NRNL   = NRNL + 1
+!/NL3      NRNL   = NRNL + 1
 !/NLX      NRNL   = NRNL + 1
 !
 !/BT0      NRBT   = NRBT + 1
@@ -795,13 +819,15 @@
 !/BS1      NRBS   = NRBS + 1
 !/BSX      NRBS   = NRBS + 1
 !
+!/REF1      FLREF   = .TRUE.
+!
 !/XX0      NRXX   = NRXX + 1
 !/XX0      FLXX   = .FALSE.
 !/XXX      NRXX   = NRXX + 1
 !
       IF ( .NOT.FLLIN .AND. .NOT.FLINDS .AND. .NOT.FLNL .AND.         &
             .NOT.FLBT .AND.  .NOT.FLDB .AND.  .NOT.FLTR .AND.         &
-            .NOT.FLBS .AND.  .NOT.FLXX .AND.  FLSOU ) THEN
+            .NOT.FLBS .AND.  .NOT.FLXX .AND.  .NOT.FLREF .AND.  FLSOU ) THEN
           WRITE (NDSE,1020)
           CALL EXTCDE ( 10 )
         END IF
@@ -1058,6 +1084,17 @@
 !/NL2      IQTYPE =  2
 !/NL2      TAILNL = -FACHF
 !/NL2      NDEPTH =  0
+!/NL3      NQDEF  =  0
+!/NL3      MSC    =  0.
+!/NL3      NSC    = -3.5
+!/NL3      KDFD   =  0.20
+!/NL3      KDFS   =  5.00
+!/NLS      A34    =  0.05
+!/NLS      FHFC   =  1.E10
+!/NLS      DNM    =  0.25
+!/NLS      FC1    =  1.25
+!/NLS      FC2    =  1.50
+!/NLS      FC3    =  6.00
 !
 !/NL2      CALL READNL ( NDSS, 'SNL2', STATUS )
 !/NL2      WRITE (NDSO,922) STATUS
@@ -1097,6 +1134,68 @@
 !/NL2      IQTPE  = IQTYPE
 !/NL2      NDPTHS = NDEPTH
 !/NL2      NLTAIL = TAILNL
+!
+!/NL3      CALL READNL ( NDSS, 'SNL3', STATUS )
+!/NL3      WRITE (NDSO,922) STATUS
+!!/NL3      MSC    = MAX ( 0. , MIN ( 8. , MSC ) )  ! Disabled HLT ca. 2009
+!/NL3      KDFD   = MAX ( 0.001 , MIN ( 10. , KDFD ) )
+!/NL3      KDFS   = MAX ( KDFD , MIN ( 10. , KDFS ) )
+!/NL3      WRITE (NDSO,923) MSC, NSC, KDFD, KDFS
+!
+!/NL3      NQDEF  = MAX ( 0 , NQDEF )
+!/NL3      IF ( NQDEF .EQ. 0 ) THEN
+!/NL3          NQDEF  = 1
+!/NL3          QPARMS(1:5) = [ 0.25 , 0.00, -1., 1.E7, 0.00 ]
+!/NL3        ELSE
+!/NL3          DO J=1, NQDEF
+!/NL3            QPARMS((J-1)*5+1:J*5) = [ 0.25, 0.00, -1., 1.E7, 1.E6 ]
+!/NL3            END DO
+!/NL3          CALL READNL ( NDSS, 'ANL3', STATUS )
+!/NL3        END IF
+!/NL3      DO J=1, NQDEF
+!/NL3        QPARMS((J-1)*5+1) = MAX(0.,MIN (LAMMAX,QPARMS((J-1)*5+1)))
+!/NL3        QPARMS((J-1)*5+2) = MAX(0.,MIN (QPARMS((J-1)*5+1),        &
+!/NL3                                        QPARMS((J-1)*5+2)))
+!/NL3        QPARMS((J-1)*5+3) = MIN (DELTHM,QPARMS((J-1)*5+3))
+!/NL3        QPARMS((J-1)*5+4) = MAX (0.,QPARMS((J-1)*5+4))
+!/NL3        QPARMS((J-1)*5+5) = MAX (0.,QPARMS((J-1)*5+5))
+!/NL3        END DO
+!/NL3      WRITE (NDSO,1923) NQDEF
+!/NL3      WRITE (NDSO,2923) QPARMS(1:NQDEF*5)
+!/NL3      WRITE (NDSO,*)
+!/NL3      SNLNQ  = NQDEF
+!/NL3      SNLMSC = MSC
+!/NL3      SNLNSC = NSC
+!/NL3      SNLSFD = SQRT ( KDFD * TANH(KDFD) )
+!/NL3      SNLSFS = SQRT ( KDFS * TANH(KDFS) )
+!/NL3      ALLOCATE ( MPARS(1)%SNLPS%SNLL(NQDEF),                     &
+!/NL3                 MPARS(1)%SNLPS%SNLM(NQDEF),                     &
+!/NL3                 MPARS(1)%SNLPS%SNLT(NQDEF),                     &
+!/NL3                 MPARS(1)%SNLPS%SNLCD(NQDEF),                    &
+!/NL3                 MPARS(1)%SNLPS%SNLCS(NQDEF) )
+!/NL3      SNLL   => MPARS(1)%SNLPS%SNLL
+!/NL3      SNLL   = QPARMS(1:NQDEF*5:5)
+!/NL3      SNLM   => MPARS(1)%SNLPS%SNLM
+!/NL3      SNLM   = QPARMS(2:NQDEF*5:5)
+!/NL3      SNLT   => MPARS(1)%SNLPS%SNLT
+!/NL3      SNLT   = QPARMS(3:NQDEF*5:5)
+!/NL3      SNLCD  => MPARS(1)%SNLPS%SNLCD
+!/NL3      SNLCD  = QPARMS(4:NQDEF*5:5)
+!/NL3      SNLCS  => MPARS(1)%SNLPS%SNLCS
+!/NL3      SNLCS  = QPARMS(5:NQDEF*5:5)
+!
+!/NLS      CALL READNL ( NDSS, 'SNLS', STATUS )
+!/NLS      WRITE (NDSO,9922) STATUS
+!/NLS      A34    = MAX ( 0. , MIN ( A34 , ABMAX ) )
+!/NLS      FHFC   = MAX ( 0. , FHFC )
+!/NLS      DNM    = MAX ( 0., DNM )
+!/NLS      WRITE (NDSO,9923) A34, (XFR-1.)*A34, FHFC, DNM, FC1, FC2, FC3
+!/NLS      CNLSA  = A34
+!/NLS      CNLSC  = FHFC
+!/NLS      CNLSFM = DNM
+!/NLS      CNLSC1 = FC1
+!/NLS      CNLSC2 = FC2
+!/NLS      CNLSC3 = FC3
 !
 ! 6.f Define Sds.
 !
@@ -1150,7 +1249,7 @@
 !/ST4      SDSPBK    = 4.
 !/ST4      SDSBINT   = 0.3
 !/ST4      SDSHCK    = 1.
-!/ST4      WHITECAPWIDTH = 0.8
+!/ST4      WHITECAPWIDTH = 0.3
 !
 !/ST1      CALL READNL ( NDSS, 'SDS1', STATUS )
 !/ST1      WRITE (NDSO,924) STATUS
@@ -1246,19 +1345,26 @@
 !/BT1      SBTC1  = 2. * GAMMA / GRAV
 !
 !/BT4      SEDMAPD50=.FALSE.
-!/BT4      SEDMAPPORO=.FALSE.
 !/BT4      SED_D50_UNIFORM=2.E-4  ! default grain size: medium sand 200 microns
-!/BT4      RIPFAC1=1.5    ! A1 in Ardhuin et al. 2003
+!/BT4      RIPFAC1=0.4    ! A1 in Ardhuin et al. 2003
 !/BT4      RIPFAC2=-2.5   ! A2 in Ardhuin et al. 2003
 !/BT4      RIPFAC3=1.2    ! A3 in Ardhuin et al. 2003
 !/BT4      RIPFAC4=0.05   ! A4 in Ardhuin et al. 2003
+!/BT4      SIGDEPTH=0.05
+!/BT4      BOTROUGHMIN=0.01
+!/BT4      BOTROUGHFAC=1.00
 !/BT4      CALL READNL ( NDSS, 'SBT4', STATUS )
 !/BT4      WRITE (NDSO,926) STATUS
-!/BT4      WRITE (NDSO,927) SEDMAPD50,SEDMAPPORO,SED_D50_UNIFORM,RIPFAC1,RIPFAC2,RIPFAC3,RIPFAC4
+!/BT4      WRITE (NDSO,927) SEDMAPD50, SED_D50_UNIFORM, &
+!/BT4                       RIPFAC1,RIPFAC2,RIPFAC3,RIPFAC4,SIGDEPTH,  &
+!/BT4                       BOTROUGHMIN, BOTROUGHFAC
 !/BT4      SBTCX(1)=RIPFAC1
 !/BT4      SBTCX(2)=RIPFAC2
 !/BT4      SBTCX(3)=RIPFAC3
 !/BT4      SBTCX(4)=RIPFAC4
+!/BT4      SBTCX(5)=SIGDEPTH
+!/BT4      SBTCX(6)=BOTROUGHMIN
+!/BT4      SBTCX(7)=BOTROUGHFAC
 !        
 !
 ! 6.h Define Sdb.
@@ -1304,12 +1410,12 @@
 !
 ! 6.l Read unstructured data 
 ! initialisation of logical related to unstructured grid
-       UGCONT    = .FALSE.
+       UGOBCAUTO = .TRUE.
+       UGOBCDEPTH= -10.
        EXPFSN    = .TRUE.
        EXPFSPSI  = .FALSE.
        EXPFSFCT  = .FALSE.
        IMPFSNIMP = .FALSE.
-       TSTC      = .FALSE.
 ! read data from the unstructured devoted namelist
        CALL READNL ( NDSS, 'UG  ', STATUS ) 
                WRITE(NDSO, 950)
@@ -1543,6 +1649,17 @@
 !/NL2              WRITE (NDSO,5923) DPTHNL(2:NDEPTH-1)
 !/NL2              WRITE (NDSO,6923) DPTHNL(NDEPTH)
 !/NL2            END IF
+!/NL3          WRITE (NDSO,2922) NQDEF, MSC, NSC, KDFD, KDFS
+!/NL3          IF ( NQDEF .EQ. 1 ) THEN
+!/NL3              WRITE (NDSO,3923) QPARMS(1:5)
+!/NL3            ELSE
+!/NL3              WRITE (NDSO,4923) QPARMS(1:5)
+!/NL3              DO J=2, NQDEF-1
+!/NL3                WRITE (NDSO,5923) QPARMS((J-1)*5+1:J*5)
+!/NL3                END DO
+!/NL3              WRITE (NDSO,6923) QPARMS((NQDEF-1)*5+1:NQDEF*5)
+!/NL3            END IF
+!/NLS          WRITE (NDSO,8922) A34, FHFC, DNM, FC1, FC2, FC3
 !/ST1          WRITE (NDSO,2924) CDIS, APM
 !/ST2          WRITE (NDSO,2924) SDSA0, SDSA1, SDSA2, SDSB0, SDSB1, PHIMIN
 !/ST3          WRITE (NDSO,2924) SDSC1, WNMEANP, FXPM3, FXFM3, SDSDELTA1,  &
@@ -1554,7 +1671,9 @@
 !/ST4                    SDSBRF1, SDSBRF2, SDSBRFDF,                       &
 !/ST4                    SDSBM0, SDSBM1, SDSBM2, SDSBM3, SDSBM4, WHITECAPWIDTH 
 !/BT1          WRITE (NDSO,2926) GAMMA
-!/BT4          WRITE (NDSO,2926) SEDMAPD50,SEDMAPPORO,SED_D50_UNIFORM,RIPFAC1,RIPFAC2,RIPFAC3,RIPFAC4
+!/BT4          WRITE (NDSO,2926) SEDMAPD50, SED_D50_UNIFORM,      &
+!/BT4                            RIPFAC1,RIPFAC2,RIPFAC3,RIPFAC4, SIGDEPTH, &
+!/BT4                            BOTROUGHMIN, BOTROUGHFAC
 !/DB1          IF ( BJFLAG ) THEN
 !/DB1              WRITE (NDSO,2928) BJALFA, BJGAM, '.TRUE.'
 !/DB1            ELSE
@@ -1563,7 +1682,8 @@
 !/PR1          WRITE (NDSO,2953) CFLTM
 !/PR2          WRITE (NDSO,2953) CFLTM, DTIME, LATMIN
 !/PR3          WRITE (NDSO,2953) CFLTM, WDTHCG, WDTHTH
-        WRITE (NDSO,2956) UGCONT, EXPFSN, EXPFSPSI, EXPFSFCT, IMPFSNIMP
+        WRITE (NDSO,2956) UGOBCAUTO, UGOBCDEPTH,                      &
+                          EXPFSN, EXPFSPSI, EXPFSFCT, IMPFSNIMP
 !/REF1         WRITE(NDSO,2976) REFCOAST, REFFREQ, REFSLOPE, REFMAP,  &
 !/REF1                    REFMAPD, REFSUBGRID , REFRMAX, REFFREQPOW,  &
 !/REF1                    REFICEBERG, REFCOSP_STRAIGHT
@@ -1575,7 +1695,7 @@
                                 FLAGICESOURCE,                        &
                                 P2SF, I1P2SF, I2P2SF,                 &
                                 US3D_OUNF, I1US3D_OUNF, I2US3D_OUNF,  &
-                                COU_RAD3D, COU_2D, FACBERG
+                                COU_RAD3D, COU_2D, FACBERG,GSHIFT
             ELSE
               WRITE (NDSO,2966) CICE0, CICEN, LICE, PMOVE, XSEED, FLAGTR, &
                                 XP, XR, XFILT, IHMAX, HSPMIN, WSMULT, &
@@ -1583,7 +1703,7 @@
                                 FLAGICESOURCE,                        &
                                 P2SF, I1P2SF, I2P2SF,                 &
                                 US3D_OUNF, I1US3D_OUNF, I2US3D_OUNF,  &
-                                COU_RAD3D, COU_2D, FACBERG
+                                COU_RAD3D, COU_2D, FACBERG,GSHIFT
 
             END IF
           WRITE (NDSO,918)
@@ -1727,23 +1847,22 @@
 ! Propagation specific to unstructured grids
 !
       IF ( GTYPE.EQ.UNGTYPE) THEN 
-          IF (UGCONT) CONTOUR = UGCONT
-          IF (EXPFSN) THEN
-              FSN = EXPFSN
-              PNAME2 = 'N Explicit (Fluctuation Splitting) '
-            END IF
-          IF (EXPFSPSI) THEN
-              FSPSI = EXPFSPSI
-              PNAME2 = 'PSI Explicit (Fluctuation Splitting)  '
-            END IF
-          IF (EXPFSFCT) THEN
-              FSFCT = EXPFSFCT
-              PNAME2 = ' Flux Corrected Transport Explicit'
-            END IF
-          IF (IMPFSNIMP) THEN
-              FSNIMP = IMPFSNIMP 
-              PNAME2 = 'N Implicit (Fluctuation Splitting) '
-            END IF
+        IF (EXPFSN) THEN
+          FSN = EXPFSN
+          PNAME2 = 'N Explicit (Fluctuation Splitting) '
+          END IF
+        IF (EXPFSPSI) THEN
+          FSPSI = EXPFSPSI
+          PNAME2 = 'PSI Explicit (Fluctuation Splitting)  '
+          END IF
+        IF (EXPFSFCT) THEN
+          FSFCT = EXPFSFCT
+          PNAME2 = ' Flux Corrected Transport Explicit'
+          END IF
+        IF (IMPFSNIMP) THEN
+          FSNIMP = IMPFSNIMP 
+          PNAME2 = 'N Implicit (Fluctuation Splitting) '
+          END IF
           WRITE (NDSO,2951) PNAME2
         END IF
 !
@@ -1972,7 +2091,7 @@
 !
 ! Reading depths on unstructured grid (this also sets number of mesh points, NX)
 !
-          CALL READMSH(NDSS,FNAME,REFSLOPE)
+          CALL READMSH(NDSS,FNAME)
           ALLOCATE(ZBIN(NX, NY),OBSX(NX,NY),OBSY(NX,NY))
           ZBIN(:,1) = VSC*XYB(:,3)
 !
@@ -2087,7 +2206,12 @@
 !
 !--- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 ! 8.  Finalize status maps
-! 8.a Determine where to get the data
+! 8.a Automatic OBC detection for ug grids
+!
+      IF (GTYPE.EQ.UNGTYPE.AND.UGOBCAUTO)  &
+        CALL UG_GETOPENBOUNDARY(TMPSTA,ZBIN,UGOBCDEPTH)
+!
+! 8.b Determine where to get the data
 !
       CALL NEXTLN ( COMSTR , NDSI , NDSE )
       READ (NDSI,*,END=2001,ERR=2002) NDSTR, IDLA, IDFT, RFORM,     &
@@ -2118,9 +2242,10 @@
 ! ... Check if last point reached.
 !
             IF (IX.EQ.0 .AND. IY.EQ.0) EXIT
-!
+!           
 ! ... Check if point in grid.
 !
+            IF (GTYPE.EQ.UNGTYPE.AND.UGOBCAUTO) CYCLE
             IF (IX.LT.1 .OR. IX.GT.NX .OR.  IY.LT.1 .OR. IY.GT.NY) THEN
                 WRITE (NDSO,981)
                 WRITE (NDSO,*) '       ', IX, IY
@@ -2410,10 +2535,10 @@
 ! 8.g Activation of reflections and scattering 
 !
       FLICES = FLAGICESOURCE
+      FFACBERG=FACBERG
 !/REF1      REFPARS(1)=REFCOAST
 !/REF1      REFPARS(2)=REFSUBGRID
 !/REF1      REFPARS(4)=REFICEBERG
-!/REF1      REFPARS(5)=FACBERG
 !/REF1      REFPARS(6)=REFFREQ
 !/REF1      REFPARS(7)=REFSLOPE
 !/REF1      REFPARS(8)=REFCOSP_STRAIGHT
@@ -2427,10 +2552,6 @@
 !/REF1      IF (REFPARS(4).GT.0) RREF(4)=.TRUE.
 !/REF1      IF (REFMAP.EQ.0) THEN 
 !/REF1        REFLC(3,:)=REFPARS(7)
-!/REF1      ELSE
-!/REF1        IF (GTYPE.EQ.UNGTYPE) THEN 
-!/REF1          REFLC(3,:)=UG_REFLC(:)
-!/REF1          END IF
 !/REF1        END IF
 
 
@@ -2568,71 +2689,66 @@
 !
 ! Defines the shoreline treatment for unstructured grids 
 ! 
-     IF (GTYPE.EQ.UNGTYPE) THEN
-       CALL SETUGIOBP 
-       END IF 
-
+      IF (GTYPE.EQ.UNGTYPE) CALL SETUGIOBP 
 ! 
 !  9.a Reads shoreline direction and slope  (whith REF1 switch only)
 !
-!/REF1      IF ( GTYPE.NE.UNGTYPE) THEN
-!/REF1        ALLOCATE ( REFD(NX,NY), REFD2(NX,NY), REFS(NX,NY) )
-!/REF1        IF (REFMAP.EQ.0) THEN 
-!/REF1          REFS(:,:)=1.
-!/REF1        ELSE 
-!/REF1
+!/REF1      ALLOCATE ( REFD(NX,NY), REFD2(NX,NY), REFS(NX,NY) )
+!/REF1      IF (REFMAP.EQ.0) THEN 
+!/REF1        REFS(:,:)=1.
+!/REF1      ELSE 
 !/REF1!
 !/REF1!  9.b Info from input file
 !/REF1!
-!/REF1          CALL NEXTLN ( COMSTR , NDSI , NDSE )
-!/REF1          READ (NDSI,*,END=2001,ERR=2002) NDSTR, VSC, IDLA, IDFT, RFORM, &
+!/REF1        CALL NEXTLN ( COMSTR , NDSI , NDSE )
+!/REF1        READ (NDSI,*,END=2001,ERR=2002) NDSTR, VSC, IDLA, IDFT, RFORM, &
 !/REF1                                          FROM, TNAME
 !/REF1!
-!/REF1          IF (   ABS(VSC) .LT. 1.E-7  ) VSC    = 1.
-!/REF1          IF (IDLA.LT.1 .OR. IDLA.GT.4) IDLA   = 1
-!/REF1          IF (IDFT.LT.1 .OR. IDFT.GT.3) IDFT   = 1
+!/REF1        IF (   ABS(VSC) .LT. 1.E-7  ) VSC    = 1.
+!/REF1        IF (IDLA.LT.1 .OR. IDLA.GT.4) IDLA   = 1
+!/REF1        IF (IDFT.LT.1 .OR. IDFT.GT.3) IDFT   = 1
 !/REF1!
-!/REF1          WRITE (NDSO,1977) NDSTR, VSC, IDLA, IDFT
-!/REF1          IF (IDFT.EQ.2) WRITE (NDSO,973) RFORM
-!/REF1          IF (FROM.EQ.'NAME' .AND. NDSG.NE.NDSTR) WRITE (NDSO,974) TNAME
+!/REF1        WRITE (NDSO,1977) NDSTR, VSC, IDLA, IDFT
+!/REF1        IF (IDFT.EQ.2) WRITE (NDSO,973) RFORM
+!/REF1        IF (FROM.EQ.'NAME' .AND. NDSG.NE.NDSTR) WRITE (NDSO,974) TNAME
 !/REF1!
 !/REF1! 9;c  Open file and check if necessary
 !/REF1!
-!/REF1          IF ( NDSTR .EQ. NDSI ) THEN
-!/REF1              IF ( IDFT .EQ. 3 ) THEN
-!/REF1                  WRITE (NDSE,1004) NDSTR
-!/REF1                  CALL EXTCDE (23)
-!/REF1                ELSE
-!/REF1                  CALL NEXTLN ( COMSTR , NDSI , NDSE )
-!/REF1                END IF
-!/REF1            ELSE IF ( NDSTR .EQ. NDSG ) THEN
-!/REF1              IF ( ( IDFM.EQ.3 .AND. IDFT.NE.3 ) .OR.                 &
-!/REF1                   ( IDFM.NE.3 .AND. IDFT.EQ.3 ) ) THEN
-!/REF1                  WRITE (NDSE,1005) IDFM, IDFT
-!/REF1                  CALL EXTCDE (24)
+!/REF1        IF ( NDSTR .EQ. NDSI ) THEN
+!/REF1          IF ( IDFT .EQ. 3 ) THEN
+!/REF1            WRITE (NDSE,1004) NDSTR
+!/REF1            CALL EXTCDE (23)
+!/REF1          ELSE
+!/REF1            CALL NEXTLN ( COMSTR , NDSI , NDSE )
+!/REF1            END IF
+!/REF1        ELSE IF ( NDSTR .EQ. NDSG ) THEN
+!/REF1          IF ( ( IDFM.EQ.3 .AND. IDFT.NE.3 ) .OR.                 &
+!/REF1               ( IDFM.NE.3 .AND. IDFT.EQ.3 ) ) THEN
+!/REF1            WRITE (NDSE,1005) IDFM, IDFT
+!/REF1            CALL EXTCDE (24)
+!/REF1            END IF
+!/REF1          ELSE
+!/REF1            IF ( IDFT .EQ. 3 ) THEN
+!/REF1              IF (FROM.EQ.'NAME') THEN
+!/REF1                J      = LEN_TRIM(FNMPRE)
+!/REF1                OPEN (NDSTR,FILE=FNMPRE(:J)//TNAME,                 &
+!/REF1                        FORM='UNFORMATTED',STATUS='OLD',ERR=2000, &
+!/REF1                        IOSTAT=IERR)
+!/REF1              ELSE
+!/REF1                OPEN (NDSTR,           FORM='UNFORMATTED',      &
+!/REF1                    STATUS='OLD',ERR=2000,IOSTAT=IERR)
 !/REF1                END IF
 !/REF1            ELSE
-!/REF1              IF ( IDFT .EQ. 3 ) THEN
-!/REF1                  IF (FROM.EQ.'NAME') THEN
-!/REF1                      J      = LEN_TRIM(FNMPRE)
-!/REF1                      OPEN (NDSTR,FILE=FNMPRE(:J)//TNAME,             &
-!/REF1                            FORM='UNFORMATTED',STATUS='OLD',ERR=2000, &
-!/REF1                            IOSTAT=IERR)
-!/REF1                    ELSE
-!/REF1                      OPEN (NDSTR,           FORM='UNFORMATTED',      &
-!/REF1                            STATUS='OLD',ERR=2000,IOSTAT=IERR)
-!/REF1                    END IF
-!/REF1                ELSE
-!/REF1                  IF (FROM.EQ.'NAME') THEN
-!/REF1                      J      = LEN_TRIM(FNMPRE)
-!/REF1                      OPEN (NDSTR,FILE=FNMPRE(:J)//TNAME,             &
-!/REF1                            STATUS='OLD',ERR=2000,IOSTAT=IERR)
-!/REF1                    ELSE
-!/REF1                      OPEN (NDSTR,                                    &
-!/REF1                            STATUS='OLD',ERR=2000,IOSTAT=IERR)
-!/REF1                    END IF
-!/REF1                END IF
-!/REF1            END IF
+!/REF1              IF (FROM.EQ.'NAME') THEN
+!/REF1                J      = LEN_TRIM(FNMPRE)
+!/REF1                OPEN (NDSTR,FILE=FNMPRE(:J)//TNAME,             &
+!/REF1                    STATUS='OLD',ERR=2000,IOSTAT=IERR)
+!/REF1              ELSE
+!/REF1                OPEN (NDSTR,                                    &
+!/REF1                    STATUS='OLD',ERR=2000,IOSTAT=IERR)
+!/REF1                END IF   !end  of (FROM.EQ.'NAME')
+!/REF1              END IF     !end of ( IDFT .EQ. 3 )
+!/REF1            END IF       !end of ( NDSTR .EQ. NDSG )
 !/REF1!
 !/REF1! 9.d Read the data
 !/REF1!
@@ -2650,24 +2766,19 @@
 !/REF1          WRITE (NDSO,1105) NMAPB
 !/REF1          WRITE(6,*) 'TEST 000:',MAXVAL(REFS)
 !
-!/REF1         DO IMAPB=1, NMAPB
+!/REF1          DO IMAPB=1, NMAPB
 !/REF1            IX0    = 1 + (IMAPB-1)*NCOL
 !/REF1            IXN    = MIN ( NX , IMAPB*NCOL )
 !/REF1            DO IY=NY,1,-1
-!/REF1            DO IX=1,NX 
-!/REF1            ENDDO
 !/REF1              WRITE (NDSO,1101) (NINT(100.*REFS(IX,IY)),IX=IX0,IXN)
 !/REF1              END DO
 !/REF1            WRITE (NDSO,*) ' '
 !/REF1            END DO
 !/REF1          WRITE (NDSO,1106)
-
-
 !/REF1!
 !/REF1          WRITE (NDSO,*)
 !/REF1!
-!/REF1          END IF
-!/REF1        END IF
+!/REF1          END IF         !end of (REFMAP.EQ.0)
 !
 ! 9.d Estimates shoreline direction for scattering for structured grids
 ! NB: this should be updated with moving water levels, and thus
@@ -2751,7 +2862,8 @@
 !/REF1                IF (J.GT.0) THEN 
 !/REF1                  IF (J.GT.1) REFLD(2,MAPFS(IY,IX))= 1
 !/REF1                  THAVG=ATAN2(SINAVG,COSAVG)
-!/REFT        WRITE (6,*) 'COASTAL REFLEXXXXX:',IX,IY,  SINAVG,COSAVG,THAVG/TPI,NINT(THAVG/TPI*NTH),MOD(NTH+NINT(THAVG/TPI*NTH),NTH)
+!/T                     WRITE (6,*) 'COASTAL REFLECTION:',IX,IY,   &
+!/T                     SINAVG,COSAVG,THAVG/TPI,NINT(THAVG/TPI*NTH),MOD(NTH+NINT(THAVG/TPI*NTH),NTH)
 !/REF1                  REFLD(1,MAPFS(IY,IX))=1+MOD(NTH+NINT(THAVG/TPI*NTH),NTH)
 !/REF1                ELSE
 !/REF1
@@ -2762,7 +2874,7 @@
 !/REF1                    IF (NEIGH1(K).EQ.0.AND.NEIGH1(MOD(K+1,8)).EQ.0 &
 !/REF1                      .AND.NEIGH1(MOD(K+4,8)).NE.0) THEN 
 !/REF1                      REFLC(1,MAPFS(IY,IX))= REFCOAST
-!/REF1                      REFLD(1,MAPFS(IY,IX))= 1+(K*NTH+(K+1)*NTH)/16
+!/REF1                      REFLD(1,MAPFS(IY,IX))= 1+MOD((K*NTH+(K+1)*NTH)/16,NTH)
 !/REF1                      REFLD(2,MAPFS(IY,IX))= 1
 !/REF1                      !WRITE(6,*) 'NEIGH2:',IX,IY,K,NEIGH1,K*(NTH/8)
 !/REF1                      ENDIF
@@ -2865,6 +2977,7 @@
 !/BT4!
 !/BT4          IF ( NDSTR .EQ. NDSI ) CALL NEXTLN ( COMSTR , NDSI , NDSE )
 !/BT4!
+!/BT4          WRITE (NDSO,*) 'Min and Max values of grain sizes:',MINVAL(SED_D50FILE), MAXVAL(SED_D50FILE)
 !/BT4          WRITE (NDSO,*)
 !/BT4!
 !/BT4      ELSE 
@@ -2875,6 +2988,14 @@
 !/BT4        DO IX=1, NX
 !/BT4          ISEA = MAPFS (IY,IX)
 !/BT4          SED_D50(ISEA)       = SED_D50FILE(IX,IY)
+!/BT4          SED_D50(ISEA)       = MAX(SED_D50(ISEA),1E-5)  
+!/BT4   ! Critical Shields number, Soulsby, R.L. and R J S W Whitehouse
+!/BT4   ! Threshold of sed. motion in coastal environments, Proc. Pacific Coasts and
+!/BT4   ! ports, 1997 conference, Christchurch, p149-154, University of Cantebury, NZ
+!/BT4          SED_DSTAR=(GRAV*(SED_SG-1)/nu_water**2)**(0.333333)*SED_D50(ISEA)  
+!/BT4          SED_PSIC(ISEA)=0.3/(1+1.2*SED_DSTAR)+0.55*(1-exp(-0.02*SED_DSTAR)) 
+
+
 !/BT4          END DO
 !/BT4        END DO
 !
@@ -3309,7 +3430,34 @@
 !/NL2 5923 FORMAT ( '                ',F9.2,' ,')
 !/NL2 6923 FORMAT ( '                ',F9.2,' /')
 !
+!/NL3  922 FORMAT (/'  Nonlinear interactions (GMD) ',A/              &
+!/NL3        ' --------------------------------------------------')
+!/NL3  923 FORMAT ( '       Powers in scaling functions : ',2F7.2/    &
+!/NL3               '       Nondimension filter depths  : ',2F7.2)
+!/NL3 1923 FORMAT ( '       Number of quad. definitions : ',I4)
+!/NL3 2923 FORMAT ( '             ',2F8.3,F6.1,2E12.4)
+!/NL3 2922 FORMAT ( '  &SNL3 NQDEF =',I3,', MSC =',F6.2,',  NSC =',   &
+!/NL3               F6.2,',  KDFD =',F6.2,',  KDFS =',F6.2,' /')
+!/NL3 3923 FORMAT ( '  &ANL3 QPARMS = ',2(F5.3,', '),F5.1,', ',E10.4, &
+!/NL3               ', ',E10.4,' /')
+!/NL3 4923 FORMAT ( '  &ANL3 QPARMS = ',2(F5.3,', '),F5.1,', ',E10.4, &
+!/NL3               ', ',E10.4,' ,')
+!/NL3 5923 FORMAT ( '                 ',2(F5.3,', '),F5.1,', ',E10.4, &
+!/NL3               ', ',E10.4,' ,')
+!/NL3 6923 FORMAT ( '                 ',2(F5.3,', '),F5.1,', ',E10.4, &
+!/NL3               ', ',E10.4,' /')
+!
 !/NLX  922 FORMAT (/'  Experimental nonlinear interactions.'/)
+!
+!/NLS 9922 FORMAT (/'  HF filter based on Snl ',A/                    &
+!/NLS        ' --------------------------------------------------')
+!/NLS 9923 FORMAT ( '       a34 (lambda)                :',F9.3,F9.4/ &
+!/NLS               '       Prop. constant              :',E10.3/     &
+!/NLS               '       maximum relative change     :',F9.3/      &
+!/NLS               '       filter constants            :',F8.2,2F6.2/)
+!/NLS 8922 FORMAT ( '  &SNLS A34 =',F6.3,', FHFC =',E11.4,            &
+!/NLS               ',  DNM =',F6.3,','/'        FC1 =',F6.3,         &
+!/NLS               ',  FC2 =',F6.3,',  FC3 =',F6.3,' /')
 !
 !/ST0  924 FORMAT (/'  Dissipation not defined.'/)
 !
@@ -3374,12 +3522,14 @@
 !
 !/BT4  926 FORMAT (/'  Bottom friction  (SHOWEX)  ',A/                 &
 !/BT4               ' --------------------------------------------------')
-!/BT4  927 FORMAT ( '       SEDMAPD50,SEDMAPPORO,SED_D50_UNIFORM  :',A,1X,A,1X,F8.6/    &
-!/BT4               '       RIPFAC1,RIPFAC2,RIPFAC3,RIPFAC4       :',4F8.4/)      
-!/BT4 2926 FORMAT ( '  &SBT4 SEDMAPD50 =',A,', SEDMAPPORO =',A,       &
-!/BT4               ', SED_D50_UNIFORM =',F8.6,','/                   &
+!/BT4  927 FORMAT ( '       SEDMAPD50, SED_D50_UNIFORM        :',L3,1X,F8.6/ &
+!/BT4               '       RIPFAC1,RIPFAC2,RIPFAC3,RIPFAC4   :',4F8.4/      &
+!/BT4               '       SIGDEPTH, BOTROUGHMIN, BOTROUGHFAC:',3F8.4/)          
+!/BT4 2926 FORMAT ( '  &SBT4 SEDMAPD50 =',L3,', SED_D50_UNIFORM =',F8.6,','/ &
 !/BT4               '        RIPFAC1 =',F8.4,', RIPFAC2 =',F8.4,      &
-!/BT4               ', RIPFAC3 =',F8.4,', RIPFAC4 =',F8.4,' /')
+!/BT4               ', RIPFAC3 =',F8.4,', RIPFAC4 =',F8.4,','/        &
+!/BT4               '        SIGDEPTH =',F8.4,', BOTROUGHMIN =',F8.4, & 
+!/BT4               ', BOTROUGHFAC =',F4.1,' /')
 !
 !/DB0  928 FORMAT (/'  Surf breaking not defined.'/)
 !
@@ -3426,8 +3576,9 @@
 !/PR3 2953 FORMAT ( '  &PRO3 CFLTM =',F5.2,                           &
 !/PR3                      ', WDTHCG = ',F4.2,', WDTHTH = ',F4.2,' /')
 !
- 2956 FORMAT ( '  &UG   UGCONT =',L3, ',EXPFSN =',L3,      &
-                      ',EXPFSPSI =',L3, ',EXPFSFCT =',L3,',GMSH =',L3,         / )
+ 2956 FORMAT ( '  &UG   UGOBCAUTO =',L3, ', UGOBCDEPTH =', F8.3','/   &
+               '        EXPFSN =',L3,',EXPFSPSI =',L3, ',EXPFSFCT =', & 
+               L3,',GMSH =',L3,         / )
 !
   960 FORMAT (/'  Miscellaneaous ',A/                                 &
                ' --------------------------------------------------')
@@ -3458,10 +3609,11 @@
                '        WSM =',F6.3,', WSC =',F6.3,', FLC = ',A,      &
                ', FMICHE =',F6.3,', RWNDC =' ,F6.3,','/               &
                '        FLAGICESOURCE =',L3,                          &
-               ', P2SF =',I1,', I1P2SF =',I2,', I2P2SF =',I2,         &
-               ', US3D_OUNF =',I1,', I1US3D_OUNF =',I2,               &
-               ', I2US3D_OUNF =',I2,'COU_2D =',L3,', COU_RAD3D =',L3, ','/    &
-               '     FACBERG =',F4.1,' /')
+               ', P2SF =',I1,', I1P2SF =',I3,', I2P2SF =',I3,         &
+               ', US3D_OUNF =',I1,', I1US3D_OUNF =',I3,               &
+               ', I2US3D_OUNF =',I3,','/               &
+               '        COU_2D =',L3,', COU_RAD3D =',L3, ','/    &
+               '     FACBERG =',F4.1,', GSHIFT = ',E11.3,' /')
 !
  2976 FORMAT ( '  &REF1 REFCOAST =',F5.2,', REFFREQ =',F5.2,', REFSLOPE =',F5.3, &
                ', REFMAP =',F4.1, ', REFMAPD =',F4.1, ', REFSUBGRID =',F5.2,','/ &   
@@ -3514,7 +3666,7 @@
                '       Scale factor                :',F10.4/          &
                '       Layout indicator            :',I6/             &
                '       Format indicator            :',I6)
- 1978 FORMAT ( '       Grain sizees                :',I6/             &
+ 1978 FORMAT ( '       Grain sizes                 :',I6/             &
                '       Scale factor                :',F10.4/          &
                '       Layout indicator            :',I6/             &
                '       Format indicator            :',I6)
@@ -3817,6 +3969,13 @@
 !/NL2                          DEPTHS(1:NDEPTH) = DPTHNL
 !/NL2                          READ (NDS,NML=ANL2,END=801,ERR=802,IOSTAT=J)
 !/NL2                          DPTHNL = DEPTHS(1:NDEPTH)
+!/NL3                        CASE('SNL3')
+!/NL3                          READ (NDS,NML=SNL3,END=801,ERR=802,IOSTAT=J)
+!/NL3                        CASE('ANL3')
+!/NL3                          IF ( NQDEF .GT. 100 ) GOTO 804
+!/NL3                          READ (NDS,NML=ANL3,END=801,ERR=802,IOSTAT=J)
+!/NLS                        CASE('SNLS')
+!/NLS                          READ (NDS,NML=SNLS,END=801,ERR=802,IOSTAT=J)
 !/ST1                        CASE('SDS1')
 !/ST1                          READ (NDS,NML=SDS1,END=801,ERR=802,IOSTAT=J)
 !/ST2                        CASE('SDS2')
@@ -3879,6 +4038,11 @@
 !/NL2      CALL EXTCDE(4)
 !/NL2      RETURN
 !
+!/NL3  804 CONTINUE
+!/NL3      WRITE (NDSE,1004) NQDEF
+!/NL3      CALL EXTCDE(4)
+!/NL3      RETURN
+!
 ! Formats
 !
  1001 FORMAT (/' *** WAVEWATCH III ERROR IN READNL : '/          &
@@ -3889,6 +4053,8 @@
                '     NAMELIST NAME ',A,' NOT RECOGNIZED'/)
 !/NL2 1004 FORMAT (/' *** WAVEWATCH III ERROR IN READNL : '/          &
 !/NL2               '     TEMP DEPTH ARRAY TOO SMALL, .LE. ',I8/)
+!/NL3 1004 FORMAT (/' *** WAVEWATCH-III ERROR IN READNL : '/          &
+!/NL3               '     TEMP QPARMS ARRAY TOO SMALL, .LE. ',I8/)
 !/
 !/ End of READNL ----------------------------------------------------- /
 !/

@@ -590,7 +590,7 @@
 !/ST2        IKP1(JSEA) = NK
 !/ST2        FPISTR     = MAX ( 0.003 , FPIS(ISEA) * UST(ISEA) / GRAV )
 !/ST2        FP1STR     = 3.6E-4 + 0.92*FPISTR - 6.3E-10/FPISTR**3
-!/ST2        FP1TST     = FP1STR / UST(ISEA) * GRAV
+!/ST2        FP1TST     = MAX ( 0.003 , FP1STR * UST(ISEA) / GRAV ) 
 !/ST2        IF ( FP1TST.LE.SIG(NK) .AND. FP1TST.GT.SIG(1) ) THEN
 !/ST2            FP1 (ISEA) = TPIINV * FP1TST
 !/ST2            IKP1(JSEA) = MAX ( 1 , NINT(FACTI2+FACTI1*LOG(FP1TST)) )
@@ -1367,6 +1367,7 @@
                   ELSE IF ( IO .EQ. 40 ) THEN
                     WRITE ( NDSOG ) BEDFORMS(1:NSEA,1)
                     WRITE ( NDSOG ) BEDFORMS(1:NSEA,2)
+                    WRITE ( NDSOG ) BEDFORMS(1:NSEA,3)
                   ELSE IF ( IO .EQ. 41 ) THEN
                     WRITE ( NDSOG ) PHIBBL(1:NSEA)
                   ELSE IF ( IO .EQ. 42 ) THEN
@@ -1552,6 +1553,8 @@
                                                     BEDFORMS(1:NSEA,1)
                     READ (NDSOG,END=801,ERR=802,IOSTAT=IERR)         &
                                                     BEDFORMS(1:NSEA,2)
+                    READ (NDSOG,END=801,ERR=802,IOSTAT=IERR)         &
+                                                    BEDFORMS(1:NSEA,3)
                   ELSE IF ( IO .EQ. 41 ) THEN
                     READ (NDSOG,END=801,ERR=802,IOSTAT=IERR)         &
                                                        PHIBBL(1:NSEA)
@@ -1699,7 +1702,7 @@
 !/T              '       NX,NY : ',I9,I12/                            &
 !/T              '       UNDEF : ',F8.2)
 !/T 9003 FORMAT (' TEST W3IOGO : TIME  :',I9.8,I7.6/                  &
-!/T              '               FLAGS :',31L2)
+!/T              '               FLAGS :',90L2)
 !/T 9010 FORMAT (' TEST W3IOGO : PROC = ',L1,' FOR ',A)
 !/T 9020 FORMAT (' TEST W3IOGO : END OF FILE REACHED')
 !/

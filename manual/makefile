@@ -25,7 +25,7 @@ endif
 # INPDIR: location of ww3_*.inp input files used for documentation.
 # The default can be overridden by specifying INPDIR on the make
 # command-line or in the environment.
-INPDIR ?= ../inp
+INPDIR ?= ../model/inp
 
 # Make sure INPDIR exists (if not clean)
 ifneq ($(MAKECMDGOALS),clean)
@@ -76,12 +76,15 @@ INPFILES = \
 ww3_grid.tex \
 ww3_strt.tex \
 ww3_prep.tex \
+ww3_prnc.tex \
+ww3_bound.tex \
 ww3_shel.tex \
 ww3_multi.tex \
 ww3_outf.tex \
 ww3_outp.tex \
 ww3_ounf.tex \
 ww3_ounp.tex \
+ww3_systrk.tex \
 ww3_grib.tex \
 gx_outf.tex \
 gx_outp.tex

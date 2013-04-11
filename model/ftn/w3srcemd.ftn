@@ -6,7 +6,7 @@
 !/                  |           H. L. Tolman            |
 !/                  |            F. Ardhuin             |
 !/                  |                        FORTRAN 90 |
-!/                  | Last update :         19-Aug-2010 |
+!/                  | Last update :         13-Jul-2012 |
 !/                  +-----------------------------------+
 !/
 !/    For updates see subroutine.
@@ -56,7 +56,7 @@
                           CD, Z0, DTDYN, FCUT, DTG, TAUWX, TAUWY,     &
                           TAUOX, TAUOY, TAUWIX, TAUWIY,               &
                           TAUWNX, TAUWNY, PHIAW, CHARN, PHIOC,        &
-                          WHITECAP,  D50, BEDFORM , PHIBBL, TAUBBL, &
+                          WHITECAP,  D50, PSIC, BEDFORM , PHIBBL, TAUBBL, &
                           COEF) 
 !/
 !/                  +-----------------------------------+
@@ -64,7 +64,7 @@
 !/                  |           H. L. Tolman            |
 !/                  |            F. Ardhuin             |
 !/                  |                        FORTRAN 90 |
-!/                  | Last update :         16-Sep-2011 |
+!/                  | Last update :         13-Jul-2012 |
 !/                  +-----------------------------------+
 !/
 !/    06-Dec-1996 : Final FORTRAN 77                    ( version 1.18 )
@@ -95,8 +95,11 @@
 !/    01-Jul-2011 : Energy and momentum flux, friction  ( version 4.01 ) 
 !/    24-Aug-2011 : Uses true depth for depth-induced   ( version 4.04 )
 !/    16-Sep-2011 : Initialization of TAUWAX, TAUWAY    ( version 4.04 )
+!/    14-Mar-2012 : Update of BT4, passing PSIC         ( version 4.04 )
+!/    13-Jul-2012 : Move GMD (SNL3) and nonlinear filter (SNLS)
+!/                  from 3.15 (HLT).                    ( version 4.08 )
 !/
-!/    Copyright 2009-2010 National Weather Service (NWS),
+!/    Copyright 2009-2012 National Weather Service (NWS),
 !/       National Oceanic and Atmospheric Administration.  All rights
 !/       reserved.  WAVEWATCH III is a trademark of the NWS. 
 !/       No unauthorized use without permission.
@@ -185,6 +188,7 @@
 !       DTG     Real   I   Global time step.
 !       D50     Real   I   Sand grain size                ( !/BT4 )
 !       BEDFORM R.A.  I/O  Bedform parameters             ( !/BT4 )
+!       PSIC    Real   I   Critical Shields               ( !/BT4 )
 !       PHIBBL  Real   O   Energy flux to BBL             ( !/BTx )
 !       TAUBBL  R.A.   O   Momentum flux to BBL           ( !/BTx ) 
 !     ----------------------------------------------------------------
@@ -200,6 +204,7 @@
 !      W3SLNn    Subr. W3SLNnMD Linear input.
 !      W3SINn    Subr. W3SRCnMD Input source term.
 !      W3SNLn    Subr. W3SNLnMD Nonlinear interactions.
+!      W3SNLS    Subr. W3SNLSMD Nonlinear smoother.
 !      W3SDSn    Subr. W3SRCnMD Whitecapping source term
 !      W3SBTn    Subr. W3SBTnMD Bottom friction source term.
 !      W3SDBn    Subr. W3SBTnMD Depth induced breaking source term.
@@ -273,7 +278,9 @@
 !     !/NL0   No nonlinear interactions.                 ( Choose one )
 !     !/NL1   Discrete interaction approximation.
 !     !/NL2   Exact nonlinear interactions.
+!     !/NL3   Generalized Multiple DIA.
 !     !/NLX   User-defined nonlinear interactions.
+!     !/NLS   Nonlinear HF smoother.
 !
 !     !/BT0   No bottom friction.                        ( Choose one )
 !     !/BT1   JONSWAP bottom friction.
@@ -334,7 +341,9 @@
 !/STX      USE W3SRCXMD
 !/NL1      USE W3SNL1MD
 !/NL2      USE W3SNL2MD
+!/NL3      USE W3SNL3MD
 !/NLX      USE W3SNLXMD
+!/NLS      USE W3SNLSMD
 !/BT1      USE W3SBT1MD
 !/BT4      USE W3SBT4MD
 !/BTX      USE W3SBTXMD
@@ -356,7 +365,7 @@
 !/
       INTEGER, INTENT(IN)     :: IX, IY, IMOD
       REAL, INTENT(IN)        :: WN1(NK), CG1(NK), D_INP, U10ABS,     &
-                                 U10DIR, AS, ICE, CX, CY, DTG, D50
+                                 U10DIR, AS, ICE, CX, CY, DTG, D50,PSIC
       INTEGER, INTENT(IN)     :: REFLED(4)
       REAL, INTENT(IN)        :: REFLEC(4), DELX, DELY, DELA,         &
                                  TRNX, TRNY, BERG
@@ -365,7 +374,7 @@
                                  FMEAN, WNMEAN, USTAR, USTDIR, FPI,   &
                                  CD, Z0, TAUOX, TAUOY,                &
                                  TAUWX, TAUWY, PHIAW, PHIOC,          &
-                                 CHARN, BEDFORM(2), PHIBBL,           &
+                                 CHARN, BEDFORM(3), PHIBBL,           &
                                  TAUBBL(2), WHITECAP(4),              &
                                  TAUWIX, TAUWIY, TAUWNX, TAUWNY
       REAL, INTENT(OUT)       :: AMAX, DTDYN, FCUT
@@ -613,6 +622,7 @@
 !
 !/NL1        CALL W3SNL1 ( SPEC, CG1, WNMEAN*DEPTH,          VSNL, VDNL )
 !/NL2        CALL W3SNL2 ( SPEC, CG1, DEPTH,                 VSNL, VDNL )
+!/NL3        CALL W3SNL3 ( SPEC, CG1, WN1, DEPTH,            VSNL, VDNL )
 !/NLX        CALL W3SNLX 
 !
 !/TRX        CALL W3STRX
@@ -634,8 +644,9 @@
 ! 2.d Bottom interactions.
 !
 !/BT1        CALL W3SBT1 ( SPEC, CG1, WN1, DEPTH,            VSBT, VDBT )
-!/BT4        CALL W3SBT4 ( SPEC, CG1, WN1, DEPTH, D50, TAUBBL, BEDFORM,    &
-!/BT4                                                VSBT, VDBT, IX, IY )
+!/BT4        CALL W3SBT4 ( SPEC, CG1, WN1, DEPTH, D50, PSIC, TAUBBL, BEDFORM,    &
+!/BT4                                      VSBT, VDBT, IX, IY         )
+                                                                  
 !/BTX        CALL W3SBTX
 !
 !/BS1        CALL W3SBS1 ( SPEC, CG1, WN1, DEPTH, CX, CY,                &
@@ -774,6 +785,8 @@
        TAUWNX= TAUWNX+ TAUWAX * DRAT *DT
        TAUWNY= TAUWNY+ TAUWAY * DRAT *DT
        ! MISSING: TAIL TO BE ADDED ?	  
+!
+!/NLS      CALL W3SNLS ( SPEC, CG1, WN1, DEPTH, U10ABS, DT, AA=SPEC )
 !
 ! 6.  Add tail ------------------------------------------------------- *
 !   a Mean parameters

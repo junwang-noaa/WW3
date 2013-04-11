@@ -11,9 +11,9 @@
 # error codes : all error output goes directly to screen in w3_make.          #
 #                                                                             #
 #                                                      Hendrik L. Tolman      #
-#                                                      Dec 2010               #
+#                                                      Sep 2012               #
 #                                                                             #
-#    Copyright 2009-2010 National Weather Service (NWS),                      #
+#    Copyright 2009-2012 National Weather Service (NWS),                      #
 #       National Oceanic and Atmospheric Administration.  All rights          #
 #       reserved.  WAVEWATCH III is a trademark of the NWS.                   #
 #       No unauthorized use without permission.                               #
@@ -87,10 +87,10 @@
   fi
 
   for type in mach nco grib shared mpp thr0 thr1 c90 nec lrecl grid \
-              prop stress s_ln source stab s_nl s_bot s_db s_tr s_bs s_xx \
+              prop stress s_ln source stab s_nl snls s_bot s_db s_tr s_bs s_xx \
               wind windx rwind curr currx tdyn dss0 pdif miche \
-              mgwind mgprop mggse nnt mprf reflection mcp netcdf scrip ssdcd \
-              mfbg
+              mgwind mgprop mggse nnt mprf reflection mcp netcdf scrip tide \
+              ssdcd mfbg
   do
     case $type in
       mach   ) TY='one'
@@ -146,7 +146,11 @@
                OK='STAB0 STAB2 STAB3' ;;
       s_nl   ) TY='one'
                ID='quadruplet interactions'
-               OK='NL0 NL1 NL2 NLX' ;;
+               OK='NL0 NL1 NL2 NL3 NLX' ;;
+      snls   ) TY='upto1'
+               ID='quadruplet smoother'
+               TS='NLS'
+               OK='NLS' ;;
       s_bot  ) TY='one'
                ID='bottom friction'
                OK='BT0 BT1 BT4 BTX' ;;
@@ -230,6 +234,10 @@
                ID='grid to grid interpolation '
                TS='SCRIP'
                OK='SCRIP' ;;
+      tide   ) TY='upto1'
+               ID='use of tidal analysis'
+               TS='TIDE'
+               OK='TIDE' ;;
       ssdcd  ) TY='upto1'
                ID='coupler stress calculation'
                OK='FLD1 FLD2' ;;
@@ -307,6 +315,7 @@
       stress ) stress=$sw ;;
       scrip  ) scrip=$sw ;;
       s_nl   ) s_nl=$sw ;;
+      snls   ) snls=$sw ;;
       s_bot  ) s_bt=$sw ;;
       s_db   ) s_db=$sw ;;
       s_tr   ) s_tr=$sw ;;
@@ -315,6 +324,7 @@
       reflection    ) reflection=$sw ;;
       mcp    ) mcp=$sw ;;
       netcdf ) netcdf=$sw;;
+      tide   ) tide=$sw ;;
       ssdcd  ) ssdcd=$sw ;;
       mfbg   ) mfbg=$sw ;;
         *    ) ;;
@@ -435,14 +445,22 @@
         nlx='w3snl1md' ;;
    NL2) nl='w3snl2md mod_xnl4v5 serv_xnl4v5 mod_constants mod_fileio'
         nlx="$nl" ;;
+   NL3) nl='w3snl3md'
+        nlx='w3snl3md' ;;
    NLX) nl='w3snlxmd'
         nlx='w3snlxmd' ;;
+  esac
+
+  case $snls in
+   NLS) nl="$nl w3snlsmd"
+        nlx="$nlx w3snlsmd" ;;
   esac
 
   case $s_bt in
    BT0) bt=$NULL ;;
    BT1) bt='w3sbt1md' ;;
    BT2) bt='w3sbt2md mod_btffac' ;;
+   BT4) bt='w3sbt4md' ;;
    BTX) bt='w3sbtxmd' ;;
   esac
 
@@ -483,6 +501,21 @@
    REF1) refcode='w3ref1md'
    esac
 
+  tidecode=$NULL
+  case $tide in
+   TIDE) tidecode='w3tidemd'
+   esac
+
+  case $ssdcd in
+   FLD1) fld='w3fld1md'
+         fldx=$NULL ;;
+   esac
+
+  case $mfbg in
+   MFB1) mfb='w3mfbgmd'
+         mfbx=$NULL ;;
+   esac
+
   if [ "$nr_thr" != '0' ] && [ "$s_nl" = 'NL2' ]
   then
       echo ' '
@@ -492,35 +525,11 @@
       echo ' ' ; exit 8
   fi
 
- case $ssdcd in
-   FLD1) fld='w3fld1md'
-         fldx=$NULL ;;
-  esac
-
- case $mfbg in
-   MFB1) mfb='w3mfbgmd'
-         mfbx=$NULL ;;
-  esac
-
-# Notes re: changing compilers (important)
-# ...1) run cleaner scrip to get rid of old .mod and .o and makefile files
-# ...2) edit and run makefile in SCRIP directory as appropriate
-# ...3) use -c {compiler name} in run_test
-
-# Gnu:
-#     -Idir : where to search for .mod files
-#     -Jdir or -Mdir : where to put .mod files
-
-# Portland:
-# From man pgf90 :
-#       -module directory
-#              Save/search for module files in directory
-
 # 2.c Make makefile and file list  - - - - - - - - - - - - - - - - - - - - - -
 
   progs='ww3_grid ww3_strt ww3_prep ww3_prnc ww3_shel ww3_multi ww3_sbs1
          ww3_outf ww3_outp ww3_trck ww3_grib gx_outf gx_outp ww3_ounf 
-         ww3_ounp ww3_gint'
+         ww3_ounp ww3_gspl ww3_gint ww3_bound ww3_systrk'
 
   for prog in $progs
   do
@@ -539,20 +548,27 @@
              source="$stx $nlx $btx"
                  IO='w3iogrmd w3iorsmd'
                 aux='constants w3servmd w3arrymd w3dispmd w3gsrumd' ;;
+     ww3_bound) IDstring='boundary conditions program'
+               core=
+               data='w3adatmd w3gdatmd w3wdatmd w3idatmd w3odatmd'
+               prop=
+             source="$stx $nlx $btx w3triamd"
+                 IO='w3iobcmd w3iogrmd w3dispmd w3gsrumd'
+                aux='constants w3servmd w3timemd w3cspcmd' ;;
      ww3_prep) IDstring='Field preprocessor'
                core='w3fldsmd'
                data='w3gdatmd w3adatmd w3idatmd w3odatmd'
                prop=
              source="w3triamd $stx $nlx $btx"
                  IO='w3iogrmd'
-                aux='constants w3servmd w3timemd w3arrymd w3dispmd w3gsrumd' ;;
+                aux="constants w3servmd w3timemd $tidecode w3arrymd w3dispmd w3gsrumd" ;;
      ww3_prnc) IDstring='NetCDF field preprocessor'
                core='w3fldsmd'
-               data='w3gdatmd w3adatmd w3idatmd w3odatmd'
+               data='w3gdatmd w3adatmd w3idatmd w3odatmd w3wdatmd'
                prop=
              source="w3triamd $stx $nlx $btx"
                  IO='w3iogrmd'
-                aux='constants w3servmd w3timemd w3arrymd w3dispmd w3gsrumd' ;;
+                aux="constants w3servmd w3timemd w3arrymd w3dispmd w3gsrumd w3tidemd" ;;
      ww3_shel) IDstring='Generic shell'
                core='w3fldsmd w3initmd w3wavemd w3wdasmd w3updtmd'
                data='w3gdatmd w3wdatmd w3adatmd w3idatmd w3odatmd'
@@ -560,7 +576,7 @@
              source="w3triamd w3srcemd $flx $ln $st $nl $bt $db $tr $bs $xx $refcode $fld $mfb"
                  IO='w3iogrmd w3iogomd w3iopomd w3iotrmd w3iorsmd w3iobcmd'
                  IO="$IO w3iosfmd w3partmd"
-                aux='constants w3servmd w3timemd w3arrymd w3dispmd w3cspcmd w3gsrumd' ;;
+                aux="constants w3servmd w3timemd $tidecode w3arrymd w3dispmd w3cspcmd w3gsrumd" ;;
     ww3_multi) IDstring='Multi-grid shell'
                core='wminitmd wmwavemd wmfinlmd wmgridmd wmupdtmd wminiomd'
                core="$core w3fldsmd w3initmd w3wavemd w3wdasmd w3updtmd"
@@ -569,18 +585,30 @@
              source="w3triamd w3srcemd $flx $ln $st $nl $bt $db $tr $bs $xx $refcode $fld $mfb"
                  IO='w3iogrmd w3iogomd w3iopomd wmiopomd'
                  IO="$IO w3iotrmd w3iorsmd w3iobcmd w3iosfmd w3partmd"
-                aux='constants w3servmd w3timemd w3arrymd w3dispmd w3cspcmd w3gsrumd'
-                aux="$aux  wmunitmd" ;;
+                aux="constants $tidecode w3servmd w3timemd w3arrymd w3dispmd w3cspcmd w3gsrumd"
+                aux="$aux  wmunitmd" 
+                if [ "$scrip" = 'SCRIP' ]
+                then
+	          aux="$aux scrip_constants scrip_grids scrip_iounitsmod scrip_netcdfmod"
+                  aux="$aux scrip_remap_vars scrip_timers scrip_errormod scrip_interface"
+                  aux="$aux scrip_kindsmod scrip_remap_conservative scrip_remap_write"
+                fi ;;
    ww3_sbs1) IDstring='Multi-grid shell sbs version' 
                core='wminitmd wmwavemd wmfinlmd wmgridmd wmupdtmd wminiomd' 
                core="$core w3fldsmd w3initmd w3wavemd w3wdasmd w3updtmd" 
                data='wmmdatmd w3gdatmd w3wdatmd w3adatmd w3idatmd w3odatmd' 
                prop="$pr" 
-             source="w3triamd w3srcemd $flx $ln $st $nl $bt $db $tr $bs $xx $fld $mfb" 
+             source="w3triamd w3srcemd $flx $ln $st $nl $bt $db $tr $bs $xx $fld $mfb $refcode" 
                  IO='w3iogrmd w3iogomd w3iopomd wmiopomd' 
                  IO="$IO w3iotrmd w3iorsmd w3iobcmd w3iosfmd w3partmd" 
-                aux='constants w3servmd w3timemd w3arrymd w3dispmd w3cspcmd w3gsrumd' 
-                aux="$aux  wmunitmd" ;; 
+                aux="constants w3servmd w3timemd w3arrymd w3dispmd w3cspcmd w3gsrumd $tidecode" 
+                aux="$aux  wmunitmd"  
+                if [ "$scrip" = 'SCRIP' ]
+                then
+	          aux="$aux scrip_constants scrip_grids scrip_iounitsmod scrip_netcdfmod"
+                  aux="$aux scrip_remap_vars scrip_timers scrip_errormod scrip_interface"
+                  aux="$aux scrip_kindsmod scrip_remap_conservative scrip_remap_write"
+                fi ;;
      ww3_outf) IDstring='Gridded output'
                core=
                data='w3gdatmd w3wdatmd w3adatmd w3idatmd w3odatmd'
@@ -589,11 +617,11 @@
                  IO='w3iogrmd w3iogomd'
                 aux='constants w3servmd w3timemd w3arrymd w3dispmd w3gsrumd' ;;
      ww3_ounf) IDstring='Gridded NetCDF output'
-               core=
+               core='w3initmd'
                data='w3gdatmd w3wdatmd w3adatmd w3idatmd w3odatmd'
                prop=
              source="w3triamd $stx $nlx $btx"
-                 IO='w3iogrmd w3iogomd'
+                 IO='w3iogrmd w3iogomd w3iorsmd w3iopomd'
                 aux='constants w3servmd w3timemd w3arrymd w3dispmd w3gsrumd' ;;
      ww3_outp) IDstring='Point output'
                core=
@@ -623,6 +651,13 @@
              source="$stx $nlx $btx"
                  IO='w3iogrmd w3iogomd'
                 aux='constants w3servmd w3timemd w3arrymd w3dispmd w3gsrumd' ;;
+     ww3_gspl) IDstring='Grid splitting'
+               core='w3fldsmd'
+               data='w3gdatmd w3adatmd w3idatmd w3odatmd'
+               prop=
+             source="w3triamd $stx $nlx $btx"
+                 IO='w3iogrmd'
+                aux="constants w3servmd w3timemd w3arrymd w3dispmd w3gsrumd $tidecode" ;;
      ww3_gint) IDstring='Grid Interpolation'
                core=
                data='w3gdatmd w3wdatmd w3adatmd w3idatmd w3odatmd'
@@ -644,6 +679,13 @@
              source="$flx $ln $st $nl $bt $db $tr $bs $xx"
                  IO='w3iogrmd w3iopomd'
                 aux='constants w3servmd w3timemd w3arrymd w3dispmd w3gsrumd' ;;
+      ww3_systrk) IDstring='Wave system tracking postprocessor'
+               core='w3strkmd'
+               data=
+               prop=
+             source=
+                 IO=
+                aux= ;;
     esac
 
     d_string='$(aPe)/'"$prog"' : $(aPo)/'
@@ -656,14 +698,11 @@
     for file in $files
     do
       echo "$d_string$file.o"                    >> makefile
+      if [ -z "`echo $file | grep scrip 2>/dev/null`" ]
+      then
       echo "$file"                               >> filelist.tmp
+      fi
     done
-
-    if [ "$scrip" = 'SCRIP' ] && [ "$prog" = 'ww3_multi' ]
-    then
-	S_string1='$(aPS)/scrip_constants $(aPS)/scrip_grids $(aPS)/scrip_iounitsmod $(aPS)/scrip_netcdfmod $(aPS)/scrip_remap_vars $(aPS)/scrip_timers $(aPS)/scrip_errormod $(aPS)/scrip_interface $(aPS)/scrip_kindsmod $(aPS)/scrip_remap_conservative $(aPS)/scrip_remap_write'
-	filesl="$filesl $S_string1"
-    fi
 
     echo '	@$(aPb)/link '"$filesl"          >> makefile
     echo ' '                                     >> makefile
@@ -732,13 +771,13 @@
                W3PRO1MD W3PRO2MD W3PRO3MD W3PRO4MD W3PROXMD W3UQCKMD W3PROFSMD \
                W3SRCEMD W3FLX1MD W3FLX2MD W3FLX3MD W3FLX5MD W3FLXXMD \
                W3SLN1MD W3SLNXMD W3SRC0MD W3SRC1MD W3SRC2MD W3SRC3MD W3SRC4MD W3SRCXMD \
-               W3SNL1MD W3SNL2MD W3SNLXMD \
+               W3SNL1MD W3SNL2MD W3SNL3MD W3SNLXMD W3SNLSMD \
                m_xnldata serv_xnl4v5 m_fileio m_constants \
                W3SBT1MD W3SBT4MD W3SBTXMD W3SDB1MD W3SDBXMD \
                W3STRXMD W3SBS1MD W3SBSXMD W3SXXXMD W3REF1MD \
                W3INITMD W3WAVEMD W3WDASMD W3UPDTMD W3FLDSMD W3CSPCMD \
                WMMDATMD WMINITMD WMWAVEMD WMFINLMD WMGRIDMD WMUPDTMD \
-               WMUNITMD WMINIOMD WMIOPOMD W3BULLMD m_btffac\
+               WMUNITMD WMINIOMD WMIOPOMD W3BULLMD m_btffac W3STRKMD W3TIDEMD\
                W3FLD1MD W3MFBGMD
     do
       case $mod in
@@ -780,7 +819,9 @@
          'serv_xnl4v5'  ) modtest=serv_xnl4v5.o ;;
          'm_fileio'     ) modtest=mod_fileio.o ;;
          'm_constants'  ) modtest=mod_constants.o ;;
+         'W3SNL3MD'     ) modtest=w3snl3md.o ;;
          'W3SNLXMD'     ) modtest=w3snlxmd.o ;;
+         'W3SNLSMD'     ) modtest=w3snlsmd.o ;;
          'W3SBT1MD'     ) modtest=w3sbt1md.o ;;
          'W3SBT2MD'     ) modtest=w3sbt2md.o ;;
          'W3SBT4MD'     ) modtest=w3sbt4md.o ;;
@@ -802,6 +843,7 @@
          'W3PARTMD'     ) modtest=w3partmd.o ;;
          'W3DISPMD'     ) modtest=w3dispmd.o ;;
          'W3TIMEMD'     ) modtest=w3timemd.o ;;
+         'W3TIDEMD'     ) modtest=w3tidemd.o ;;
          'W3SERVMD'     ) modtest=w3servmd.o ;;
          'W3ARRYMD'     ) modtest=w3arrymd.o ;;
          'W3GSRUMD'     ) modtest=w3gsrumd.o ;;
@@ -820,6 +862,7 @@
          'WMUNITMD'     ) modtest=wmunitmd.o ;;
          'WMIOPOMD'     ) modtest=wmiopomd.o ;;
          'W3REF1MD'     ) modtest=w3ref1md.o ;;
+         'W3STRKMD'     ) modtest=w3strkmd.o ;;
       esac
       nr=`grep $mod check_file | wc -c | awk '{ print $1 }'`
       if [ "$nr" -gt '8' ]
@@ -834,7 +877,7 @@
 
     if  [ "$scrip" = 'SCRIP' ] && [ "$file" = 'wmgridmd' ]
     then
-        S_string2='$(aPS)/scrip_constants.o $(aPS)/scrip_grids.o $(aPS)/scrip_iounitsmod.o $(aPS)/scrip_netcdfmod.o $(aPS)/scrip_remap_vars.o $(aPS)/scrip_timers.o $(aPS)/scrip_errormod.o $(aPS)/scrip_interface.o $(aPS)/scrip_kindsmod.o $(aPS)/scrip_remap_conservative.o $(aPS)/scrip_remap_write.o'
+        S_string2='$(aPo)/scrip_constants.o $(aPo)/scrip_grids.o $(aPo)/scrip_iounitsmod.o $(aPo)/scrip_netcdfmod.o $(aPo)/scrip_remap_vars.o $(aPo)/scrip_timers.o $(aPo)/scrip_errormod.o $(aPo)/scrip_interface.o $(aPo)/scrip_kindsmod.o $(aPo)/scrip_remap_conservative.o $(aPo)/scrip_remap_write.o'
  	string3="$string3 $S_string2"
     fi
 
@@ -846,6 +889,33 @@
 
   echo '# end of WAVEWATCH III subroutines'      >> makefile
   rm -f filelist
+
+  if  [ "$scrip" = 'SCRIP' ]
+  then
+    echo ' '                                       >> makefile
+    echo ' '                                       >> makefile
+    echo '# SCRIP subroutines'                     >> makefile
+    echo '# -----------------'                     >> makefile
+    echo ' '                                       >> makefile
+
+    scrip_dir=$main_dir/ftn/SCRIP
+    if [ ! -d $scrip_dir ]
+    then
+      echo "*** SCRIP directory $scrip_dir not found ***"
+      exit 2
+    fi
+
+    scrip_mk=$scrip_dir/SCRIP.mk
+    if [ ! -e $scrip_mk ]
+    then
+      echo "*** SCRIP makefile fragment $scrip_mk not found ***"
+      exit 2
+    fi
+
+    cat $scrip_mk >> makefile
+
+    echo '# end of SCRIP subroutines'              >> makefile
+  fi
 
 # --------------------------------------------------------------------------- #
 # 4. Move makefile to proper place                                            #

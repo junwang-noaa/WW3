@@ -5,7 +5,7 @@
 !/                  | WAVEWATCH III           NOAA/NCEP |
 !/                  |           H. L. Tolman            |
 !/                  |                        FORTRAN 90 |
-!/                  | Last update :         06-Dec-2010 |
+!/                  | Last update :         03-Sep-2012 |
 !/                  +-----------------------------------+
 !/
 !/    28-Dec-2004 : Origination (out of W3WAVEMD).      ( version 3.06 )
@@ -39,8 +39,13 @@
 !/    06-Dec-2010 : Change from GLOBAL (logical) to ICLOSE (integer) to
 !/                  specify index closure for a grid.   ( version 3.14 )
 !/                  (T. J. Campbell, NRL)
+!/    02-Sep.2012 : Set up for > 999 test files.        ( version 4.10 )
+!/                  Reset UST initialization.
+!/    03-Sep-2012 : Switch test file on/off (TSTOUT)    ( version 4.10 )
+!/    03-Sep-2012 : Clean up of UG grids                ( version 4.08 )
+!/    30-Sep-2012 : Implemetation of tidal constituents ( version 4.09 )
 !/
-!/    Copyright 2009 National Weather Service (NWS),
+!/    Copyright 2009-2012 National Weather Service (NWS),
 !/       National Oceanic and Atmospheric Administration.  All rights
 !/       reserved.  WAVEWATCH III is a trademark of the NWS. 
 !/       No unauthorized use without permission.
@@ -56,6 +61,7 @@
 !      CRITOS    R.P.  Public   Critical percentage of resources used
 !                               for output to trigger warning.
 !      WWVER     C*10  Public   Model version number.
+!      SWITCHES  C*256 Public   switches taken from bin/switch
 !     ----------------------------------------------------------------
 !
 !  3. Subroutines and functions :
@@ -90,19 +96,24 @@
       PUBLIC
 !/
       REAL, PARAMETER              :: CRITOS = 15.
-      CHARACTER*10, PARAMETER      :: WWVER  = '4.07 '
+      CHARACTER*10, PARAMETER      :: WWVER  = '4.10 '
+      CHARACTER*512, PARAMETER      :: SWITCHES  = &
+          &"PUT_SW1&
+          &PUT_SW2&
+          &PUT_SW3"
+
 !/
       CONTAINS
 !/ ------------------------------------------------------------------- /
       SUBROUTINE W3INIT ( IMOD, FEXT, MDS, MTRACE, ODAT,              &
                           FLGRD, FLGR2, NPT, XPT, YPT, PNAMES, IPRT,  &
-			  PRTFRM, MPI_COMM )
+                          PRTFRM, MPI_COMM, FLAGSTIDEIN )
 !/
 !/                  +-----------------------------------+
 !/                  | WAVEWATCH III           NOAA/NCEP |
 !/                  |           H. L. Tolman            |
 !/                  |                        FORTRAN 90 |
-!/                  | Last update :         06-Dec-2010 |
+!/                  | Last update :         03-Sep-2012 |
 !/                  +-----------------------------------+
 !/
 !/    17-Mar-1999 : Distributed FORTRAN 77 version.     ( version 1.18 )
@@ -139,6 +150,9 @@
 !/    06-Dec-2010 : Change from GLOBAL (logical) to ICLOSE (integer) to
 !/                  specify index closure for a grid.   ( version 3.14 )
 !/                  (T. J. Campbell, NRL)
+!/    02-Sep.2012 : Set up for > 999 test files.        ( version 4.10 )
+!/    03-Sep-2012 : Switch test file on/off (TSTOUT)    ( version 4.10 )
+!/    03-Sep-2012 : Clean up of UG grids                ( version 4.08 )
 !/
 !  1. Purpose :
 !
@@ -306,7 +320,7 @@
       USE W3ARRYMD, ONLY: PRTBLK
 !/
       USE W3GDATMD, ONLY: NX, NY, NSEA, NSEAL, MAPSTA, MAPST2, MAPFS, &
-                          RLGTYPE, CLGTYPE, UNGTYPE, GTYPE, FLAGLL,   &
+                          FLAGLL,   &
                           ICLOSE, ZB, TRNX, TRNY, DMIN, DTCFL, DTMAX, &
                           FLCK, NK, NTH, NSPEC, SIG, GNAME
       USE W3WDATMD, ONLY: TIME, TLEV, TICE, WLV, UST, USTDIR, VA
@@ -339,6 +353,7 @@
                                        PRTFRM
       CHARACTER*(*), INTENT(IN)     :: FEXT
       CHARACTER(LEN=10), INTENT(IN) :: PNAMES(NPT)
+      LOGICAL, INTENT(IN), OPTIONAL :: FLAGSTIDEIN(4)
 !/
 !/ ------------------------------------------------------------------- /
 !/ Local parameters
@@ -347,7 +362,7 @@
                                  NTTARG, IK, IP, ITH, INTYPE, IX, IY, &
                                  J, J0, TOUT(2), TLST(2), ISEA, IS,   &
                                  K, I1, I2, JSEA, NTTMAX
-!/DIST      INTEGER                 :: ISTEP, ISP
+!/DIST      INTEGER                 :: ISTEP, ISP, IW
 !/MPI      INTEGER                 :: IERR_MPI, BGROUP, LGROUP
 !/S      INTEGER, SAVE           :: IENT = 0
 !/T      INTEGER                 :: NX0, NXN
@@ -362,6 +377,7 @@
       LOGICAL                 :: OPENED
       CHARACTER(LEN=8)        :: STTIME
       CHARACTER(LEN=10)       :: STDATE
+!/DIST      CHARACTER(LEN=12)       :: FORMAT
       CHARACTER(LEN=23)       :: DTME21
       CHARACTER(LEN=30)       :: LFILE, TFILE
 !/
@@ -468,7 +484,11 @@
       LFILE  = 'log.' // FEXT(:IE)
       IFL    = LEN_TRIM(LFILE)
 !/SHRD       TFILE  = 'test.' // FEXT(:IE)
-!/DIST       WRITE (TFILE,'(A4,I3.3,2A)') 'test',                     &
+!/DIST      IW     = 1 + INT ( LOG10 ( REAL(NAPROC) + 0.5 ) )
+!/DIST      IW     = MAX ( 3 , MIN ( 9 , IW ) ) 
+!/DIST      WRITE (FORMAT,'(A5,I1.1,A1,I1.1,A4)')                     &
+!/DIST                   '(A4,I', IW, '.', IW, ',2A)'
+!/DIST      WRITE (TFILE,FORMAT) 'test',                             &
 !/DIST                    OUTPTS(IMOD)%IAPROC, '.', FEXT(:IE)
       IFT    = LEN_TRIM(TFILE)
       J      = LEN_TRIM(FNMPRE)
@@ -476,11 +496,12 @@
       IF ( OUTPTS(IMOD)%IAPROC .EQ. OUTPTS(IMOD)%NAPLOG )             &
           OPEN (MDS(1),FILE=FNMPRE(:J)//LFILE(:IFL),ERR=888,IOSTAT=IERR)
 !
-      IF ( MDS(3).NE.MDS(1) .AND. MDS(3).NE.MDS(4) ) THEN
+      IF ( MDS(3).NE.MDS(1) .AND. MDS(3).NE.MDS(4) .AND. TSTOUT ) THEN
           INQUIRE (MDS(3),OPENED=OPENED)
           IF ( .NOT. OPENED ) OPEN                                    &
                (MDS(3),FILE=FNMPRE(:J)//TFILE(:IFT),ERR=889,IOSTAT=IERR)
         END IF
+!
 ! 1.d Dataset unit numbers
 !
       NDS    = MDS
@@ -547,7 +568,7 @@
           CALL W3DIMW ( IMOD, NDSE, NDST, .FALSE. )
         END IF
       CALL W3DIMA ( IMOD, NDSE, NDST )
-      CALL W3DIMI ( IMOD, NDSE, NDST )
+      CALL W3DIMI ( IMOD, NDSE, NDST , FLAGSTIDEIN )
 !
 ! 2.c.3 Calculated expected number of prop. calls per processor
 !
@@ -716,7 +737,6 @@
         FLOUT(7) = FLOUT(7) .OR. FLOGR2(J)
 
         END DO
-	
 !
       FLOUT(2) = NPT .GT. 0
 !
@@ -898,7 +918,7 @@
 !
       AS     = UNDEF
 !
-      UST   (:) = 0.
+      UST   (:) = 1.E-5
       USTDIR(:) = 0.
       AS    (0) = 0.
       DW    (0) = 0.
@@ -1039,14 +1059,14 @@
   983 FORMAT ( ' Ice field time   : ',A)
 !
   984 FORMAT (//                                                      &
-        43X,'  |    input    |     output    |'/                        &
-        43X,'  |-------------|---------------|'/                        &
+        43X,'  |    input    |     output    |'/                      &
+        43X,'  |-------------|---------------|'/                      &
          8X,'   step | pass |    date      time   | b w l c i d |',   &
               ' g p t r b f c |'/                                     &
-         8X,'--------|------|---------------------|--------------|',   &
-              '--------------|'/                                       &
-         8X,'--------+------+---------------------+---------------+',   &
-              '-------------+')
+         8X,'--------|------|---------------------|-------------|',   &
+              '---------------|'/                                     &
+         8X,'--------+------+---------------------+-------------+',   &
+              '---------------+')
   987 FORMAT (/' Coupling output fields : '/                          &
                '--------------------------------------------------')
 !
@@ -1878,6 +1898,11 @@
 !/MPI              CALL MPI_SEND_INIT (BEDFORMS (IAPROC,2),1,WW3_FIELD_VEC, &
 !/MPI                       IROOT, IT, MPI_COMM_WAVE, IRQGO(IH), IERR )
 !/MPIT      WRITE (NDST,9011) IH, 'S 40', IROOT, IT, IRQGO(IH), IERR
+!/MPI              IH     = IH + 1
+!/MPI              IT     = IT + 1
+!/MPI              CALL MPI_SEND_INIT (BEDFORMS (IAPROC,3),1,WW3_FIELD_VEC, &
+!/MPI                       IROOT, IT, MPI_COMM_WAVE, IRQGO(IH), IERR )
+!/MPIT      WRITE (NDST,9011) IH, 'S 40', IROOT, IT, IRQGO(IH), IERR
 !/MPI            END IF
 !
 !/MPI          IF ( FLGRDALL(41) ) THEN
@@ -2372,6 +2397,11 @@
 !/MPI                    IH     = IH + 1
 !/MPI                    IT     = IT + 1
 !/MPI                    CALL MPI_RECV_INIT (BEDFORMS (I0,2),1,WW3_FIELD_VEC,&
+!/MPI                       IFROM, IT, MPI_COMM_WAVE, IRQGO(IH), IERR )
+!/MPIT      WRITE (NDST,9011) IH, 'R 40', IFROM, IT, IRQGO(IH), IERR
+!/MPI                    IH     = IH + 1
+!/MPI                    IT     = IT + 1
+!/MPI                    CALL MPI_RECV_INIT (BEDFORMS (I0,3),1,WW3_FIELD_VEC,&
 !/MPI                       IFROM, IT, MPI_COMM_WAVE, IRQGO(IH), IERR )
 !/MPIT      WRITE (NDST,9011) IH, 'R 40', IFROM, IT, IRQGO(IH), IERR
 !/MPI                  END IF
@@ -2989,7 +3019,6 @@
 !/MPI      USE W3SERVMD, ONLY: EXTCDE
 !/
 !/MPI      USE W3GDATMD, ONLY: NX, NY, NSPEC, MAPFS
-           USE W3GDATMD, ONLY: TRIGP, GTYPE, UNGTYPE
 !/MPI      USE W3WDATMD, ONLY: VA
 !/MPI      USE W3ADATMD, ONLY: MPI_COMM_WAVE, SPPNT
 !/MPI      USE W3ODATMD, ONLY: NDST, NDSE, IAPROC, NAPROC, NAPPNT, FLOUT
@@ -3042,19 +3071,10 @@
 !/MPIT      WRITE (NDST,9010) 'MPI_SEND_INIT'
 !
 !/MPI      DO I=1, NOPTS
-!/MPI        IF (GTYPE .NE. UNGTYPE) THEN
-!/MPI          DO K=1,4
-!/MPI            IX(K)=IPTINT(1,K,I)
-!/MPI            IY(K)=IPTINT(2,K,I)
-!/MPI            END DO
-!/MPI        ELSE 
-!/MPI          itout  =  IPTINT(1,1,I)
-!/MPI          IX(1)  =  TRIGP(itout,1)
-!/MPI          IX(2)  =  TRIGP(itout,2)
-!/MPI          IX(3)  =  TRIGP(itout,3)
-!/MPI          IX(4)  =  TRIGP(itout,1)
-!/MPI          IY(:)  =  1
-!/MPI          END IF
+!/MPI        DO K=1,4
+!/MPI          IX(K)=IPTINT(1,K,I)
+!/MPI          IY(K)=IPTINT(2,K,I)
+!/MPI          END DO
 ! 1.b Loop over corner points
 !
 !/MPI        DO J=1, 4
@@ -3102,19 +3122,10 @@
 !/MPIT          WRITE (NDST,9010) 'MPI_RECV_INIT'
 !
 !/MPI          DO I=1, NOPTS
-!/MPI            IF (GTYPE .NE. UNGTYPE) THEN
-!/MPI              DO K=1,4
-!/MPI                IX(K)=IPTINT(1,K,I)  
-!/MPI                IY(K)=IPTINT(2,K,I)
-!/MPI                END DO 
-!/MPI            ELSE 
-!/MPI              ITOUT  =  IPTINT(1,1,I)
-!/MPI              IX(1)  =  TRIGP(itout,1)
-!/MPI              IX(2)  =  TRIGP(itout,2)
-!/MPI              IX(3)  =  TRIGP(itout,3)
-!/MPI              IX(4)  =  TRIGP(itout,1)
-!/MPI              IY(:)  =  1
-!/MPI              END IF
+!/MPI            DO K=1,4
+!/MPI              IX(K)=IPTINT(1,K,I)  
+!/MPI              IY(K)=IPTINT(2,K,I)
+!/MPI              END DO 
 !
 !/MPI            DO J=1, 4
 !
