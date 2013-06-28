@@ -93,10 +93,16 @@
 
   opt="-O3 -xSSE4.2 -ip -o $prog"
 # opt="-O0 -g -traceback -check all -fpe0 -ftrapuv -o $prog"
+# opt="-O3 -prec-div -prec-sqrt -xHost -align array128byte -ip -o $prog"
 
   if [ "$mpi_mod" = 'yes' ]
   then
-    comp=mpiifort
+    which mpiifort 1> /dev/null 2> /dev/null
+    OK=$?
+    if [ $OK != 0 ]
+    then
+      comp='ifort -lmpi'
+    fi
     opt="-O3 -o $prog"
   else
     comp=ifort
