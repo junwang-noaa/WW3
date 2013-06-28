@@ -293,12 +293,12 @@
          MFYX=MFYX+TMFYX
          MFYY=MFYY+TMFYY
          MFXY=MFXY+TMFXY
-        write(*,*)'x',TMX,MX
-        write(*,*)'y',TMY,MY
-        write(*,*)'xx',TMFXX,MFXX
-        write(*,*)'yx',TMFYX,MFYX
-        write(*,*)'yy',TMFYY,MFYY
-        write(*,*)'xy',TMFXY,MFXY
+!        write(*,*)'x',TMX,MX
+!        write(*,*)'y',TMY,MY
+!        write(*,*)'xx',TMFXX,MFXX
+!        write(*,*)'yx',TMFYX,MFYX
+!        write(*,*)'yy',TMFYY,MFYY
+!        write(*,*)'xy',TMFXY,MFXY
         RETURN
 !/        
       END SUBROUTINE W3MFBG

@@ -75,9 +75,9 @@ tstep.tex
 INPFILES = \
 ww3_grid.tex \
 ww3_strt.tex \
+ww3_bound.tex \
 ww3_prep.tex \
 ww3_prnc.tex \
-ww3_bound.tex \
 ww3_shel.tex \
 ww3_multi.tex \
 ww3_outf.tex \

@@ -111,7 +111,6 @@
 !/ ------------------------------------------------------------------- /
       SUBROUTINE W3FLD1( ASPC, FPI, U10, U10D, UC, UCD, ZWND, &
                          DEPTH, UST, USTD, COEF)
-
 !/
 !/                  +-----------------------------------+
 !/                  | WAVEWATCH III           NOAA/NCEP |
@@ -198,6 +197,7 @@
 !/
       REAL, PARAMETER         ::  NU=0.105/10000.0 
       REAL, PARAMETER         ::  DELTA=0.03
+      REAL, PARAMETER         ::  SAT=0.006
       REAL                    ::  KMAX, DTX, DTY, IT, &
                                   USTSM, Z0SM, Z1, TAUNUX, TAUNUY,  &
                                   WAGE, CBETA, BP, CD,&
@@ -208,17 +208,18 @@
                                   U10_2Y, U10_3X, U10_3Y, DIFU10XX, &
                                   DIFU10YX, DIFU10XY, DIFU10YY, FD_A, &
                                   FD_B, FD_C, FD_D, DU10X, DU10Y, &
-                                  APAR, CH,UITV, VITV
+                                  APAR, CH,UITV, VITV,USTL,BETAG
       INTEGER                 ::  NKT, K, T, ITRIG, Z2, ITER, ZI, ZII, &
                                   I, TRIGB, CTR, ITERATION, KA1, KA2, &
                                   KA3
       REAL, ALLOCATABLE, DIMENSION(:)   :: WN, DWN, C
-      REAL, ALLOCATABLE, DIMENSION(:,:) :: SPC2, BETAG
-      REAL, ALLOCATABLE, DIMENSION(:)   :: TLTN, TLTE, TAUD, USTL, &
-                                           TLTNDA, TLTEDA, TLTND, &
+      REAL, ALLOCATABLE, DIMENSION(:,:) :: SPC2
+      REAL, ALLOCATABLE, DIMENSION(:)   :: TLTN, TLTE, TAUD, &
+                                           TLTND, &
                                            TLTED, ZOFK, UPROF, VPROF, &
                                            FTILDE, UP1, VP1, UP, VP, &
                                            TLTNA, TLTEA
+      character*14 :: fname
 !/S      INTEGER, SAVE           :: IENT = 0
       LOGICAL, SAVE           :: FIRST = .TRUE.
 !/
@@ -247,8 +248,8 @@
         KMAX = ( KMAX * XFR**2 )
       ENDDO
       ALLOCATE( WN(NKT), DWN(NKT), C(NKT), SPC2(NKT,NTH), &
-                BETAG(NKT,NTH), TLTN(NKT), TLTE(NKT), &
-                TAUD(NKT), USTL(NKT), TLTNDA(NKT), TLTEDA(NKT), &
+                TLTN(NKT), TLTE(NKT), &
+                TAUD(NKT), &
                 TLTND(NKT), TLTED(NKT), ZOFK(NKT), UPROF(NKT+1),&
                 VPROF(NKT+1), FTILDE(NKT), UP1(NKT+1),VP1(NKT+1), &
                 UP(NKT+1), VP(NKT+1), TLTNA(NKT),TLTEA(NKT))
@@ -263,12 +264,8 @@
         WN(K) = WN(K-1) * XFR**2.0
         C(K) = SQRT( GRAV / WN(K) )
       ENDDO
-      C(NKT) = SQRT( GRAV / WN(NKT) )
-      DO K = 2, NKT-1
-        DWN(K) = (WN(K+1) - WN(K-1)) / 2.0
-      ENDDO
       DO K = 1, NKT
-        DWN(K) = WN(K)*1.1**2 - WN(K)
+        DWN(K) = WN(K)*XFR**2 - WN(K)
       ENDDO
 !
 ! 1b. Attach initial tail--------------------------------------------- *
@@ -299,23 +296,21 @@
 !-----Wavenumber for end of (spectrum level) transition to tail------- *
       KTAILB = ( FPI * TPI * 3.00 )**2 / GRAV
 !-----Wavenumber for end of (spectrum direction) transition to tail--- *
-      KTAILC=KTAILB*2
+      KTAILC= KTAILB * 2.0
       KA1 = 2     ! Do not modify 1st wavenumber bin
-      KA2 = NK    ! Do not modify calculated directionality
-      KA3 = NK+2  ! Allow at least 2 bins for turning spectrum.
       DO WHILE ( ( KTAILA .GE. WN(KA1) ) .AND. (KA1 .LT. NKT-6) )
         KA1 = KA1 + 1
       ENDDO
-      KA2 = MAX( KA2, KA1+2)
+      KA2 = KA1+2
       DO WHILE ( ( KTAILB .GE. WN(KA2) ) .AND. (KA2 .LT. NKT-4) )
         KA2 = KA2 + 1
       ENDDO
-      KA3 = MAX( KA3, KA2+2)
+      KA3 = KA2+2
       DO WHILE ( ( KTAILC .GE. WN(KA3)) .AND. (KA3 .LT. NKT-2) )
         KA3 = KA3 + 1
       ENDDO
       CALL APPENDTAIL(SPC2, WN, NKT, KA1, KA2, KA3,&
-                      U10ADJ*COS(U10D), U10ADJ*SIN(U10D))
+                      U10ADJ*COS(U10D), U10ADJ*SIN(U10D),SAT)
 !
 ! 2.  Prepare for iterative calculation of wave-form stress----------- *
 !
@@ -323,7 +318,6 @@
       DTY = 0.001
       ITRIG = 1
       IT = 0.005
-      DTH = TPI / 24.0
 !
 ! 2a. Calculate initial guess for viscous stress from smooth-law------ *
 !
@@ -365,52 +359,48 @@
 !|-----for integration as a function of wavedirection------------------|
 !|---------------------------------------------------------------------|
           DO ZI = 2, NKT
+            USTL=0.0
+            TLTND(zi)=0.0
+            TLTED(zi)=0.0
             Z2 = Z2 - 1
             TAUD(ZI) = ATAN2( TLTN(ZI-1), TLTE(ZI-1))
-            USTL(ZI) = SQRT( SQRT( TLTN(ZI-1)**2 + TLTE(ZI-1)**2 )     &
-                       / DAIR )
-            DO T = 1, 24
-              CALL ANGLEDIFF(TAUD(ZI),TH(T),ANGDIF)
+            USTL = SQRT( SQRT( TLTN(ZI-1)**2 + TLTE(ZI-1)**2 )/ DAIR )
+            DO T = 1, NTH
+              ANGDIF=TAUD(ZI)-TH(T)
               IF ( COS( ANGDIF ) .GE. 0.0 ) THEN
-                WAGE = SQRT( GRAV / WN(Z2) ) / USTL(ZI)
-                IF ( WAGE .LT. 10 ) THEN
+                WAGE = SQRT( GRAV / WN(Z2) ) / (USTL)
+                IF ( WAGE .LT. 10 ) THEN !10 to 30
                   CBETA = 25.0
-               ELSEIF ( ( WAGE .GE. 10.0 ) .AND. &
-                          ( WAGE .LE. 25.0 ) ) THEN
+                ELSEIF ( ( WAGE .GE. 10.0 ) .AND. &!10 to 30
+                          ( WAGE .LE. 25.0 ) ) THEN!25 to 45
                   CBETA = 10.0 + 15.0 * COS( PI * ( WAGE - 10.0 ) &
                           / 15.0 )
-                ELSEIF ( WAGE .GT. 25.0 ) THEN
+                ELSEIF ( WAGE .GT. 25.0 ) THEN!25 to 45
                   CBETA = -5.0
                 ENDIF
               ELSE
-                CBETA = 0.0
+                CBETA = -25.0
               ENDIF
               BP = SQRT( (COS( TH(T) ) * COS( ANGDIF )**2)**2 &
                        + (SIN( TH(T) ) * COS( ANGDIF )**2)**2 )
-              TLTNDA(T) =( SIN( TH(T) ) * COS( ANGDIF )**2)&
+              TLTND(ZI) =TLTND(ZI)+( SIN( TH(T) ) * COS( ANGDIF )**2)&
                           * CBETA * SPC2(Z2,T) * &
                           SQRT( TLTE(ZI-1)**2 + TLTN(ZI-1)**2.0 ) &
-                          * ( WN(Z2)**2.0 )
-              TLTEDA(T) = (COS( TH(T) ) * COS( ANGDIF )**2)&
+                          * ( WN(Z2)**2.0 )*DTH
+              TLTED(ZI) = TLTED(ZI)+(COS( TH(T) ) * COS( ANGDIF )**2)&
                           * CBETA * SPC2(Z2,T) * &
                           SQRT( TLTE(ZI-1)**2 + TLTN(ZI-1)**2.0 ) &
-                          * ( WN(Z2)**2.0 )
-            ENDDO
+                          * ( WN(Z2)**2.0 )*DTH
+           ENDDO
 !|---------------------------------------------------------------------|
 !|-----Complete the integrations---------------------------------------|
 !|---------------------------------------------------------------------|
-            TLTND(ZI) = 0
-            TLTED(ZI) = 0
-            DO T = 1, 24
-              TLTND(ZI) = TLTND(ZI) + TLTNDA(T) * DTH
-              TLTED(ZI) = TLTED(ZI) + TLTEDA(T) * DTH
-            ENDDO
             IF (ZI .EQ. 2) THEN
-              TLTNA(ZI) = TLTND(ZI) * DWN(Z2)
-              TLTEA(ZI) = TLTED(ZI) * DWN(Z2)
+              TLTNA(ZI) = TLTND(ZI) * DWN(Z2) * 0.5!BR
+              TLTEA(ZI) = TLTED(ZI) * DWN(Z2) * 0.5!BR
             ELSE
-              TLTNA(ZI)=(TLTND(ZI)*0.5+TLTND(ZI-1)*0.5)*DWN(Z2)
-              TLTEA(ZI)=(TLTED(ZI)*0.5+TLTED(ZI-1)*0.5)*DWN(Z2)
+              TLTNA(ZI)=(TLTND(ZI)+TLTND(ZI-1))*0.5*DWN(Z2)
+              TLTEA(ZI)=(TLTED(ZI)+TLTED(ZI-1))*0.5*DWN(Z2)
             ENDIF
             TLTN(ZI)=TAUNUY
             TLTE(ZI)=TAUNUX
@@ -431,49 +421,50 @@
            Z2=NKT+1
             DO ZI=1, NKT
               Z2=Z2-1
+              USTL=0.0
+              TLTED(zi)=0.0
+              TLTND(zi)=0.0
+              FTILDE(zi)=0.0
               TAUD(ZI)=ATAN2(TLTN(ZI),TLTE(ZI))
-              USTL(ZI)=SQRT(SQRT(TLTN(ZI)**2+TLTE(ZI)**2)/DAIR)
-              DO T=1, 24
-                CALL ANGLEDIFF(TAUD(ZI),TH(T),ANGDIF)
+              USTL=SQRT(SQRT(TLTN(ZI)**2+TLTE(ZI)**2)/DAIR)
+              DO T=1, NTH
+                BETAG=0.0
+                ANGDIF=TAUD(ZI)-TH(T)
                 IF ( COS( ANGDIF ) .GE. 0.0 ) THEN
-                  WAGE = SQRT( GRAV / WN(Z2) ) / USTL(ZI)
-                  IF ( WAGE .LT. 10.0 ) THEN
+                  WAGE = SQRT( GRAV / WN(Z2) ) / (USTL)
+                 IF ( WAGE .LT. 10 ) THEN
                     CBETA = 25.0
-                  ELSEIF ( ( WAGE .GE. 10.0 ) .AND. ( WAGE .LE. 25.0 ))&
-                          THEN
-                    CBETA = 10.0 + 15.0 * COS( PI * ( WAGE - 10.0 ) &
-                            / 15.0 )
-                  ELSEIF ( WAGE .GT. 25.0 ) THEN
-                    CBETA = -5.0
+                 ELSEIF ( ( WAGE .GE. 10.0 ) .AND. &
+                          ( WAGE .LE. 25.0 ) ) THEN
+                   CBETA = 10.0 + 15.0 * COS( PI * ( WAGE - 10.0 ) &
+                          / 15.0 )
+                 ELSEIF ( WAGE .GT. 25.0 ) THEN!25 to 45
+                   CBETA = -5.0
                   ENDIF
                 ELSE
-                  CBETA = 0.0
+                  CBETA = -25.0
                 ENDIF
                 BP = SQRT( (COS( TH(T) ) * COS( ANGDIF )**2.0)**2.0 &
                      + (SIN( TH(T) ) * COS( ANGDIF )**2.0)**2.0 )
-                BETAG(Z2,T)=BP*CBETA*SQRT(TLTE(ZI)**2.0+TLTN(ZI)**2.0) &
+                BETAG=BP*CBETA*SQRT(TLTE(ZI)**2.0+TLTN(ZI)**2.0) &
                            /(DWAT)*SQRT(WN(Z2)**3/GRAV)
-                TLTNDA(T) = (SIN( TH(T) ) * COS( ANGDIF )**2.0)&
+                FTILDE(Z2) = FTILDE(Z2) + BETAG * DWAT * GRAV &
+                           * SPC2(Z2,T) * DTH
+                TLTND(zi) =tltnd(zi)+ (SIN( TH(T) ) * COS( ANGDIF )**2.0)&
                             * CBETA * SPC2(Z2,T) * SQRT( &
                             TLTE(ZI)**2.0 + TLTN(ZI)**2.0 ) * &
-                            ( WN(Z2)**2.0 )
-                TLTEDA(T) = (COS( TH(T) ) * COS( ANGDIF )**2.0)&
+                            ( WN(Z2)**2.0 )*dth
+                TLTED(zi) = tlted(zi)+(COS( TH(T) ) * COS( ANGDIF )**2.0)&
                             * CBETA * SPC2(Z2,T) * SQRT( &
                             TLTE(ZI)**2.0 + TLTN(ZI)**2.0 ) * &
-                            ( WN(Z2)**2.0 )
-              ENDDO
-              TLTND(ZI) = 0.0
-              TLTED(ZI) = 0.0
-              DO T = 1, 24
-                TLTND(ZI)=TLTND(ZI)+TLTNDA(T)*DTH
-                TLTED(ZI)=TLTED(ZI)+TLTEDA(T)*DTH
+                            ( WN(Z2)**2.0 )*dth
               ENDDO
               IF (ZI .EQ. 1) THEN
-                TLTNA(ZI)=TLTND(ZI)*DWN(Z2)
-                TLTEA(ZI)=TLTED(ZI)*DWN(Z2)
+                TLTNA(ZI)=TLTND(ZI)*DWN(Z2)*0.5
+                TLTEA(ZI)=TLTED(ZI)*DWN(Z2)*0.5
               ELSE
-                TLTNA(ZI)=(TLTND(ZI)*0.5+TLTND(ZI-1)*0.5)*DWN(Z2)
-                TLTEA(ZI)=(TLTED(ZI)*0.5+TLTED(ZI-1)*0.5)*DWN(Z2)
+                TLTNA(ZI)=(TLTND(ZI)+TLTND(ZI-1))*0.5*DWN(Z2)
+                TLTEA(ZI)=(TLTED(ZI)+TLTED(ZI-1))*0.5*DWN(Z2)
               ENDIF
               TLTN(ZI)=TAUNUY
               TLTE(ZI)=TAUNUX
@@ -505,21 +496,14 @@
           VPROF(1:NKT)=0.0
           UPROFV=0.0
           VPROFV=0.0
-          Do ZI=1, NKT
-            FTILDE(ZI)=0.0
-            DO T=1, 24
-              FTILDE(ZI) = FTILDE(ZI) + BETAG(ZI,T) * DWAT * GRAV &
-                           * SPC2(ZI,T) * DTH
-            ENDDO
-          ENDDO
           ZI=1
           Z2=NKT
-          UP1(ZI) = ( ( ( WN(NKT)**2 / DELTA ) * FTILDE(NKT) ) + &
+          UP1(ZI) = ( ( ( WN(NKT)**2 / DELTA ) * FTILDE(z2) ) + &
                     ( DAIR / ( ZOFK(NKT) * KAPPA ) ) * ( SQRT( &
                     TLTN(ZI)**2 + TLTE(ZI)**2 ) / DAIR )**(3/2) ) &
                     * ( TLTE(ZI) ) / ( TLTE(ZI) * TAUX &
                     + TLTN(ZI) * TAUY )
-          VP1(ZI) = ( ( ( WN(NKT)**2 / DELTA ) * FTILDE(NKT) ) + &
+          VP1(ZI) = ( ( ( WN(NKT)**2 / DELTA ) * FTILDE(z2) ) + &
                     ( DAIR / ( ZOFK(NKT) * KAPPA ) ) * ( SQRT ( &
                     TLTN(ZI)**2 + TLTE(ZI)**2 ) / DAIR )**(3/2) ) &
                     * ( TLTN(ZI) ) / ( TLTE(ZI) * TAUX &
@@ -576,14 +560,6 @@
           IF (ITER .EQ. 3) THEN
             U10_1X = UPROF(NKT+1)
             U10_1Y = VPROF(NKT+1)
-            if (u10_1x .GT. 1000.) then
-              write(*,*)ITERATION,DEPTH,TAUX
-              write(*,*)'U',UPROF(2)
-              write(*,*)'F',FTILDE(NKT-1)
-              write(*,*)'WN',WN(NKT-1)
-              write(*,*)'TLTE',TLTE(2)
-              write(*,*)UP1(2),UP(2)
-            endif
           ELSEIF (ITER .EQ. 2) THEN
             U10_2X = UPROF(NKT+1)
             U10_2Y = VPROF(NKT+1)
@@ -594,7 +570,7 @@
         ENDDO
         ITERATION = ITERATION + 1
         CALL APPENDTAIL(SPC2, WN, NKT, KA1, KA2, KA3,&
-                      UPROF(KA3), VPROF(KA3))
+                      UPROF(KA3), VPROF(KA3),SAT)
         DIFU10XX = U10_3X - U10_1X
         DIFU10YX = U10_3Y - U10_1Y
         DIFU10XY = U10_2X - U10_1X
@@ -643,7 +619,7 @@
           TAUNUX = TAUNUX - APAR * ( FD_D * DU10X - FD_B * DU10Y )
           TAUNUY = TAUNUY - APAR * ( -FD_C * DU10X +FD_A * DU10Y )
         ELSEIF (ITERATION .GE. 20) THEN
-          write(*,*)'Not converged',DEPTH,UITV
+          write(*,*)'Not converged',u10adj,UITV
           IT = 0.01
           ITRIG = 0
         ELSEIF (((VITV .LT. IT) .AND. (UITV .LT. IT)) .AND. &
@@ -656,19 +632,19 @@
 !|----Finish-----------------------------------------------------------|
 !|---------------------------------------------------------------------|
       USTD = ATAN2(TAUY,TAUX)
-      UST = SQRT( SQRT( TAUX**2 + TAUY**2 ) / DAIR)/COEF
-      U10ADJ=MAX(U10,.01)
-      CD = UST**2 / U10ADJ**2
+      UST = SQRT( SQRT( TAUX**2 + TAUY**2 ) / DAIR)
+      U10ADJ=MAX(U10ADJ,.01)
+      CD = UST**2 / U10**2
       IF (CD .GT. 0.005) THEN
         CD = 0.005
         UST = SQRT( CD ) * U10ADJ
       ENDIF
       IF (CD .LT. 0.0001) THEN
         CD=0.0001
-        UST = SQRT(CD) * U10ADJ
+        UST = SQRT(CD) * U10
       ENDIF
-      DEALLOCATE(WN, DWN, C, SPC2, BETAG, TLTN, TLTE, TAUD, &
-                 USTL, TLTNDA, TLTEDA, TLTND, TLTED, ZOFK, UPROF, &
+      DEALLOCATE(WN, DWN, C, SPC2, TLTN, TLTE, TAUD, &
+                 TLTND, TLTED, ZOFK, UPROF, &
                  VPROF, FTILDE, UP1, VP1, UP, VP, TLTNA, TLTEA)
 !/ End of W3FLD1 ----------------------------------------------------- /
 !/
@@ -764,7 +740,7 @@
       END SUBROUTINE INFLD1
 !/
 !/ ------------------------------------------------------------------- /
-      SUBROUTINE APPENDTAIL(INSPC, WN2, NKT, KA1, KA2, KA3, U, V)
+      SUBROUTINE APPENDTAIL(INSPC, WN2, NKT, KA1, KA2, KA3, U, V,SAT)
 !/
 !/                  +-----------------------------------+
 !/                  | WAVEWATCH III           NOAA/NCEP |
@@ -773,14 +749,11 @@
 !/                  | Last update :         01-Jul-2006 |
 !/                  +-----------------------------------+
 !/
-!/    01-Jul-2012 : Written into W3FLD1MD
+!/    01-Jul-2006 : Origination.                        ( version 3.09 )
 !/
 !  1. Purpose :
 !
-!     Calculates an extended wave spectrum tail to be used in 
-!        explicit integration of the wave induced stress.  This wave
-!        tail converges to a constant directionally integrated 
-!        saturation spectrum of B=0.006.
+!     Initialization for source term routine.
 !
 !  2. Method :
 !
@@ -833,7 +806,7 @@
 !/ Parameter list
 !/
       INTEGER, INTENT(IN) :: NKT, KA1, KA2, KA3
-      REAL, INTENT(IN)    :: WN2(NKT), U, V
+      REAL, INTENT(IN)    :: WN2(NKT), U, V,SAT
       REAL, INTENT(INOUT)   :: INSPC(NKT,NTH)
 !/
 !/ ------------------------------------------------------------------- /
@@ -852,36 +825,66 @@
 !
 ! 1.  .... ----------------------------------------------------------- *
 !
-      !|---------------------------------------------------------------|
-      !|--Get the slope of the saturation spectrum---------------------|
-      !|---------------------------------------------------------------|
+      !|###############################################################|
+      !|##1. Get the level of the saturation spectrum in transition
+      !|##   region A
+      !|###############################################################|
+      !-------------------------------------------
+      ! 1a, get saturation level at KA1 (1.25xFPI)
+      !-------------------------------------------
       BT(KA1) = 0
       DO T=1, NTH
         BT(KA1)=BT(KA1)+INSPC(KA1,T)*WN2(KA1)**3.0*DTH
       ENDDO
-      BT(KA2) = 0.006
+      !-----------------------------------------------
+      ! 1b, Set saturation level at KA2 (3xFPI) to SAT
+      !-----------------------------------------------
+      BT(KA2) = SAT
+      !-------------------------------------------------------------
+      ! 1c, Find slope of saturation spectrum in transition region A
+      !-------------------------------------------------------------
       M = ( BT(KA2) - BT(KA1) ) / ( WN2(KA2) - WN2(KA1) )
+      !----------------------------------------------------------------
+      ! 1d, Find intercept of saturation spectrum in transition region
+      !     A
+      !----------------------------------------------------------------
       IC = BT(KA1) - M * WN2(KA1)
+      !------------------------------------------------------
+      ! 1e, Calculate saturation level for all wavenumbers in
+      !     transition region A
+      !------------------------------------------------------
       DO K=KA1,KA2
         BT(K)=M*WN2(K)+IC
       ENDDO
-      !|---------------------------------------------------------------|
-      !|--Determine the directionality at each wavenumber -------------|
-      !|---------------------------------------------------------------|
+      !|###############################################################|
+      !|##2. Determine the directionality at each wavenumber in
+      !|##   transition region B
+      !|###############################################################|
+      !-----------------------------------------------
+      ! 2a, Find angle of spectral peak at KA2 (3xFPI)
+      !-----------------------------------------------
       MAXANG = 0.0
       DO T=1, NTH
         IF (INSPC(KA2,T) .GT. MAXANG) THEN
           MAXANG=INSPC(KA2,T)
         ENDIF
       ENDDO
+      !-------------------------------
+      ! 2b, Check if peak spans 2 bins
+      !-------------------------------
+      !MAI = total number of angles of peak (if it spans more than 1)
       MAI = 0
       DO T=1, NTH
         IF (MAXANG .EQ. INSPC(KA2,T)) THEN
           MAI = MAI+1
         ENDIF
       ENDDO
+      !ANGLE1 = angles that correspond to peak (array)
       MAI = MAX(1,MAI)
       ALLOCATE(ANGLE1(MAI))
+      !-----------------------------------------------------
+      ! 2c, If peak spans 2 or more bins it must be averaged
+      !-----------------------------------------------------
       K=1
       DO T=1, NTH
         IF (MAXANG .EQ. INSPC(KA2,T)) THEN
@@ -889,8 +892,7 @@
           K=K+1
         ENDIF
       ENDDO
-      ANGLEWIND=ATAN2(V,U)
-     DO K=1, MAI
+      DO K=1, MAI
         DO WHILE (ANGLE1(K) .LT. 0.0)
           ANGLE1(K) = ANGLE1(K) + TPI
         ENDDO
@@ -898,6 +900,7 @@
           ANGLE1(K) = ANGLE1(K) - TPI
         ENDDO
       ENDDO
+      ANGLEWIND=ATAN2(V,U)
       DO WHILE (ANGLEWIND .LT. 0.0)
         ANGLEWIND = ANGLEWIND + TPI
       ENDDO
@@ -915,6 +918,9 @@
             MINAN = ANGLE1(I)
           ENDIF
         ENDDO
+      !------------------------------------------------------
+      !  Need to distinguish if mean cross the origin (0/2pi)
+      !------------------------------------------------------
         IF (MAXAN-MINAN .GT. PI) THEN
           DO I=1, MAI
             IF (MAXAN - ANGLE1(I) .GT. PI) THEN
@@ -934,72 +940,77 @@
       DO WHILE (ANGLE2 .GE. TPI)
         ANGLE2 = ANGLE2 - TPI
       ENDDO
-      IF ((ANGLE2 .LE. PI/2.0 .AND. ANGLEWIND .GE. 3.0*PI/2.0)) THEN
-        CALL ANGLEDIFF(ANGLE2,ANGLEWIND,ANGDIF)
-        M = ANGDIF/(WN2(KA3) - WN2(KA2))
-        IC=ANGLE2
-       DO K=KA2, KA3
-          ANG(K)=IC-M*(WN2(K)-WN2(KA2))
-        ENDDO
-      ELSEIF (ANGLE2 .GE. 3.0*PI/2.0 .AND. ANGLEWIND .LE. PI/2.0) THEN
-        CALL ANGLEDIFF(ANGLE2,ANGLEWIND,ANGDIF)
-        M = ANGDIF / ( WN2(KA3) - WN2(KA2) )
-        IC = ANGLE2
-        DO K=KA2, KA3
-          ANG(K)= IC + M*(WN2(K)-WN2(KA2))
-        ENDDO
-     ELSE
-        ANGDIF = ANGLEWIND - ANGLE2
-        M = ANGDIF / ( WN2(KA3) - WN2(KA2) )
-        IC = ANGLE2
-        DO K=KA2, KA3
-          ANG(K) = M * (WN2(K)-WN2(KA2)) + IC
-        ENDDO
-      ENDIF
-!|--------------------------------------------------------------------
-!|    Attach portion of spectrum that follows original directionality,
-!|       but transitions from B at 1.25 times the peak input frequency
-!|       to B=0.006 at 3 times the peak input frequency
-!|--------------------------------------------------------------------
+      !
+      !---------------------------------------------------
+      ! This deals with angles that are less than 90
+      !---------------------------------------------------
+      if (cos(angle2-anglewind) .ge. 0.) then  !Less than 90
+        m=asin(sin(anglewind-angle2))/(wn2(ka3)-wn2(ka2))
+        ic=angle2
+        do k=ka2, ka3
+          ang(k)=ic +m*(wn2(k)-wn2(ka2))
+        enddo
+      else
+      !----------------------------------------------------
+      !  This deals with angels that turn clockwise
+      !----------------------------------------------------
+        if (sin(anglewind-angle2).GE.0) then
+         m=acos(cos(anglewind-angle2))/(wn2(ka3)-wn2(ka2))
+          ic=angle2
+          do k=ka2, ka3
+            ang(k)=ic-m*(wn2(k)-wn2(ka2))
+          enddo
+        else
+      !-----------------------------------------------------
+      !  This deals with angels that cross counter-clockwise
+      !-----------------------------------------------------
+          m=acos(cos(anglewind-angle2))/(wn2(ka3)-wn2(ka2))
+          ic=angle2
+          do k=ka2, ka3
+            ang(k)=ic+m*(wn2(k)-wn2(ka2))
+          enddo
+        endif
+      endif
+      !----------------------------------------------
+      ! Region A, Saturation level decreased linearly
+      ! while direction is maintained
+      !----------------------------------------------
       DO K=KA1, KA2-1
         CALL MEAN(INSPC(K,:),NTH,AVG)
         DO T=1,NTH
           INSPC(K,T)=BT(K)*INSPC(K,T)/TPI/(WN2(K)**3.0)/AVG
         ENDDO
       ENDDO
-!|--------------------------------------------------------------------
-!|    Attach portion of spectrum that has a constant B value of 0.006,
-!|       but turns to be in line with the surface wind.
-!|--------------------------------------------------------------------
+      !-----------------------------------------------------------
+      ! Region B, Saturation level left flat while spectrum turned
+      ! to direction of wind
+      !-----------------------------------------------------------
       DO K = KA2, KA3
         DO T=1, NTH
-          CALL ANGLEDIFF(TH(T),ANG(K),ANGDIF)
+          angdif=th(t)-ang(k)
           IF (COS(ANGDIF) .GT. 0.0) THEN
             NORMSPC(T) = COS(ANGDIF)**2.0
           ELSE
             NORMSPC(T)=0.0
           ENDIF
        ENDDO
-        CALL MEAN(NORMSPC,SIZE(NORMSPC),AVG)
+        CALL MEAN(NORMSPC,NTH,AVG)
         DO T=1, NTH
-          INSPC(K,T) = 0.006 * NORMSPC(T)/TPI/(WN2(K)**3.0)/AVG
+          INSPC(K,T) = SAT * NORMSPC(T)/TPI/(WN2(K)**3.0)/AVG
         ENDDO
       ENDDO
       DO T=1, NTH
-        CALL ANGLEDIFF(TH(T),ANGLEWIND,ANGDIF)
+        angdif=th(t)-anglewind
         IF (COS(ANGDIF) .GT. 0.0) THEN
           NORMSPC(T) = COS(ANGDIF)**2.0
         ELSE
           NORMSPC(T) = 0.0
         ENDIF
       ENDDO
-      CALL MEAN( NORMSPC,SIZE(NORMSPC),AVG )
-!|--------------------------------------------------------------------
-!|    Attach remainder of tail, aligned with surface wind and B=0.006
-!|--------------------------------------------------------------------
+      CALL MEAN( NORMSPC,NTH,AVG )
       DO K=KA3+1, NKT
         DO T=1, NTH
-         INSPC(K,T)=NORMSPC(T)*(0.006)/TPI/(WN2(K)**3.0)/AVG
+         INSPC(K,T)=NORMSPC(T)*(SAT)/TPI/(WN2(K)**3.0)/AVG
         ENDDO
       ENDDO
       DEALLOCATE(ANGLE1)
