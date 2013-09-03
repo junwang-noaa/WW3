@@ -1084,7 +1084,7 @@
                                  I1(:,:), I2(:,:), I3(:), I4(:),              &
                                  INFLND(:,:)
       INTEGER, ALLOCATABLE    :: NX_BEG(:), NX_END(:)
-!/MPI INTEGER, ALLOCATABLE    :: NX_SIZE(:), IRQ(:), MSTAT(:,:)
+!/MPIBDI INTEGER, ALLOCATABLE    :: NX_SIZE(:), IRQ(:), MSTAT(:,:)
 !/MPI INTEGER                 :: IM, NX_REM, TAG, NRQ
 
       INTEGER, ALLOCATABLE    :: TMPINT_OM(:,:),TMPINT(:,:)
@@ -1157,6 +1157,8 @@
                                                      ! not necessarily mean 
                                                      ! that this solution is
                                                      ! utilized)
+      LOGICAL                 :: LMPIBDI=.FALSE.     ! true if MPIBDI switch is set
+
       INTEGER  :: ITRI, IM1, IM2, IT, JT, IsFirst
       REAL :: DIST_MIN, DIST_MAX, eDist
 
@@ -1187,7 +1189,7 @@
          IF ( IMPROC.EQ.NMPERR ) WRITE(MDSE,1000)
          CALL EXTCDE (1000)
       END IF
-!
+!/MPIBDI     LMPIBDI=.TRUE.
 !/SCRIP      IF (IMPROC .EQ. 1) THEN
 !/SCRIP         L_MASTER = .TRUE.
 !/SCRIP         L_WRITE  = .TRUE.
@@ -1200,7 +1202,7 @@
 !
 !KRL  Allocate helper arrays to enable bottleneck loop parallelization
       ALLOCATE ( NX_BEG(NMPROC), NX_END(NMPROC) )
-!/MPI      ALLOCATE ( NX_SIZE(NMPROC), IRQ(2*NMPROC), MSTAT(MPI_STATUS_SIZE,2*NMPROC) )
+!/MPIBDI      ALLOCATE ( NX_SIZE(NMPROC), IRQ(2*NMPROC), MSTAT(MPI_STATUS_SIZE,2*NMPROC) )
 !
 !!HT:
 !!HT: Set up and initialize storage data structures ....
@@ -1286,6 +1288,7 @@
 !!HT: could provide data to a low-res grid. The high-res grid with data
 !!HT: furthest away from its own open boundary will be used.
 
+!/SCRIPNC      IF (.NOT. L_STOP) THEN   ! Do not need MAPBDI if going to stop after generating mappings
       IF ( .NOT. FLGBDI ) THEN
 !
          IF ( FLAGLL ) THEN
@@ -1344,35 +1347,45 @@
             ELSE
                IF(IMPROC.EQ.NMPERR)WRITE(MDSE,'(A)') &
                    '  Generating map with distances to boundary.'
+!  for purposes of screen output, would be useful to wait for other processors to catch up here...(if mpibdi switch used)
                ALLOCATE ( MDATAS(GDST)%MAPBDI(NY,NX) )
                MAPBDI => MDATAS(GDST)%MAPBDI
 !
-!KRL           Set up ranges for X. If not MPI, just 1 to NX
-               NX_BEG(1) = 1
-               IF ( NMPROC .EQ. 1 ) THEN
-                  NX_END(1) = NX
-!/MPI                  NX_SIZE(1) = NX
-!/MPI               ELSE
-!/MPI                  NX_REM = MOD( NX, NMPROC )
-!/MPI                  NX_SIZE(1) = NX / NMPROC
-!/MPI                  IF (NX_REM .GT. 0) NX_SIZE(1) = NX_SIZE(1) + 1
-!/MPI                  NX_END(1) = NX_BEG(1) + NX_SIZE(1) - 1
-!/MPI                  DO IM = 2, NMPROC
-!/MPI                     NX_BEG(IM) = NX_END(IM-1) + 1
-!/MPI                     NX_SIZE(IM) = NX / NMPROC
-!/MPI                     IF (IM .LE. NX_REM) NX_SIZE(IM) = NX_SIZE(IM) + 1
-!/MPI                     NX_END(IM) = NX_BEG(IM) + NX_SIZE(IM) - 1
-!/MPI                     NX_SIZE(IM-1) = NX_SIZE(IM-1) * NY
-!/MPI                  END DO
-!/MPI                  NX_SIZE(NMPROC) = NX_SIZE(NMPROC) * NY
-               END IF
+!KRL           Set up ranges for X. If not MPIBDI, just 1 to NX
+               NX_BEG(IMPROC) = 1
+               NX_END(IMPROC) = NX
+!/MPIBDI               NX_BEG(1) = 1
+!/MPIBDI               IF ( NMPROC .EQ. 1 ) THEN
+!/MPIBDI                  NX_END(1) = NX
+!/MPIBDI                  NX_SIZE(1) = NX
+!/MPIBDI               ELSE
+!/MPIBDI                  NX_REM = MOD( NX, NMPROC )
+!/MPIBDI                  NX_SIZE(1) = NX / NMPROC
+!/MPIBDI                  IF (NX_REM .GT. 0) NX_SIZE(1) = NX_SIZE(1) + 1
+!/MPIBDI                  NX_END(1) = NX_BEG(1) + NX_SIZE(1) - 1
+!/MPIBDI                  DO IM = 2, NMPROC
+!/MPIBDI                     NX_BEG(IM) = NX_END(IM-1) + 1
+!/MPIBDI                     NX_SIZE(IM) = NX / NMPROC
+!/MPIBDI                     IF (IM .LE. NX_REM) NX_SIZE(IM) = NX_SIZE(IM) + 1
+!/MPIBDI                     NX_END(IM) = NX_BEG(IM) + NX_SIZE(IM) - 1
+!/MPIBDI                     NX_SIZE(IM-1) = NX_SIZE(IM-1) * NY
+!/MPIBDI                  END DO
+!/MPIBDI                  NX_SIZE(NMPROC) = NX_SIZE(NMPROC) * NY
+!/MPIBDI               END IF
 !KRL           Setup complete
 !
 ! Loop to determine MAPBDI
                DO IDST=NX_BEG(IMPROC), NX_END(IMPROC)
-                  IF(MOD(IDST,25).EQ.0) WRITE(MDSE,'(4x,3(A,I5))')&
-                    'processing column ',IDST,' out of ',NX, &
-                    ' on processor ',IMPROC
+                  IF(MOD(IDST,25).EQ.0)THEN
+                     IF(LMPIBDI)THEN
+                        WRITE(MDSE,'(4x,3(A,I5))')&
+                             'processing column ',IDST,' out of ',NX, &
+                             ' on processor ',IMPROC
+                     ELSEIF(IMPROC.EQ.NMPERR)THEN
+                        WRITE(MDSE,'(4x,2(A,I5))')&
+                             'processing column ',IDST,' out of ',NX
+                     ENDIF
+                  ENDIF
                   DO JDST=1, NY
                      IF ( MAPSTA(JDST,IDST) .EQ. 0 ) THEN ! (excluded point)
                         MAPBDI(JDST,IDST) = -1. / SIG(1) * DTMAX ! new (bug fix)
@@ -1381,11 +1394,17 @@
                         MAPBDI(JDST,IDST) =  0.
                      ELSE ! ABS(MAPSTA)=1 (sea point)
                         MAPBDI(JDST,IDST) = 1.0E+10
+                     ENDIF ! (if sea point)
+                  END DO ! DO IDST...
+               END DO ! DO JDST...
 
-                        DO IBND=1,NX
-                           DO JBND=1,NY
-                              IF ( ABS(MAPSTA(JBND,IBND)) .EQ. 2 ) THEN
-                                 ! (boundary point)
+               DO IBND=1,NX
+                  DO JBND=1,NY
+                     IF ( ABS(MAPSTA(JBND,IBND)) .EQ. 2 ) THEN
+                        ! (boundary point)
+                        DO IDST=NX_BEG(IMPROC), NX_END(IMPROC)
+                           DO JDST=1, NY
+                              IF (ABS(MAPSTA(JDST,IDST)) .EQ. 1) THEN
                                  !....find distance to this boundary point.
                                  DD=FACTOR*W3DIST(FLAGLL,XGRD(JDST,IDST), &
                                     YGRD(JDST,IDST),XGRD(JBND,IBND), &
@@ -1406,31 +1425,28 @@
 
                   END DO ! DO IDST...
                END DO ! DO JDST...
-!                   CALL MPI_BARRIER ( MPI_COMM_WORLD, IERR_MPI )
-!/MPI !KRL          Exchange (Note: for efficiency, post receives first)
-!/MPI !KRL          MPI_ALLGATHERV would do this, but freezes for PGI and open_mpi
-!/MPI !KRL          This suggests they use blocking SEND/RECV, so this is faster anyway and less implementation-dependent
-!/MPI               NRQ = 0
-!/MPI               DO IM = 1, NMPROC
-!/MPI                  IF ( IM .NE. IMPROC ) THEN
-!/MPI                     NRQ = NRQ + 1
-!/MPI                     TAG = NMPROC * IM + IMPROC
-!/MPI                     CALL MPI_IRECV ( MAPBDI(1,NX_BEG(IM)), NX_SIZE(IM), MPI_REAL, IM - 1, TAG, MPI_COMM_WORLD, &
-!/MPI                                      IRQ(NRQ), IERR_MPI )
-!                         CALL MPI_BARRIER ( MPI_COMM_WORLD, IERR_MPI )
-!/MPI                  END IF
-!/MPI               END DO
-!/MPI               DO IM = 1, NMPROC
-!/MPI                  IF ( IM .NE. IMPROC ) THEN
-!/MPI                     NRQ = NRQ + 1
-!/MPI                     TAG = NMPROC * IMPROC + IM
-!/MPI                     CALL MPI_ISEND( MAPBDI(1,NX_BEG(IMPROC)), NX_SIZE(IMPROC), MPI_REAL, IM - 1, TAG, MPI_COMM_WORLD, &
-!/MPI                                     IRQ(NRQ), IERR_MPI )
-!                         CALL MPI_BARRIER ( MPI_COMM_WORLD, IERR_MPI )
-!/MPI                  END IF
-!/MPI               END DO
-!/MPI               CALL MPI_WAITALL( NRQ, IRQ, MPI_STATUS_IGNORE, IERR_MPI )
-!/MPI               CALL MPI_BARRIER ( MPI_COMM_WORLD, IERR_MPI )
+!/MPIBDI !KRL          Exchange (Note: for efficiency, post receives first)
+!/MPIBDI !KRL          MPI_ALLGATHERV would do this, but freezes for PGI and open_mpi
+!/MPIBDI !KRL          This suggests they use blocking SEND/RECV, so this is faster anyway and less implementation-dependent
+!/MPIBDI               NRQ = 0
+!/MPIBDI               DO IM = 1, NMPROC
+!/MPIBDI                  IF ( IM .NE. IMPROC ) THEN
+!/MPIBDI                     NRQ = NRQ + 1
+!/MPIBDI                     TAG = NMPROC * IM + IMPROC
+!/MPIBDI                     CALL MPI_IRECV ( MAPBDI(1,NX_BEG(IM)), NX_SIZE(IM), MPI_REAL, IM - 1, TAG, MPI_COMM_WORLD, &
+!/MPIBDI                                      IRQ(NRQ), IERR_MPI )
+!/MPIBDI                  END IF
+!/MPIBDI               END DO
+!/MPIBDI               DO IM = 1, NMPROC
+!/MPIBDI                  IF ( IM .NE. IMPROC ) THEN
+!/MPIBDI                     NRQ = NRQ + 1
+!/MPIBDI                     TAG = NMPROC * IMPROC + IM
+!/MPIBDI                     CALL MPI_ISEND( MAPBDI(1,NX_BEG(IMPROC)), NX_SIZE(IMPROC), MPI_REAL, IM - 1, TAG, MPI_COMM_WORLD, &
+!/MPIBDI                                     IRQ(NRQ), IERR_MPI )
+!/MPIBDI                  END IF
+!/MPIBDI               END DO
+!/MPIBDI               CALL MPI_WAITALL( NRQ, IRQ, MPI_STATUS_IGNORE, IERR_MPI )
+!/MPIBDI               CALL MPI_BARRIER ( MPI_COMM_WORLD, IERR_MPI )
                IF(IMPROC.EQ.NMPERR)WRITE(MDSE,'(A/)') &
                '  Finished generating map with distances to boundary.'
 
@@ -1473,11 +1489,8 @@
             END IF
          END DO
          FLGBDI = .TRUE.
-!/SCRIPTST         CALL DATE_AND_TIME (CDATE_TIME(1), CDATE_TIME(2), CDATE_TIME(3), DATE_TIME)
-!/SCRIPTST         END_TIME = ((DATE_TIME(5)*60 + DATE_TIME(6))*60 + DATE_TIME(7))*1000 + DATE_TIME(8)
-!/SCRIPTST         ELAPSED_TIME = END_TIME - BEG_TIME(3)
-!/SCRIPTST         WRITE(NMYOUT,*) "WMGHGH, BOTTLENECK TOOK ", ELAPSED_TIME, " MSEC"
       END IF
+!/SCRIPNC      END IF
 !
 ! -------------------------------------------------------------------- /
 ! 2.  Data sources for reconcilliation
@@ -1611,8 +1624,13 @@
 !/SCRIPTST                      WRITE(NMYOUT,*) "WMGHGH, SCRIP WRAPPER START: ", ELAPSED_TIME, " MSEC"
 !/SCRIPNC               IF (L_STOP) L_WRITE = (IMPROC .EQ. IMPROC_ASSIGN)
 !/SCRIPNC               IF ((.NOT. L_STOP) .OR. ((.NOT. L_READ) .AND. L_WRITE)) THEN 
-!/SCRIP                   WRITE(MDSE,'(A,2(I5),A,I5)')'Calling SCRIP for GSRC,GDST = ', &
+!/SCRIP                   IF (L_STOP) THEN ! we are sending different grids to different processors
+!/SCRIP                     WRITE(MDSE,'(A,2(I5),A,I5)')'Calling SCRIP for GSRC,GDST = ', &
 !/SCRIP                          GSRC,GDST,' on processor ',IMPROC
+!/SCRIP                   ELSEIF(IMPROC.EQ.NMPERR)THEN
+!/SCRIP                     WRITE(MDSE,'(A,2(I5))')'Calling SCRIP for GSRC,GDST = ', &
+!/SCRIP                          GSRC,GDST
+!/SCRIP                   ENDIF
 !/SCRIP                   CALL scrip_wrapper (GSRC, GDST,         &
 !/SCRIP                     GRIDS(GSRC)%MAPSTA,GRIDS(GSRC)%MAPST2,FLAGLL,      &
 !/SCRIP                     GRIDS(GSRC)%GRIDSHIFT,L_WRITE,L_READ,T38)
@@ -1622,9 +1640,7 @@
 !/SCRIPNC                  IF (.NOT. L_READ) THEN
 !/SCRIPNC                     IMPROC_ASSIGN = IMPROC_ASSIGN + 1
 !/SCRIPNC                     IF (IMPROC_ASSIGN .GT. NMPROC) IMPROC_ASSIGN = 1
-!/SCRIPNC                     IF (.NOT. L_WRITE) CYCLE
-!/SCRIPNC                  ELSE
-!/SCRIPNC                     CYCLE
+!/SCRIPNC                  CYCLE
 !/SCRIPNC                  END IF
 !/SCRIPNC               END IF
 !/SCRIPTST                      CALL DATE_AND_TIME (CDATE_TIME(1), CDATE_TIME(2), CDATE_TIME(3), DATE_TIME)
@@ -2924,6 +2940,9 @@
 !/SCRIPNC  END IF
 !
       DEALLOCATE ( I1, I2, I3, I4 )
+!/MPIBDI      DEALLOCATE ( NX_SIZE, IRQ, MSTAT )
+      DEALLOCATE ( NX_BEG, NX_END )
+
 !
 ! 2.j Test output counters
 !

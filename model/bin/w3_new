@@ -16,9 +16,9 @@
 # programs used :                                                             #
 #                                                                             #
 #                                                      Hendrik L. Tolman      #
-#                                                      July 2012              #
+#                                                      July 2013              #
 #                                                                             #
-#    Copyright 2009-2012 National Weather Service (NWS),                      #
+#    Copyright 2009-2013 National Weather Service (NWS),                      #
 #       National Oceanic and Atmospheric Administration.  All rights          #
 #       reserved.  WAVEWATCH III is a trademark of the NWS.                   #
 #       No unauthorized use without permission.                               #
@@ -61,9 +61,14 @@
   for key in $keys
   do
     case $key in
-     'all'    ) cd $main_dir/obj ; rm -f *.o 
-                cd $main_dir/mod ; rm -f *.mod
-                cd $main_dir/exe ; rm -f ww3_* gx_* ;;
+     'all'    ) cd $main_dir     ; rm -f obj_????/*.o 
+                                   rm -f mod_????/*.mod
+                                   rm -f exe/ww3_*
+                                   rm -f exe/gx_*
+                                   rm -f exe/exec_type ;;
+#    'all'    ) cd $main_dir/obj ; rm -f *.o 
+#               cd $main_dir/mod ; rm -f *.mod
+#               cd $main_dir/exe ; rm -f ww3_* gx_* ;;
      'mach'   ) cd $main_dir/ftn ; touch w3servmd.ftn
                                    touch wmmdatmd.ftn
                                    touch wminitmd.ftn
@@ -74,10 +79,12 @@
                                    touch ww3_outp.ftn
                                    touch ww3_grib.ftn ;; 
      'grib'   ) cd $main_dir/ftn ; touch ww3_grib.ftn ;; 
-     'shared' ) cd $main_dir/obj ; rm -f *.o 
-                cd $main_dir/mod ; rm -f *.mod ;;
-     'mpp'    ) cd $main_dir/obj ; rm -f *.o 
-                cd $main_dir/mod ; rm -f *.mod ;;
+     'shared' ) ;;
+#    'shared' ) cd $main_dir/obj ; rm -f *.o 
+#               cd $main_dir/mod ; rm -f *.mod ;;
+     'mpp'    );;
+#    'mpp'    ) cd $main_dir/obj ; rm -f *.o 
+#               cd $main_dir/mod ; rm -f *.mod ;;
      'thr0'   ) cd $main_dir/ftn ; touch w3wavemd.ftn ;;
      'thr1'   ) cd $main_dir/ftn ; touch w3updtmd.ftn
                                    touch w3iogomd.ftn ;;
@@ -202,7 +209,10 @@
      'wind'   ) cd $main_dir/ftn ; touch w3updtmd.ftn
                                    touch ww3_prep.ftn ;; 
      'windx'  ) cd $main_dir/ftn ; touch wmupdtmd.ftn ;;
-     'rwind'  ) cd $main_dir/ftn ; touch w3updtmd.ftn ;;
+     'rwind'  ) cd $main_dir/ftn ; touch w3updtmd.ftn
+                                   touch w3gdatmd.ftn
+                                   touch w3iogrmd.ftn
+                                   touch ww3_grid.ftn ;;
      'curr'   ) cd $main_dir/ftn ; touch w3updtmd.ftn
                                    touch ww3_prep.ftn ;; 
      'currx'  ) cd $main_dir/ftn ; touch wmupdtmd.ftn ;;
@@ -222,6 +232,7 @@
                                    touch ww3_shel.ftn ;; 
      'mggse'  ) cd $main_dir/ftn ; touch w3pro3md.ftn
                                    touch ww3_shel.ftn ;;
+     'mpiexp' ) cd $main_dir/ftn ; touch wmgridmd.ftn ;;
      'scrip'  ) cd $main_dir/ftn ; touch wmgridmd.ftn ;;
      'scripnc') cd $main_dir/ftn ; touch wmgridmd.ftn
                 cd $main_dir/ftn/SCRIP ; touch scrip_interface.ftn ;;

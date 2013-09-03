@@ -89,8 +89,8 @@
   for type in mach nco grib shared mpp thr0 thr1 c90 nec lrecl grid \
               prop stress s_ln source stab s_nl snls s_bot s_db s_tr s_bs s_xx \
               wind windx rwind curr currx tdyn dss0 pdif miche \
-              mgwind mgprop mggse nnt mprf reflection mcp netcdf scrip scripnc tide \
-              ssdcd mfbg
+              mgwind mgprop mggse nnt mprf reflection mcp netcdf \
+              scrip scripnc tide mpiexp ssdcd mfbg
   do
     case $type in
       mach   ) TY='one'
@@ -109,6 +109,10 @@
       mpp    ) TY='one'
                ID='message passing protocol'
                OK='SHRD MPI' ;;
+      mpiexp ) TY='upto1'
+               ID='experimental MPI option'
+               TS='MPIBDI'
+               OK='MPIBDI' ;;
       thr0   ) TY='upto1'
                ID='directive controlled threading (subs)'
                TS='OMP0'
@@ -310,6 +314,7 @@
     case $type in
       shared ) shared=$sw ;;
       mpp    ) mpp=$sw ;;
+      mpiexp ) mpiexp=$sw ;;
       thr0   ) nr_thr=`expr $nr_thr + $n_found` ;;
       thr1   ) nr_thr=`expr $nr_thr + $n_found` ;;
       prop   ) p_switch=$sw ;;
@@ -438,7 +443,7 @@
   if [ "$s_inds" = 'ST4' ] && [ "$str_st3" = 'no' ]
   then
       echo ' '
-      echo "   *** !/ST3 cannot be used in combination with !/$stress"
+      echo "   *** !/ST4 cannot be used in combination with !/$stress"
       echo "       Stresses embedded in source terms, use FLX0."
       echo ' ' ; exit 7
   fi
@@ -534,7 +539,7 @@
 
   progs='ww3_grid ww3_strt ww3_prep ww3_prnc ww3_shel ww3_multi ww3_sbs1
          ww3_outf ww3_outp ww3_trck ww3_grib gx_outf gx_outp ww3_ounf 
-         ww3_ounp ww3_gspl ww3_gint ww3_bound ww3_systrk'
+         ww3_ounp ww3_gspl ww3_gint ww3_bound ww3_bounc ww3_systrk'
 
   for prog in $progs
   do
@@ -594,7 +599,7 @@
                 aux="$aux  wmunitmd" 
                 if [ "$scrip" = 'SCRIP' ]
                 then
-	          aux="$aux scrip_constants scrip_grids scrip_iounitsmod"
+                  aux="$aux scrip_constants scrip_grids scrip_iounitsmod"
                   aux="$aux scrip_remap_vars scrip_timers scrip_errormod scrip_interface"
                   aux="$aux scrip_kindsmod scrip_remap_conservative wmscrpmd"
                 fi 
@@ -614,7 +619,7 @@
                 aux="$aux  wmunitmd"  
                 if [ "$scrip" = 'SCRIP' ]
                 then
-	          aux="$aux scrip_constants scrip_grids scrip_iounitsmod"
+                  aux="$aux scrip_constants scrip_grids scrip_iounitsmod"
                   aux="$aux scrip_remap_vars scrip_timers scrip_errormod scrip_interface"
                   aux="$aux scrip_kindsmod scrip_remap_conservative wmscrpmd"
                 fi 

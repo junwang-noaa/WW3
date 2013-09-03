@@ -484,7 +484,7 @@
                 FSN, FSPSI,FSFCT,FSNIMP,NTRI,COUNTOT, COUNTRI, NNZ
               WRITE (NDSM)                                            &
                 X0, Y0, SX, SY, DXYMAX, XYB, TRIGP, TRIA,             &
-                CROSSDIFF, LEN, IEN, ANGLE0, ANGLE, TRIA03, SI, MAXX, MAXY,   &
+                CROSSDIFF, LEN, IEN, ANGLE0, ANGLE, SI, MAXX, MAXY,   &
                 DXYMAX, INDEX_CELL, CCON, VNEIGH, COUNTCON, IE_CELL,  &
                 POS_CELL, IOBP, IOBPD, IAA, JAA, POSI
             END SELECT !GTYPE
@@ -496,7 +496,7 @@
                DTCFL, DTCFLI, DTMAX, DTMIN, DMIN, CTMAX,              &
                FICE0, FICEN, FICEL, PFMOVE, FLDRY, FLCX, FLCY, FLCTH, &
                FLCK, FLSOU, FLBPI, FLBPO, CLATS, CLATIS,CTHG0S
-!/SCRIP   WRITE(NDSM)GRIDSHIFT
+          WRITE(NDSM)GRIDSHIFT
 !/SEC1              WRITE (NDSM) NITERSEC1
         ELSE
           READ (NDSM,END=801,ERR=802,IOSTAT=IERR)                     &
@@ -529,7 +529,7 @@
                 END IF
               READ (NDSM,END=801,ERR=802,IOSTAT=IERR)                 &
                 X0, Y0, SX, SY, DXYMAX, XYB, TRIGP, TRIA,             &
-                CROSSDIFF, LEN, IEN, ANGLE0, ANGLE, TRIA03, SI, MAXX, MAXY,   &
+                CROSSDIFF, LEN, IEN, ANGLE0, ANGLE, SI, MAXX, MAXY,   &
                 DXYMAX, INDEX_CELL, CCON, VNEIGH, COUNTCON, IE_CELL,  &
                 POS_CELL, IOBP, IOBPD, IAA, JAA, POSI
                 XGRD(1,:)=XYB(:,1)
@@ -550,7 +550,7 @@
                FICE0, FICEN, FICEL, PFMOVE, FLDRY, FLCX, FLCY,        &
                FLCTH, FLCK, FLSOU, FLBPI, FLBPO, CLATS, CLATIS,CTHG0S
 
-!/SCRIP       READ(NDSM,END=801,ERR=802,IOSTAT=IERR)GRIDSHIFT
+              READ(NDSM,END=801,ERR=802,IOSTAT=IERR)GRIDSHIFT
 
 !/SEC1        READ (NDSM) NITERSEC1
         END IF
