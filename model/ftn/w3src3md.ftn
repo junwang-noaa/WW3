@@ -59,15 +59,12 @@
 !/
 !/ Public variables
 !/
-      INTEGER, PARAMETER      :: NHMAX =    25
-      INTEGER(KIND=4)         :: NH(3), THO(2,3,NHMAX)
-      REAL                    :: HA(NHMAX,3), HD(NHMAX,3), HA2(NHMAX,3)
+      INTEGER(KIND=4)         :: NH(3)
       REAL,    PARAMETER      :: kappa = 0.40       !Von Karman's constant
       !air kinematic viscosity (used in WAM)
       REAL,    PARAMETER      :: nu_air  = 1.4E-5        
       INTEGER, PARAMETER      :: ITAUMAX=200,JUMAX=200
       INTEGER, PARAMETER      :: IUSTAR=100,IALPHA=200, ILEVTAIL=50
-      INTEGER, PARAMETER      :: IAB=200  
       REAL                    :: TAUT(0:ITAUMAX,0:JUMAX), DELTAUW, DELU
       ! Table for H.F. stress as a function of 2 variables
       REAL                    :: TAUHFT(0:IUSTAR,0:IALPHA), DELUST, DELALP
@@ -326,7 +323,7 @@
 !       TAUWX-Y Real  I   Components of the wave-supported stress.
 !       TAUWNX  Real  I   Component of the negative wave-supported stress.
 !       TAUWNY  Real  I   Component of the negative wave-supported stress.
-!       ICE     Real  I   Sea ice fraction.
+!       ICE     Real  I   Sea ice fraction.                        !/Stefan: ICE is DUMMY argument; remove later.
 !       S       R.A.  O   Source term (1-D version).
 !       D       R.A.  O   Diagonal term of derivative.             *)
 !       LLWS    L.A.  O   Wind sea true/false array for each component
@@ -367,7 +364,7 @@
       USE W3GDATMD, ONLY: NK, NTH, NSPEC, XFR, DDEN, SIG, SIG2, TH,   &
                           ESIN, ECOS, EC2, ZZWND, AALPHA, BBETA, ZZALP,&
                           SSWELLF,                                     &
-                          DDEN2, DTH, SSINTHP,ZZ0RAT, FLICES
+                          DDEN2, DTH, SSINTHP,ZZ0RAT
 !/S      USE W3SERVMD, ONLY: STRACE
 !/T      USE W3ODATMD, ONLY: NDST
 !/T1      USE W3ODATMD, ONLY: NDST
@@ -381,7 +378,7 @@
 !/
       REAL, INTENT(IN)        :: A(NSPEC)
       REAL, INTENT(IN)        :: CG(NK), K(NSPEC),Z0,U, CD
-      REAL, INTENT(IN)        :: USTAR, USDIR, AS, DRAT, ICE
+      REAL, INTENT(IN)        :: USTAR, USDIR, AS, DRAT, ICE       !/Stefan: ICE is DUMMY argument; remove later.
       REAL, INTENT(OUT)       :: S(NSPEC), D(NSPEC), TAUWX, TAUWY, TAUWNX, TAUWNY
       LOGICAL, INTENT(OUT)    :: LLWS(NSPEC)
       INTEGER, INTENT(IN)     :: IX, IY
@@ -446,13 +443,9 @@
 !
       STRESSSTAB(ISTAB,:)=0.
       STRESSSTABN(ISTAB,:)=0.
-!
-! Coupling coefficient times densit ration and fraction of free surface (1-ICE)
-!
       CONST0=BBETA*DRAT/(kappa**2)
 ! SSWELLF(1) is IDAMPING in ECMWAM
       CONST3 = SSWELLF(1)*2.*KAPPA*DRAT
-      IF (FLICES) CONST0=MIN(0.,MAX(1.,1.-ICE))*CONST0
 !
       COSU   = COS(USDIR)
       SINU   = SIN(USDIR)

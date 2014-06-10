@@ -5,7 +5,7 @@
 !/                  | WAVEWATCH III           NOAA/NCEP |
 !/                  |           H. L. Tolman            |
 !/                  |                        FORTRAN 90 |
-!/                  | Last update :         30-Oct-2009 |
+!/                  | Last update :         14-Nov-2013 |
 !/                  +-----------------------------------+
 !/
 !/    See subroutine for update log.
@@ -66,7 +66,7 @@
 !/                  | WAVEWATCH III           NOAA/NCEP |
 !/                  |           H. L. Tolman            |
 !/                  |                        FORTRAN 90 |
-!/                  | Last update :         30-Oct-2009 |
+!/                  | Last update :         14-Nov-2013 |
 !/                  +-----------------------------------+
 !/
 !/    12-Jan-1999 : Final FORTRAN 77                    ( version 1.18 )
@@ -86,8 +86,9 @@
 !/    29-May-2009 : Preparing distribution version.     ( version 3.14 )
 !/    30-Oct-2009 : Output file name with 3 digit id.   ( version 3.14 )
 !/                  (W. E. Rogers, NRL)
+!/    14-Nov-2013 : Remove cold start init. UST(DIR).   ( version 4.13 )
 !/
-!/    Copyright 2009 National Weather Service (NWS),
+!/    Copyright 2009-2013 National Weather Service (NWS),
 !/       National Oceanic and Atmospheric Administration.  All rights
 !/       reserved.  WAVEWATCH III is a trademark of the NWS. 
 !/       No unauthorized use without permission.
@@ -155,7 +156,7 @@
 !       Note that the original MAPSTA is dumped in the model def. file
 !       for use in the initial conditions (and output) programs.
 !     - Note that MAPSTA and MAPST2 data is combinded in the file.
-!     - The depth is recalculated in a write to avoid floting point
+!     - The depth is recalculated in a write to avoid floating point
 !       errors in W3STRT.
 !     - Fields and field info read by all, written by las processor
 !       only.
@@ -218,11 +219,12 @@
 ! 10. Source code :
 !
 !/ ------------------------------------------------------------------- /
-      USE W3GDATMD, ONLY: W3SETG
+      USE W3GDATMD, ONLY: W3SETG, W3SETREF
       USE W3ODATMD, ONLY: W3SETO
 !/
       USE W3GDATMD, ONLY: NX, NY, NSEA, NSEAL, NSPEC, MAPSTA, MAPST2, &
-                          GNAME, FILEXT
+                          GNAME, FILEXT, GTYPE, UNGTYPE
+      USE W3TRIAMD, ONLY: SETUGIOBP
       USE W3WDATMD
       USE W3ODATMD, ONLY: NDSE, NDST, IAPROC, NAPROC, NAPERR, NAPRST, &
                           IFILE => IFILE4, FNMPRE, NTPROC, IOSTYP
@@ -629,6 +631,15 @@
               MAPSTA = MOD(MAPTMP+2,8) - 2
               MAPST2 = (MAPTMP-MAPSTA) / 8
               DEALLOCATE ( MAPTMP )
+!
+! Updates reflections maps: 
+!
+              IF (GTYPE.EQ.UNGTYPE) THEN 
+                CALL SETUGIOBP
+!/REF1              ELSE 
+!/REF1                CALL W3SETREF
+                ENDIF 
+!
               DO IPART=1,NPART
                 NREC  = NREC + 1
                 READ (NDSR,REC=NREC,ERR=802,IOSTAT=IERR)              &
@@ -661,8 +672,6 @@
               TICE(2) =  0
               WLV     =  0.
               ICE     =  0.
-              UST     =  1.
-              USTDIR  =  0.
               ASF     =  1.
               FPIS    =  DUMFPI
 !/T              WRITE (NDST,9008)

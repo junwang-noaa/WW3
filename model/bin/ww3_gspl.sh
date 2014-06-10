@@ -13,9 +13,9 @@
 #       ww3_gspl : Grdi splitter.                                             #
 #                                                                             #
 #                                                      Hendrik L. Tolman      #
-#                                                      Jan 2013               #
+#                                                      January 2014           #
 #                                                                             #
-#    Copyright 2013 National Weather Service (NWS),                           #
+#    Copyright 2013-2014 National Weather Service (NWS),                      #
 #       National Oceanic and Atmospheric Administration.  All rights          #
 #       reserved.  WAVEWATCH III is a trademark of the NWS.                   #
 #       No unauthorized use without permission.                               #
@@ -30,6 +30,12 @@
 # 1.a.1 Setup file
 
   ww3_env="${HOME}/.wwatch3.env"                           # setup file
+# The following line must not be removed: it is a switch for local install
+# so that all bin scripts point to the local wwatch3.env
+# WW3ENV
+# For manual install (without install_ww3_tar or install_ww3_svn) make sure to
+# either use the generic ww3_env or to add your own ww3_env="${my_directory}"
+
   if [ ${WWATCH3_ENV} ]; then ww3_env="${WWATCH3_ENV}"; fi # alternate setup file
 
   home_dir=`pwd`
@@ -41,10 +47,11 @@
 # 1.a.2 Usage function
 
   scriptname="`basename $0`"
-  optstr="ad:f:hl:n:o:rs:t:v"
+  optstr="ad:e:f:hil:n:o:rs:t:v"
 
   nr_it=350
   target='0.75'
+  halo_ext=2
   comm_first='0.'
   comm_last='1.'
   frflag='T'
@@ -60,9 +67,12 @@ Required:
 Options:
   -a               : use entire assigned cummunicator for each grid
   -h               : help, print this.
+  -i               : create template file ww3_gint.inp_tmpl for
+                     later integration of output into single grid.
   -d data_dir      : directory with ww3_grid.inp and ancilary data
                       * default is working directory
                       * relative unless starting with '/'
+  -e halo_ext      : set halo extension, default is 2
   -o output_dir    : directory for std out redirects
                       * default is working directory
                       * relative unless starting with '/'
@@ -99,8 +109,10 @@ EOF
     -a) frflag='F' ;;
     -c) shift; info_comm="$1" ;;
     -d) shift; data_dir="$1" ;;
+    -e) shift; halo_ext="$1" ;;
     -f) shift; comm_first="$1" ;;
     -h) help=1 ;;
+    -i) gint=1 ;;
     -l) shift; comm_last="$1" ;;
     -n) shift; nr_it="$1" ;;
     -o) shift; outp_dir="$1" ;;
@@ -215,7 +227,7 @@ EOF
 # 1.d Set up work space  - - - - - - - - - - - - - - - - - - - - - - - - - - - 
 # 1.d.1 Genmeral preparations
 
-  w3_clean
+#  ${main_dir}/bin/w3_clean
 
   cd $home_dir
   rm -f $inp_file.new
@@ -223,6 +235,7 @@ EOF
   rm -f mod_def.$modID
   rm -f mod_def.$modID.*
   rm -f ww3_multi.$modID.*
+  rm -f part_*
 
   cd $data_dir
   filelist=`ls`
@@ -230,6 +243,7 @@ EOF
   cd $outp_dir
   rm -f *.out
 
+  rm -rf $temp_dir
   mkdir -p $temp_dir
   cd $temp_dir
   rm -f *.$modID $modID.* *.$modID.*
@@ -351,7 +365,7 @@ $ WAVEWATCH III Grid splitting input file                              $
 $ -------------------------------------------------------------------- $
   '$modID'
 $
-  $nr_grid  $nr_it  $target
+  $nr_grid  $nr_it  $target $halo_ext
 $
   $info_bot
   $info_obst
@@ -385,7 +399,7 @@ EOF
   echo ' '
   echo " Process individual grids ..."
 
-  for file in *.tmpl
+  for file in `ls *.tmpl`
   do
     grdID=`echo $file | sed 's/\./ /g' | awk '{ print $1 }'`
     echo "   Grid $grdID (ww3_grid.$grdID.out) ..."
@@ -403,7 +417,38 @@ EOF
   rm -f namelist.data
 
 # --------------------------------------------------------------------------- #
-# 4. Process ww3_multi.inp file                                               #
+# 4. Process ww3_ginf.inp_tmpl                                                #
+# --------------------------------------------------------------------------- #
+
+  if [ "$gint" = '1' ]
+  then
+    echo ' '
+    echo " Making ww3_gint.inp_tmpl ..."
+    nr_gint=`expr $nr_grid + 1`
+
+cat > ww3_gint.inp_tmpl << EOF
+$ -------------------------------------------------------------------- $
+$ WAVEWATCH III Grid integration input file                            $
+$ -------------------------------------------------------------------- $
+  DATE TIME TSTEP NR_STEPS
+$
+  $nr_gint
+$
+EOF
+
+  cat ww3_multi.$modID.$nr_grid | awk '{ print $1 }' >> ww3_gint.inp_tmpl
+  echo "'$modID'"                                    >> ww3_gint.inp_tmpl
+
+cat >> ww3_gint.inp_tmpl << EOF
+$ -------------------------------------------------------------------- $
+$ End of input file                                                    $
+$ -------------------------------------------------------------------- $
+EOF
+
+  fi
+
+# --------------------------------------------------------------------------- #
+# 5. Process ww3_multi.inp file                                               #
 # --------------------------------------------------------------------------- #
 
   if [ -z $inp_file ]
@@ -458,7 +503,7 @@ EOF
   fi
 
 # --------------------------------------------------------------------------- #
-# 5. saving files                                                             #
+# 6. saving files                                                             #
 # --------------------------------------------------------------------------- #
 
   echo ' '
@@ -467,7 +512,8 @@ EOF
   echo "    mod_def files ..."
   mv mod_def.* $home_dir
 
-  for file in ww3_mask.$modID.$nr_grid $out_file ww3_multi.$modID.$nr_grid
+  for file in ww3_mask.$modID.$nr_grid $out_file ww3_multi.$modID.$nr_grid \
+              ww3_gint.inp_tmpl
   do
     if [ -f $file ]
     then

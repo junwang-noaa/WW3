@@ -6,7 +6,7 @@
 !/                  |           H. L. Tolman            |
 !/                  |             A. Chawla             |
 !/                  |                        FORTRAN 90 |
-!/                  | Last update :         26-Dec-2012 |
+!/                  | Last update :         11-Nov-2013 |
 !/                  +-----------------------------------+
 !/
 !/    14-Jan-1999 : Final FORTRAN 77                    ( version 1.18 )
@@ -35,6 +35,8 @@
 !/    19-Sep-2011 : Fix bug prep forcing with unst.     ( version 4.04 )
 !/    26-Dec-2012 : Modified obsolete declarations.     ( version 4.OF )
 !/     3-Mar-2013 : Allows for longer input file name   ( version 4.09 )
+!/    11-Nov-2013 : Allows for input binary files to be of WAVEWATCH
+!/                  type (i.e. accounts for the header) ( version 4.13 )
 !/
 !/    Copyright 2009-2012 National Weather Service (NWS),
 !/       National Oceanic and Atmospheric Administration.  All rights
@@ -204,6 +206,7 @@
                                  IDLAF(2), IDFMF(2), TIME2(2),        &
                                  MXM, MYM, DATTYP, RECLDT, IDAT,      &
                                  NDAT, NDATMX, JJ, IS(4), JS(4)
+      INTEGER                 :: NXT, NYT, GTYPET, FILLER(2), TFLAGT
       INTEGER                 :: NYB
       INTEGER                 :: ILAND = -999
 !/O15      INTEGER                 :: NDSTIME
@@ -235,17 +238,25 @@
       CHARACTER               :: COMSTR*1, IDFLD*3, IDTYPE*2,         &
                                  IDTIME*23, FROMLL*4, FORMLL*16,      &
                                  NAMELL*65, FROMF*4, NAMEF*65
-      CHARACTER(LEN=12)       :: IDSTR1(5)
+      CHARACTER(LEN=12)       :: IDSTR1(-7:5)
       CHARACTER(LEN=15)       :: IDSTR3(3)
       CHARACTER(LEN=32)       :: FORMT(2), FORMF(2)
       CHARACTER(LEN=20)       :: IDSTR2(5)
+      CHARACTER(LEN=13)       :: TSTR, IDSTR = 'WAVEWATCH III'
+      CHARACTER(LEN=3)        :: TSFLD
       INTEGER                 :: GTYPEDUM = 0
 !
       EQUIVALENCE              ( NXI , NXJ(1) ) , ( NYI , NYJ(1) )
 !/
 !/ ------------------------------------------------------------------- /
 !/
-      DATA IDSTR1 / 'ice         ' , 'water levels' ,                 &
+! notes: Is it possible to combine ice parameters into one group, 
+!        similar to the way 1D spectra are in one group?
+      DATA IDSTR1 / 'ice param. 1' , 'ice param. 2' ,                 &
+                    'ice param. 3' , 'ice param. 4' ,                 &
+                    'ice param. 5' , 'mud density ' ,                 &
+                    'mud thkness ' , 'mud viscos. ' ,                 &
+                    'ice         ' , 'water levels' ,                 &
                     'winds       ' , 'currents    ' ,                 &
                     'data        ' /
       DATA IDSTR2 / 'pre-processed file  ' , 'long.-lat. grid     ' , &
@@ -328,7 +339,23 @@
 !
       FLSTAB = IDFLD .EQ. 'WNS'
       FLBERG = IDFLD .EQ. 'ISI'
-      IF        ( IDFLD.EQ.'ICE' .OR. FLBERG ) THEN
+      IF        ( IDFLD.EQ.'IC1' ) THEN
+          IFLD    = -7
+        ELSE IF ( IDFLD.EQ.'IC2' ) THEN
+          IFLD    = -6
+        ELSE IF ( IDFLD.EQ.'IC3' ) THEN
+          IFLD    = -5
+        ELSE IF ( IDFLD.EQ.'IC4' ) THEN
+          IFLD    = -4
+        ELSE IF ( IDFLD.EQ.'IC5' ) THEN
+          IFLD    = -3
+        ELSE IF ( IDFLD.EQ.'MDN' ) THEN
+          IFLD    = -2
+        ELSE IF ( IDFLD.EQ.'MTH' ) THEN
+          IFLD    = -1
+        ELSE IF ( IDFLD.EQ.'MVS' ) THEN
+          IFLD    = 0
+        ELSE IF ( IDFLD.EQ.'ICE' .OR. FLBERG ) THEN
           IFLD    = 1
         ELSE IF ( IDFLD.EQ.'LEV' ) THEN
           IFLD    = 2
@@ -658,7 +685,7 @@
                 WRITE (NDSO,947) NDSLL
                 IF (FROMLL.EQ.'NAME') WRITE (NDSO,948) NAMELL
                 IF (NDSLL.EQ.NDSI) THEN
-                    WRITE (NDSE,1038)
+                    WRITE (NDSE,10381)
                     CALL NEXTLN ( COMSTR , NDSI , NDSE )
                   ELSE
 !
@@ -719,7 +746,7 @@
                 IF (FROMLL.EQ.'NAME') WRITE (NDSO,948) NAMELL
                 WRITE (NDSO,*) ' '
                 IF (NDSLL.EQ.NDSI) THEN
-                    WRITE (NDSE,1038)
+                    WRITE (NDSE,10382)
                     CALL NEXTLN ( COMSTR , NDSI , NDSE )
                   ELSE
 !
@@ -852,6 +879,22 @@
                     OPEN (NDSF(J),FORM='UNFORMATTED',                 &
                           STATUS='OLD',ERR=850,IOSTAT=IERR)
                   END IF
+!
+! Adding a check to see if input file is a WAVEWATCH III file
+! (This check has only been added for binary wind files)
+!
+                  READ (NDSF(J),END=888,IOSTAT=IERR) TSTR,            &
+                        TSFLD, NXT, NYT
+                  IF (IERR .EQ. 0 .AND. TSTR .EQ. IDSTR) THEN
+                      IF (TSFLD .NE. IDFLD .OR. NXT .NE. NXI          &
+                          .OR. NYT .NE. NYI ) THEN
+                          WRITE (NDSE,1052) TSFLD, NXT, NYT, IDFLD,   &
+                                 NXI, NYI
+                          CALL EXTCDE ( 21 ) 
+                      END IF
+                  ELSE
+                      REWIND(NDSF(J)) 
+                  END IF
               END IF
           ELSE
             IF (NDSF(J).EQ.NDSI) THEN
@@ -950,6 +993,7 @@
 !
 ! ... Input
 !
+!  read in array from ww3_prep.inp
         IF ( ITYPE .LE. 4 ) THEN
             CALL INA2R (XC, MXM, MYM, 1, NXJ(1), 1, NYJ(1),           &
                  NDSF(1), NDST, NDSE, IDFMF(1), FORMF(1), IDLAF(1), 1., 0.)
@@ -1210,7 +1254,31 @@
 !/T3        IX0    = 1
 !/T3        IXN    = MIN ( IX0+IXWDT-1 , NX )
 !/T3        DO
-!/T3          IF (IFLD.EQ.1) THEN
+!/T3          IF (IFLD.EQ.-7) THEN
+!/T3              CALL PRTBLK (NDSO, NX, NY, NX, FA, MAPOUT, 0, 0.,   &
+!/T3                      IX0, IXN, 1, 1, NY, 1, 'ice param 1', '(-)')
+!/T3            ELSE IF (IFLD.EQ.-6) THEN
+!/T3              CALL PRTBLK (NDSO, NX, NY, NX, FA, MAPOUT, 0, 0.,   &
+!/T3                      IX0, IXN, 1, 1, NY, 1, 'ice param 2', '(-)')
+!/T3            ELSE IF (IFLD.EQ.-5) THEN
+!/T3              CALL PRTBLK (NDSO, NX, NY, NX, FA, MAPOUT, 0, 0.,   &
+!/T3                      IX0, IXN, 1, 1, NY, 1, 'ice param 3', '(-)')
+!/T3            ELSE IF (IFLD.EQ.-4) THEN
+!/T3              CALL PRTBLK (NDSO, NX, NY, NX, FA, MAPOUT, 0, 0.,   &
+!/T3                      IX0, IXN, 1, 1, NY, 1, 'ice param 4', '(-)')
+!/T3            ELSE IF (IFLD.EQ.-3) THEN
+!/T3              CALL PRTBLK (NDSO, NX, NY, NX, FA, MAPOUT, 0, 0.,   &
+!/T3                      IX0, IXN, 1, 1, NY, 1, 'ice param 5', '(-)')
+!/T3            ELSE IF (IFLD.EQ.-2) THEN
+!/T3              CALL PRTBLK (NDSO, NX, NY, NX, FA, MAPOUT, 0, 0.,   &
+!/T3                      IX0, IXN, 1, 1, NY, 1, 'Mud Density', 'kg/m3')
+!/T3            ELSE IF (IFLD.EQ.-1) THEN
+!/T3              CALL PRTBLK (NDSO, NX, NY, NX, FA, MAPOUT, 0, 0.,   &
+!/T3                      IX0, IXN, 1, 1, NY, 1, 'Mud Thkness', '(-)')
+!/T3            ELSE IF (IFLD.EQ.0) THEN
+!/T3              CALL PRTBLK (NDSO, NX, NY, NX, FA, MAPOUT, 0, 0.,   &
+!/T3                      IX0, IXN, 1, 1, NY, 1, 'Mud Kin.Visc', 'm2/s')
+!/T3            ELSE IF (IFLD.EQ.1) THEN
 !/T3              CALL PRTBLK (NDSO, NX, NY, NX, FA, MAPOUT, 0, 0.,   &
 !/T3                      IX0, IXN, 1, 1, NY, 1, 'Fraction ice', '(-)')
 !/T3              IF ( FLBERG )                                       &
@@ -1436,8 +1504,10 @@
  1037 FORMAT (/' *** WAVEWATCH III ERROR IN W3PREP : '/               &
                '     ATTEMPT TO USE INPUT UNIT (',I2,                 &
                ') FOR NAMED FILE'/)
- 1038 FORMAT (/' *** WAVEWATCH III WARNING IN W3PREP : '/             &
-               '     DATA READ FROM INPUT FILE')
+ 10381 FORMAT (/' *** WAVEWATCH III WARNING IN W3PREP : '/             &
+               '     LAT/LON DATA READ FROM INPUT FILE')
+ 10382 FORMAT (/' *** WAVEWATCH III WARNING IN W3PREP : '/             &
+               '     MASK DATA READ FROM INPUT FILE')
  1039 FORMAT (/' *** WAVEWATCH III ERROR IN W3PREP : '/               &
                '     ARRAYS FOR INPUT FIELDS TO SMALL '/              &
                '            GRID SIZE       :',2I5/                   &
@@ -1472,6 +1542,13 @@
                '     NAMEF  = ',A/)
  1051 FORMAT (/' *** WAVEWATCH III ERROR IN W3PREP : '/               &
                '     CANNOT READ UNFORMATTED FROM UNIT',I3/)
+!
+ 1052 FORMAT (/' *** WAVEWATCH III ERROR IN W3PREP : '/               &
+               '     ERROR IN READING FROM INPUT DATA FILE'/          &
+               '     IN FILE ,    VARIABLE ID     = ',A/              &
+               '                  ARRAY DIMENSION = ',2I5/            &
+               '     EXPECTING ,  VARIABLE ID     = ',A/              &
+               '                  ARRAY DIMENSION = ',2I5/)
 !
  1060 FORMAT (/' *** WAVEWATCH III ERROR IN W3PREP : '/               &
                '     ERROR IN READING TIME FROM FILE (',I1,')'/       &

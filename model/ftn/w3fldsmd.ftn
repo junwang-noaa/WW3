@@ -118,8 +118,10 @@
 !     ----------------------------------------------------------------
 !       INXOUT  C*(*) I  Test string for read/write, valid are:
 !                        'READ' and 'WRITE'.
-!       IDFLD   C*3  I/O ID string for field type, valid are:
-!                        'LEV', 'CUR', 'WND', 'WNS', 'ICE', 'ISI', and 'DTn'.
+!       IDFLD   C*3  I/O ID string for field type, valid are: 'IC1',
+!                        'IC2', 'IC3', 'IC4', 'IC5', 'MDN', 'MTH',
+!                        'MVS', 'LEV', 'CUR', 'WND', 'WNS', 'ICE',
+!                        'ISI', and 'DTn'.
 !       NDS     Int.  I  Dataset number for fields file.
 !       NDST    Int.  I  Dataset number for test output.
 !       NDSE    Int.  I  Dataset number for error output.
@@ -238,7 +240,11 @@
         END IF
 
       IF (INXOUT.NE.'READ' .AND. INXOUT.NE.'WRITE') GOTO 801
-      IF ( IDFLD.NE.'LEV' .AND. IDFLD.NE.'CUR' .AND.                  &
+      IF ( IDFLD.NE.'IC1' .AND. IDFLD.NE.'IC2' .AND.                  &
+           IDFLD.NE.'IC3' .AND. IDFLD.NE.'IC4' .AND.                  &
+           IDFLD.NE.'IC5' .AND. IDFLD.NE.'MDN' .AND.                  &
+           IDFLD.NE.'MTH' .AND. IDFLD.NE.'MVS' .AND.                  &
+           IDFLD.NE.'LEV' .AND. IDFLD.NE.'CUR' .AND.                  &
            IDFLD.NE.'WND' .AND. IDFLD.NE.'WNS' .AND.                  &
            IDFLD.NE.'ICE' .AND. IDFLD.NE.'DT0' .AND.                  &
            IDFLD.NE.'DT1' .AND. IDFLD.NE.'DT2' .AND.                  &
@@ -276,9 +282,33 @@
         ELSE IF ( IDFLD.EQ.'DT1' ) THEN
           FNAME = 'data1.' // TEMPXT(:I)
           I     = I + 6
-        ELSE
+        ELSE IF ( IDFLD.EQ.'DT2' ) THEN
           FNAME = 'data2.' // TEMPXT(:I)
           I     = I + 6
+        ELSE IF ( IDFLD.EQ.'MDN' ) THEN
+          FNAME = 'muddens.' // TEMPXT(:I)
+          I     = I + 8
+        ELSE IF ( IDFLD.EQ.'MTH' ) THEN
+          FNAME = 'mudthk.' // TEMPXT(:I)
+          I     = I + 7
+        ELSE IF ( IDFLD.EQ.'MVS' ) THEN
+          FNAME = 'mudvisc.' // TEMPXT(:I)
+          I     = I + 8
+        ELSE IF ( IDFLD.EQ.'IC1' ) THEN
+          FNAME = 'ice1.' // TEMPXT(:I)
+          I     = I + 5
+        ELSE IF ( IDFLD.EQ.'IC2' ) THEN
+          FNAME = 'ice2.' // TEMPXT(:I)
+          I     = I + 5
+        ELSE IF ( IDFLD.EQ.'IC3' ) THEN
+          FNAME = 'ice3.' // TEMPXT(:I)
+          I     = I + 5
+        ELSE IF ( IDFLD.EQ.'IC4' ) THEN
+          FNAME = 'ice4.' // TEMPXT(:I)
+          I     = I + 5
+        ELSE IF ( IDFLD.EQ.'IC5' ) THEN
+          FNAME = 'ice5.' // TEMPXT(:I)
+          I     = I + 5
         END IF
 !
       WRITE  = INXOUT .EQ. 'WRITE'
@@ -459,17 +489,18 @@
       END SUBROUTINE W3FLDO
 
 !/ ------------------------------------------------------------------- /
-      SUBROUTINE W3FLDTIDE ( INXOUT, NDS, NDST, NDSE, NX, NY, IDFLD, IERR )
+      SUBROUTINE W3FLDTIDE1 ( INXOUT, NDS, NDST, NDSE, NX, NY, IDFLD, IERR )
 !/
 !/                  +-----------------------------------+
 !/                  | WAVEWATCH III           NOAA/NCEP |
 !/                  |           F. Ardhuin              |
 !/                  |                                   |
 !/                  |                        FORTRAN 90 |
-!/                  | Last update :         24-Sep-2012 |
+!/                  | Last update :         30-Jun-2013 |
 !/                  +-----------------------------------+
 !/
 !/    24-Sep-2012 : Creation                            ( version 4.09 ) 
+!/    30-Jun-2013 : Split in 2 subroutines              ( version 4.11 ) 
 !/
 !  1. Purpose :
 !
@@ -562,7 +593,7 @@
 !/
 !/ ------------------------------------------------------------------- /
 !/
-!/S      CALL STRACE (IENT, 'W3FLDO')
+!/S      CALL STRACE (IENT, 'W3FLDTIDE1')
 !
 ! test input parameters ---------------------------------------------- *
 !
@@ -577,38 +608,11 @@
 !/TIDE      IF ( WRITE ) THEN
 !/TIDE               WRITE (NDS,ERR=804,IOSTAT=IERR)                        &
 !/TIDE                     TIDE_MF
-!/TIDE               WRITE (NDS,ERR=804,IOSTAT=IERR)                        &
-!/TIDE                     TIDE_FREQC(:),TIDECON_NAME(:),TIDAL_CONST(:,:,:,:,:)
 !/TIDE        ELSE
 !/TIDE               READ (NDS,END=806,ERR=805,IOSTAT=IERR)              &
 !/TIDE                    TIDE_MF
-!/TIDE               NTIDE = TIDE_MF
-!/TIDE               IF (.NOT. ALLOCATED(TIDAL_CONST)) ALLOCATE(TIDAL_CONST(NX,NY,TIDE_MF,2,2))
-!/TIDE               READ (NDS,END=806,ERR=805,IOSTAT=IERR)              &
-!/TIDE                     TIDE_FREQC,TIDECON_NAME(:),TIDAL_CONST(:,:,:,:,:)
-!/TIDE  ! WORK TO DO HERE: 
-!/TIDE  ! we should check that TIDE_FREQC,TIDECON_NAME(:) are OK
-!/TIDE               IF(IDFLD.EQ.'LEV') THEN 
-!/TIDE                 WLTIDE(:,:,:,:)=TIDAL_CONST(:,:,:,1,:)
-!/TIDE               ELSE 
-!/TIDE                 CXTIDE(:,:,:,:)=TIDAL_CONST(:,:,:,1,:)
-!/TIDE                 CYTIDE(:,:,:,:)=TIDAL_CONST(:,:,:,2,:)
-!/TIDE                 END IF 
+!/TIDE                    NTIDE = TIDE_MF
 !/TIDE               END IF
-!/TIDET DO I=1,NTIDE 
-!/TIDET  WRITE(NDST,*) 'Tidal constituents for IX = 1:', IDFLD,' ',TIDECON_NAME(I),TIDAL_CONST(1,1,I,1,1),TIDAL_CONST(1,1,I,1,2), &
-!/TIDET                   '##',TIDAL_CONST(1,1,I,2,1),TIDAL_CONST(1,1,I,2,2)
-!/TIDET END DO
-!/TIDET DO I=1,NTIDE 
-!/TIDET  WRITE(NDST,*) 'Tidal constituents for IX = 2:', IDFLD,' ',TIDECON_NAME(I),TIDAL_CONST(2,1,I,1,1),TIDAL_CONST(2,1,I,1,2), &
-!/TIDET                   '##',TIDAL_CONST(2,1,I,2,1),TIDAL_CONST(2,1,I,2,2)
-!/TIDET END DO
-!/TIDET DO IX=1,NX
-!/TIDET IF (IDFLD.EQ.'CUR')  WRITE (989,'(I10,X,176F10.3)'),IX,CXTIDE(IX,1,:,1),CYTIDE(IX,1,:,1), &
-!/TIDET            CXTIDE(IX,1,:,2),CYTIDE(IX,1,:,2)
-!/TIDET  END DO
-!/TIDET  IF (IDFLD.EQ.'CUR') WRITE(988,'(F10.3,/)') CXTIDE(:,1,15,1)
-!/TIDET  IF (IDFLD.EQ.'CUR') WRITE(988,'(F10.3,/)') CXTIDE(:,1,15,2)
 !
 !
 ! File OK ------------------------------------------------------------ *
@@ -659,7 +663,222 @@
 !/
 !/ End of W3FLDO  ---------------------------------------------------- /
 !/
-      END SUBROUTINE W3FLDTIDE
+      END SUBROUTINE W3FLDTIDE1
+
+
+!/ ------------------------------------------------------------------- /
+      SUBROUTINE W3FLDTIDE2 ( INXOUT, NDS, NDST, NDSE, NX, NY, IDFLD, IDAT, IERR )
+!/
+!/                  +-----------------------------------+
+!/                  | WAVEWATCH III           NOAA/NCEP |
+!/                  |           F. Ardhuin              |
+!/                  |                                   |
+!/                  |                        FORTRAN 90 |
+!/                  | Last update :         30-Jun-2013 |
+!/                  +-----------------------------------+
+!/
+!/    24-Sep-2012 : Creation                            ( version 4.09 ) 
+!/    30-Jun-2013 : Split in 2 subroutines              ( version 4.11 ) 
+!/
+!  1. Purpose :
+!
+!     Reads and writes tidal consituents
+!
+!  2. Method :
+!
+!
+!  3. Parameters :
+!
+!     Parameter list
+!     ----------------------------------------------------------------
+!       INXOUT  C*(*) I  Test string for read/write, valid are:
+!                        'READ' and 'WRITE'.
+!       IDFLD   C*3  I/O ID string for field type, valid are:
+!                        'LEV', 'CUR', 'WND', 'WNS', 'ICE', 'ISI', and 'DTn'.
+!       NDS     Int.  I  Dataset number for fields file.
+!       NDST    Int.  I  Dataset number for test output.
+!       NDSE    Int.  I  Dataset number for error output.
+!                        (No output if NDSE < 0).
+!       NX, NY  Int.  I  Discrete grid dimensions.                 \
+!       IDAT    Int.  I  Equal to 1 if W3IDATMD arrays are to be filled
+!       IERR    Int.  O  Error indicator.
+!                         0 : No errors.
+!                         1 : Illegal INXOUT.
+!     ----------------------------------------------------------------
+!      a) for output fields.
+!      b) for input data.
+!
+!  4. Subroutines used :
+!
+!      Name      Type  Module   Description
+!     ----------------------------------------------------------------
+!      STRACE    Subr. W3SERVMD Subroutine tracing.
+!     ----------------------------------------------------------------
+!
+!  5. Called by :
+!
+!      Name      Type  Module   Description
+!     ----------------------------------------------------------------
+!      WW3_PREP  Prog.   N/A    Input data preprocessor.
+!      WW3_PRNC  Prog.   N/A    NetCDF input data preprocessor.
+!      WW3_SHEL  Prog.   N/A    Basic wave model driver.
+!     ----------------------------------------------------------------
+!
+!  6. Error messages :
+!
+!     See end of subroutine.
+!
+!  7. Remarks :
+!
+!     - On read, the ID 'WND' may be changed to 'WNS' (including
+!       stability data).
+!     - On read, the ID 'ICE' may be changed to 'ISI' (including
+!       iceberg data).
+!
+!  8. Structure :
+!
+!     See source code.
+!
+!  9. Switches :
+!
+!     !/S  Enable subroutine tracing.
+!     !/T  Enable test output.
+!
+! 10. Source code :
+!
+!/ ------------------------------------------------------------------- /
+!/
+!/S      USE W3SERVMD, ONLY: STRACE
+!
+!/TIDE      USE W3TIDEMD
+      USE W3IDATMD
+      IMPLICIT NONE
+!/
+!/ ------------------------------------------------------------------- /
+!/ Parameter list
+!/
+      INTEGER, INTENT(IN)                 :: NDS, NDST, NDSE, NX, NY, IDAT
+      CHARACTER(LEN=3), INTENT(INOUT)     :: IDFLD
+      CHARACTER*(*), INTENT(IN)           :: INXOUT
+      INTEGER, INTENT(OUT)                :: IERR
+!/
+!/ ------------------------------------------------------------------- /
+!/ Local parameters
+!/
+!/S      INTEGER, SAVE           :: IENT = 0
+      LOGICAL                 :: WRITE
+      INTEGER                 :: I, IX, TIDE_MF1
+      CHARACTER(LEN=100)      :: LIST(70)
+!/
+!/ ------------------------------------------------------------------- /
+!/
+!/S      CALL STRACE (IENT, 'W3FLDTIDE2')
+!
+! test input parameters ---------------------------------------------- *
+!
+      IF (INXOUT.NE.'READ' .AND. INXOUT.NE.'WRITE') GOTO 801
+      IF ( IDFLD.NE.'LEV' .AND. IDFLD.NE.'CUR' .AND.                  &
+           IDFLD.NE.'WND' .AND. IDFLD.NE.'WNS' .AND.                  &
+           IDFLD.NE.'ICE' .AND. IDFLD.NE.'DT0' .AND.                  &
+           IDFLD.NE.'DT1' .AND. IDFLD.NE.'DT2' .AND.                  &
+           IDFLD.NE.'ISI' )    GOTO 802
+      WRITE  = INXOUT .EQ. 'WRITE'
+
+!/TIDE      IF ( WRITE ) THEN
+!/TIDE               WRITE (NDS,ERR=804,IOSTAT=IERR)                        &
+!/TIDE                     TIDE_FREQC(:),TIDECON_NAME(:),TIDAL_CONST(:,:,:,:,:)
+!/TIDE        ELSE
+!/TIDE               IF (.NOT. ALLOCATED(TIDAL_CONST)) ALLOCATE(TIDAL_CONST(NX,NY,TIDE_MF,2,2))
+!/TIDE               IF (.NOT. ALLOCATED(TIDE_FREQC)) ALLOCATE(TIDE_FREQC(TIDE_MF))
+!/TIDE               IF (.NOT. ALLOCATED(TIDECON_NAME)) ALLOCATE(TIDECON_NAMEI(TIDE_MF))
+!/TIDE               READ (NDS,END=806,ERR=805,IOSTAT=IERR)              &
+!/TIDE                     TIDE_FREQC,TIDECON_NAMEI(:),TIDAL_CONST(:,:,:,:,:)
+!/TIDE                     LIST(:)=''
+!/TIDE                     TIDE_MF1=TIDE_MF
+!/TIDE                     DO I=1,TIDE_MF
+!/TIDE                       LIST(I)=TIDECON_NAMEI(I)
+!/TIDE                       END DO
+!/TIDE                     CALL TIDE_FIND_INDICES_ANALYSIS(LIST)
+!/TIDE               IF (TIDE_MF1.NE.TIDE_MF) GOTO 807
+!/TIDE               CALL TIDE_SET_INDICES
+!/TIDE               IF(IDFLD.EQ.'LEV') THEN 
+!/TIDE                 IF (IDAT.EQ.1) WLTIDE(:,:,:,:)=TIDAL_CONST(:,:,:,1,:)
+!/TIDE               ELSE 
+!/TIDE                 IF (IDAT.EQ.1) CXTIDE(:,:,:,:)=TIDAL_CONST(:,:,:,1,:)
+!/TIDE                 IF (IDAT.EQ.1) CYTIDE(:,:,:,:)=TIDAL_CONST(:,:,:,2,:)
+!/TIDE                 END IF 
+!/TIDE               END IF
+!/TIDET DO I=1,NTIDE 
+!/TIDET  WRITE(NDST,*) 'Tidal constituents for IX = 1:', IDFLD,' ',TIDECON_NAME(I),TIDAL_CONST(1,1,I,1,1),TIDAL_CONST(1,1,I,1,2), &
+!/TIDET                   '##',TIDAL_CONST(1,1,I,2,1),TIDAL_CONST(1,1,I,2,2)
+!/TIDET END DO
+!/TIDET DO I=1,NTIDE 
+!/TIDET  WRITE(NDST,*) 'Tidal constituents for IX = 2:', IDFLD,' ',TIDECON_NAME(I),TIDAL_CONST(2,1,I,1,1),TIDAL_CONST(2,1,I,1,2), &
+!/TIDET                   '##',TIDAL_CONST(2,1,I,2,1),TIDAL_CONST(2,1,I,2,2)
+!/TIDET END DO
+!/TIDET DO IX=1,NX
+!/TIDET IF (IDFLD.EQ.'CUR')  WRITE (989,'(I10,X,176F10.3)'),IX,CXTIDE(IX,1,:,1),CYTIDE(IX,1,:,1), &
+!/TIDET            CXTIDE(IX,1,:,2),CYTIDE(IX,1,:,2)
+!/TIDET  END DO
+!/TIDET  IF (IDFLD.EQ.'CUR') WRITE(988,'(F10.3,/)') CXTIDE(:,1,15,1)
+!/TIDET  IF (IDFLD.EQ.'CUR') WRITE(988,'(F10.3,/)') CXTIDE(:,1,15,2)
+!
+!
+! File OK ------------------------------------------------------------ *
+!
+      IERR   = 0
+      RETURN
+!
+! Error escape locations
+!
+  801 CONTINUE
+      IF ( NDSE .GE. 0 ) WRITE (NDSE,1001) INXOUT
+      IERR   = 1
+      RETURN
+!
+  802 CONTINUE
+      IF ( NDSE .GE. 0 ) WRITE (NDSE,1002) IDFLD
+      IERR   = 2
+      RETURN
+!
+  804 CONTINUE
+      IF ( NDSE .GE. 0 ) WRITE (NDSE,1004) IDFLD, IERR
+      IERR   = 4
+      RETURN
+!
+  805 CONTINUE
+      IF ( NDSE .GE. 0 ) WRITE (NDSE,1005) IDFLD, IERR
+      IERR   = 5
+      RETURN
+!
+  806 CONTINUE
+      IF ( NDSE .GE. 0 ) WRITE (NDSE,1006) IDFLD
+      IERR   = 6
+      RETURN
+!
+  807 CONTINUE
+!/TIDE      IF ( NDSE .GE. 0 ) WRITE (NDSE,1007) TIDECON_NAMEI(:)
+      IERR   = 7
+      RETURN
+!
+! Formats
+!
+ 1001 FORMAT (/' *** WAVEWATCH III ERROR IN W3FLDTIDE2 : '/         &
+               '     ILLEGAL INXOUT STRING : ',A/)
+ 1002 FORMAT (/' *** WAVEWATCH III ERROR IN W3FLDTIDE2 : '/         &
+               '     ILLEGAL FIELD ID STRING : ',A/)
+ 1004 FORMAT (/' *** WAVEWATCH III ERROR IN W3FLDTIDE2 : '/         &
+               '     ERROR IN WRITING TO ',A,' FILE, IOSTAT =',I6/)
+ 1005 FORMAT (/' *** WAVEWATCH III ERROR IN W3FLDTIDE2 : '/         &
+               '     ERROR IN READING ',A,' FILE, IOSTAT =',I6/)
+ 1006 FORMAT (/' *** WAVEWATCH III ERROR IN W3FLDTIDE2 : '/         &
+               '     PREMATURE END OF ',A,' FILE'/)
+ 1007 FORMAT (/' *** WAVEWATCH III ERROR IN W3FLDTIDE2 : '/         &
+               '     TIDAL CONSTITUENTS NOT RECOGNIZED ',A /)
+!/
+!/ End of W3FLDO  ---------------------------------------------------- /
+!/
+      END SUBROUTINE W3FLDTIDE2
 
 !/ ------------------------------------------------------------------- /
       SUBROUTINE W3FLDG (INXOUT, IDFLD, NDS, NDST, NDSE, MX, MY,      &
@@ -694,7 +913,8 @@
 !     ----------------------------------------------------------------
 !       INXOUT  C*(*)  I   Test string for read/write, valid are:
 !                          'READ' and 'WRITE'.
-!       IDFLD   C*3    I   ID string for field type, valid are:
+!       IDFLD   C*3    I   ID string for field type, valid are: 'IC1',
+!                          'IC2', 'IC3', 'IC4', 'IC5', 'MDN', 'MTH', 'MVS', 
 !                          'LEV', 'CUR', 'WND', 'WNS', 'ICE' and 'ISI'.
 !       NDS     Int.   I   Dataset number for fields file.
 !       NDST    Int.   I   Dataset number for test output.
@@ -705,6 +925,13 @@
 !       T0-N    I.A.   I   Time interval considered (dummy for write).
 !       TF0-N   I.A.  I/O  Field times (TFN dummy for write).
 !       Fxx     R.A.  I/O  Input fields (FxN dummy for write).
+!            subtypes: FX0, FY0, FA0, FXN, FYN, FAN
+!                    (meaning is inferred from context as follows)
+!                      "0" denotes "prior time level"
+!                      "N" denotes "next time level"
+!                      "X" denotes x in a vector
+!                      "Y" denotes y in a vector
+!                      "A" denotes scalar
 !       IERR    Int.   O   Error indicator,
 !                          -1 Past last data
 !                           0 OK,
@@ -795,7 +1022,11 @@
 ! test input parameters ---------------------------------------------- *
 !
       IF (INXOUT.NE.'READ' .AND. INXOUT.NE.'WRITE') GOTO 801
-      IF ( IDFLD.NE.'LEV' .AND. IDFLD.NE.'CUR' .AND.                  &
+      IF ( IDFLD.NE.'IC1' .AND. IDFLD.NE.'IC2' .AND.                  & 
+           IDFLD.NE.'IC3' .AND. IDFLD.NE.'IC4' .AND.                  &
+           IDFLD.NE.'IC5' .AND. IDFLD.NE.'MDN' .AND.                  &
+           IDFLD.NE.'MTH' .AND. IDFLD.NE.'MVS' .AND.                  &
+           IDFLD.NE.'LEV' .AND. IDFLD.NE.'CUR' .AND.                  &
            IDFLD.NE.'WND' .AND. IDFLD.NE.'WNS' .AND.                  &
            IDFLD.NE.'ICE' .AND. IDFLD.NE.'ISI'  )    GOTO 802
 !
@@ -814,13 +1045,31 @@
 !
       DO
 !
-! Shift fields
+! Shift fields (2d fields only)
 !
+!---------------------------------------------
+! begin temporary notes
+! Why are fields shifted only if 2d? This does not make sense.
+! My guess is that this is a false association: 
+!    at present the fields that are 2d also happen to be the fields 
+!    that are interpolated in time (winds and currents)
+
+!      SUBROUTINE W3UCUR ( FLFRST )
+!     Interpolate the current field to the present time.
+!      SUBROUTINE W3UWND ( FLFRST, VGX, VGY )
+!     Interpolate wind fields to the given time.
+
+!      The "0" variables are needed only if there is interpolation in time.
+! end temporary notes
+!---------------------------------------------
+
         IF ( (.NOT.WRITE) .AND. FL2D ) THEN
 !
             TF0(1) = TFN(1)
             TF0(2) = TFN(2)
 !/T            WRITE (NDST,9020)
+ ! unless TFN has been changed in the do loop, the following line is essentally 
+ !       "if not.flfrst"
             IF ( TFN(1) .NE. -1 ) THEN
                 DO IX=1, NX
                   DO IY=1, NY
@@ -838,6 +1087,7 @@
               END IF
 !
           END IF
+
 !
 ! Process fields, write --------------------------------------------- *
 !
@@ -870,6 +1120,8 @@
             READ (NDS,END=800,ERR=805,IOSTAT=ISTAT) TFN
 !/T            WRITE (NDST,9031) TFN
             IF ( .NOT. FL2D ) THEN
+! note: "J" here does *not* refer to data type, wlev etc.
+!       It refers to the dimension.
                 J      = 1
                 READ (NDS,END=806,ERR=807,IOSTAT=ISTAT)               &
                            ((FAN(IX,IY),IX=1,NX),IY=1,NY)
@@ -880,7 +1132,11 @@
                 J      = 2
                 READ (NDS,END=806,ERR=807,IOSTAT=ISTAT)               &
                            ((FYN(IX,IY),IX=1,NX),IY=1,NY)
-                FAN(:,:) = FXN(:,:)    ! this was added for ISI files
+                FAN(:,:) = FXN(:,:)    ! this was added for ISI files 
+
+! note: it appears that FAN is immediately overwritten below if FLST.
+!       I do not know if this is intended.
+
                 J      = 3
                 IF ( FLST ) READ (NDS,END=806,ERR=807,IOSTAT=ISTAT)   &
                            ((FAN(IX,IY),IX=1,NX),IY=1,NY)
@@ -889,19 +1145,37 @@
 ! Check time, branch back if necessary
 !
             DTTST  = DSEC21 ( T0 , TFN )
-            IF ( .NOT.FL2D .AND. FLFRST .AND. DTTST .EQ. 0. ) EXIT
-            IF ( DTTST .GT. 0. ) EXIT
+
+! notes: my guess is that DTTST is the difference between the time of
+! computations (T0) and the time that we just read (TFN).  Again, 
+! this code appears to be using a false association between "is this
+! 2d?" vs. "is this field interpolated in time"?
+
+            IF ( .NOT.FL2D .AND. FLFRST .AND. DTTST .EQ. 0. )EXIT
+
+! notes: If it will be interpolated in time, we need to continue until
+! we have one that has a date larger than the current time, so we have
+! something to interpolate to.
+
+            IF ( DTTST .GT. 0. )EXIT
 !
           END IF
 !
         END DO
 !
-! Branch point for EOF in current and wind
+! Branch point for EOF in 2d fields, current and wind
 !
   300 CONTINUE
 !
-! Check first field
+! Check first field (2d fields only)
 !
+! note: Nothing appears to be checked here. Rather, this is setting 
+!       "0" values as "N" values
+
+! note: Again, this code appears to be using a false association between
+!      "is this 2d" and "is this field interpolated in time"?
+!      The "0" variables are needed only if there is interpolation in time.
+
       IF ( .NOT.WRITE .AND. FL2D .AND. TF0(1) .EQ. -1 ) THEN
 !
 !/T          WRITE (NDST,9040)
@@ -922,7 +1196,7 @@
 !
         END IF
 !
-! Branch point for EOF in level and ice
+! Branch point for EOF in 1d fields, e.g. level and ice 
 !
   500 CONTINUE
 !
@@ -936,7 +1210,7 @@
 !
       RETURN
 !
-! EOF escape location
+! EOF escape location (have read to end of file)
 !
   800 CONTINUE
       IERR   = -1
@@ -1688,6 +1962,14 @@
 !     Parameter list
 !     ----------------------------------------------------------------
 !       J       Int    I   Field number of input field as in shell.
+!                          -7 : ice parameter 1
+!                          -6 : ice parameter 2
+!                          -5 : ice parameter 3
+!                          -4 : ice parameter 4
+!                          -3 : ice parameter 5
+!                          -2 : mud parameter 1
+!                          -1 : mud parameter 2
+!                           0 : mud parameter 3
 !                           1 : water levels
 !                           2 : currents
 !                           3 : winds
@@ -1760,9 +2042,9 @@
 !/
       INTEGER, INTENT(IN)     :: J, NDST, NDSE, MX, MY, NX, NY,       &
                                  T0(2), TN(2), NHM
-      INTEGER, INTENT(INOUT)  :: NH, THO(2,4,NHM), TF0(2), TFN(2)
+      INTEGER, INTENT(INOUT)  :: NH, THO(2,-7:4,NHM), TF0(2), TFN(2)
       INTEGER, INTENT(OUT)    :: IERR
-      REAL, INTENT(INOUT)     :: HA(NHM,4), HD(NHM,4), HS(NHM,4),     &
+      REAL, INTENT(INOUT)     :: HA(NHM,-7:4), HD(NHM,-7:4), HS(NHM,-7:4),  &
                                  FX0(MX,MY), FY0(MX,MY), FS0(MX,MY),  &
                                  FXN(MX,MY), FYN(MX,MY), FSN(MX,MY)
 !/
@@ -1780,13 +2062,16 @@
 !
       IERR   = 0
       DERA   = ATAN(1.)/45.
+
+
 !
 !/T      WRITE (NDST,9000) J, NDST, NDSE, MX, MY, NX, NY, T0, TN,     &
 !/T                        NH, NHM, TF0, TFN, IERR
 !
 ! Test field ID number for validity
 !
-      IF ( J.LE.0 .OR. J .GT.3 ) GOTO 801
+!old: IF ( J.LE.0 .OR. J .GT.3 ) GOTO 801
+      IF ( J.LT.-7 .OR. J .GT.3 ) GOTO 801
       FLFRST = TFN(1) .EQ. -1
 !
 !/T      WRITE (NDST,9001) FLFRST
@@ -1828,10 +2113,11 @@
             TFN(1) = THO(1,J,1)
             TFN(2) = THO(2,J,1)
 !
-            IF ( J .EQ. 1 ) THEN
+            IF ( J.GE.(-7).AND.(J.LE.1)) THEN
                 DO IX=1, NX
                   DO IY=1, NY
                     FSN(IX,IY) = HS(1,J)
+
                     END DO
                   END DO
 !/T                WRITE (NDST,9050) HS(1,J)
@@ -1889,7 +2175,7 @@
 ! Check time
 !
         DTTST  = DSEC21 ( T0 , TFN )
-        IF ( J.EQ.1 .AND. FLFRST .AND. DTTST.EQ.0. ) EXIT
+        IF ( J.GE.(-7).AND.(J.LE.1).AND.FLFRST .AND. DTTST.EQ.0. ) EXIT
         IF ( DTTST .GT. 0. ) EXIT
         END DO
 !
@@ -1909,7 +2195,7 @@
             END DO
         END IF
 !
-!/T      IF ( J .NE. 1 ) THEN
+!/T      IF ( J .GT. 1 ) THEN
 !/T          WRITE (NDST,9061) TF0, TFN
 !/T        ELSE
 !/T          WRITE (NDST,9062) TFN
@@ -2043,9 +2329,9 @@
 !/ Parameter list
 !/
       INTEGER, INTENT(IN)     :: J, NDST, NDSE, T0(2), TN(2), NHM
-      INTEGER, INTENT(INOUT)  :: NH, THO(2,4,NHM), TF0(2), TFN(2)
+      INTEGER, INTENT(INOUT)  :: NH, THO(2,-7:4,NHM), TF0(2), TFN(2)
       INTEGER, INTENT(OUT)    :: IERR
-      REAL, INTENT(INOUT)     :: HA(NHM,4), HD(NHM,4), A0, AN, D0, DN
+      REAL, INTENT(INOUT)     :: HA(NHM,-7:4), HD(NHM,-7:4), A0, AN, D0, DN
 !/
 !/ ------------------------------------------------------------------- /
 !/ Local parameters

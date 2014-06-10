@@ -4,7 +4,7 @@
 !/                  | WAVEWATCH III           NOAA/NCEP |
 !/                  |           H. L. Tolman            |
 !/                  |                        FORTRAN 90 |
-!/                  | Last update :         28-Jun-2013 |
+!/                  | Last update :         14-Nov-2013 |
 !/                  +-----------------------------------+
 !/
 !/    28-Dec-2004 : Origination.                        ( version 3.06 )
@@ -20,9 +20,16 @@
 !/    29-Oct-2010 : Adding unstructured grid data.      ( version 3.14 )
 !/                  (A. Roland and F. Ardhuin) 
 !/    31-Oct-2010 : Adding output parameters            ( version 3.14 )
+!/    12-Dec-2012 : Adding SMC grid.  JG_Li             ( version 4.08 )
 !/    26-Dec-2012 : Memory reduction for outputs.       ( version 4.11 )
 !/                  Add W3XETA.
 !/    28-Jun-2013 : Bug fix initialization P2SMS.       ( version 4.11 )
+!/    11-Nov-2013 : SMC and rotated grid incorporated in the main 
+!/                  trunk                               ( version 4.13 )
+!/    14-Nov-2013 : Move orphaned arrays as scalar to W3SRCE.
+!/                  Here update of documentation only.
+!/                  (Z0S, CDS, EMN, FMN, WNM, AMX)      ( version 4.13 )
+!
 !/
 !/    Copyright 2009-2013 National Weather Service (NWS),
 !/       National Oceanic and Atmospheric Administration.  All rights
@@ -91,6 +98,7 @@
 !      THM       R.A.  Public   Mean wave direction.
 !      THS       R.A.  Public   Mean directional spread.
 !      THP0      R.A.  Public   Peak direction.
+!      HSIG      R.A.  Public   Height of infragravity waves
 !
 !      CHARN     R.A.  Public   Charnock parameter for air-sea friction.
 !      CGE       R.A.  Public   Energy flux.
@@ -111,7 +119,7 @@
 !
 !      US3D      R.A.  Public   3D Stokes drift.
 !
-!      ABA       R.A.  Public   Near-bottom rms wave ex. apmplitude.
+!      ABA       R.A.  Public   Near-bottom rms wave ex. amplitude.
 !      ABD       R.A.  Public   Corresponding direction.
 !      UBA       R.A.  Public   Near-bottom rms wave velocity.
 !      UBD       R.A.  Public   Corresponding direction.
@@ -135,15 +143,9 @@
 !
 !    Orphans, commented out here, now automatic arrays in W3WAVE, ....
 !
-!      Z0S       R.A.  Public   Roughness parameter.
-!      CDS       R.A.  Public   Drag coefficient.
 !      DRAT      R.A.  Public   Density ration air/water. Was
 !                               placeholder only. Now scalar in W3SRCE,
 !      TAUWX/Y   R.A.  Public   Stresses particularly for PALM.
-!      EMN       R.A.  Public   Mean energy.
-!      FMN       R.A.  Public   Mean frequency.
-!      WNM       R.A.  Public   Mean wavenumber.
-!      AMX       R.A.  Public   Spectral maximum.
 !
 !    Derivatives in space ....
 !
@@ -157,7 +159,7 @@
 !      PHS       R.A.  Public   Wave height of partition.
 !      PTP       R.A.  Public   Peak period of partition.
 !      PLP       R.A.  Public   Peak wave leingth of partition.
-!      PTH       R.A.  Public   Mean direciotn of partition.
+!      PDIR      R.A.  Public   Mean direciotn of partition.
 !      PSI       R.A.  Public   Mean spread of partition.
 !      PWS       R.A.  Public   Wind sea fraction of partition.
 !
@@ -320,10 +322,12 @@
 !
         REAL, POINTER         ::  HS(:),  WLM(:),  T02(:), T0M1(:),   &
                                   T01 (:),  FP0(:),  THM(:),          &
-                                  THS(:),  THP0(:),  FP1(:),  THP1(:)
+                                  THS(:),  THP0(:),  FP1(:), THP1(:), &
+                                  HSIG(:)
         REAL, POINTER         :: XHS(:), XWLM(:), XT02(:), XT0M1(:),  &
                                  XT01 (:), XFP0(:), XTHM(:),          &
-                                 XTHS(:), XTHP0(:), XFP1(:), XTHP1(:)
+                                 XTHS(:), XTHP0(:), XFP1(:), XTHP1(:),&
+                                 XHSIG(:)
 !
 ! Output fields group 3)
 !
@@ -335,10 +339,10 @@
 ! Output fields group 4)
 !
         REAL, POINTER         ::  PHS(:,:),  PTP(:,:),  PLP(:,:),     &
-                                  PTH(:,:),  PSI(:,:),  PWS(:,:),     &
+                                  PDIR(:,:),  PSI(:,:),  PWS(:,:),    &
                                   PWST(:),  PNR(:)
         REAL, POINTER         :: XPHS(:,:), XPTP(:,:), XPLP(:,:),     &
-                                 XPTH(:,:), XPSI(:,:), XPWS(:,:),     &
+                                 XPDIR(:,:), XPSI(:,:), XPWS(:,:),    &
                                  XPWST(:), XPNR(:)
 !
 ! Output fields group 5)
@@ -393,6 +397,8 @@
 !
         REAL, POINTER         :: DDDX(:,:), DDDY(:,:), DCXDX(:,:),    &
                                  DCYDX(:,:), DCXDY(:,:), DCYDY(:,:)
+        REAL, POINTER         :: DCDX(:,:,:), DCDY(:,:,:)
+!/SMC        REAL, POINTER         :: DHDX(:), DHDY(:), DHLMT(:,:)
 !
 !/PR1        INTEGER, POINTER      :: IS0(:), IS2(:)
 !/PR1        REAL, POINTER         :: FACVX(:), FACVY(:)
@@ -407,6 +413,11 @@
 !/PR3        INTEGER, POINTER      :: MAPX2(:), MAPY2(:), MAPAXY(:),       &
 !/PR3                                 MAPCXY(:), MAPTH2(:), MAPWN2(:)
 !/PR3        LOGICAL, POINTER      :: MAPTRN(:)
+!
+!/SMC        INTEGER               :: NMX0, NMX1, NMX2, NMY0, NMY1, NMY2,  &
+!/SMC                                 NACT, NMXY
+!/SMC        INTEGER, POINTER      :: MAPX2(:), MAPY2(:), MAPAXY(:),       &
+!/SMC                                 MAPXY(:), MAPTH2(:), MAPWN2(:)
 !
 ! Warning Defined but not set if UGTYPE .EQ. .T. 
             INTEGER, POINTER      :: ITER(:,:)
@@ -430,7 +441,7 @@
         INTEGER, POINTER      :: IAPPRO(:)
 !/MPI        INTEGER               :: MPI_COMM_WAVE, MPI_COMM_WCMP,        &
 !/MPI                                 WW3_FIELD_VEC, WW3_SPEC_VEC,         &
-!/MPI                                 NRQSG1, NRQSG2, IBFLOC, ISPLOC,      &
+!/MPI                                 NRQSG1 = 0, NRQSG2, IBFLOC, ISPLOC,  &
 !/MPI                                 NSPLOC
 !/MPI        INTEGER               :: BSTAT(MPIBUF), BISPL(MPIBUF)
 !/MPI        INTEGER, POINTER      :: IRQSG1(:,:), IRQSG2(:,:)
@@ -460,13 +471,13 @@
 !
       REAL, POINTER           :: HS(:), WLM(:),  T02(:), T0M1(:),     &
                                  T01 (:), FP0(:), THM(:), THS(:),     &
-                                 THP0(:), FP1(:), THP1(:)
+                                 THP0(:), FP1(:), THP1(:), HSIG(:)
 !
       REAL, POINTER           :: EF(:,:), TH1M(:,:), STH1M(:,:),      &
                                  TH2M(:,:), STH2M(:,:)
 !
       REAL, POINTER           :: PHS(:,:), PTP(:,:), PLP(:,:),        &
-                                 PTH(:,:), PSI(:,:), PWS(:,:),        &
+                                 PDIR(:,:), PSI(:,:), PWS(:,:),       &
                                  PWST(:), PNR(:)
 !
       REAL, POINTER           :: CHARN(:), CGE(:), PHIAW(:),          &
@@ -489,12 +500,12 @@
 !
       REAL, POINTER           :: USERO(:,:)
 !
-!     REAL, POINTER           :: Z0S(:), CDS(:), DRAT(:)
 !     REAL, POINTER           :: TAUWX(:), TAUWY(:)
-!     REAL, POINTER           :: EMN(:), FMN(:), WNM(:), AMX(:)
 !
       REAL, POINTER           :: DDDX(:,:), DDDY(:,:), DCXDX(:,:),    &
                                  DCYDX(:,:), DCXDY(:,:), DCYDY(:,:)
+      REAL, POINTER           :: DCDX(:,:,:), DCDY(:,:,:)
+!/SMC        REAL, POINTER         :: DHDX(:), DHDY(:), DHLMT(:,:)
 !
 !/PR1      INTEGER, POINTER        :: IS0(:), IS2(:)
 !/PR1      REAL, POINTER           :: FACVX(:), FACVY(:)
@@ -509,6 +520,11 @@
 !/PR3      INTEGER, POINTER        :: MAPX2(:), MAPY2(:), MAPAXY(:),       &
 !/PR3                                 MAPCXY(:), MAPTH2(:), MAPWN2(:)
 !/PR3      LOGICAL, POINTER        :: MAPTRN(:)
+!
+!/SMC      INTEGER, POINTER        :: NMX0, NMX1, NMX2, NMY0, NMY1, NMY2,  &
+!/SMC                                 NACT, NMXY
+!/SMC      INTEGER, POINTER        :: MAPX2(:), MAPY2(:), MAPAXY(:),       &
+!/SMC                                 MAPXY(:), MAPTH2(:), MAPWN2(:)
 !
           INTEGER, POINTER        :: ITER(:,:)
 !
@@ -823,12 +839,12 @@
 !    are allocated in W3MPIO only as needed to keep the memory
 !    footprint down.
 !
-      ALLOCATE ( WADATS(IMOD)%HS   (NSEALM), WADATS(IMOD)%WLM(NSEALM), &
-                 WADATS(IMOD)%T02  (NSEALM), WADATS(IMOD)%T0M1(NSEALM),&
-                 WADATS(IMOD)%T01  (NSEALM), WADATS(IMOD)%FP0(NSEALM), &
-                 WADATS(IMOD)%THM  (NSEALM), WADATS(IMOD)%THS(NSEALM), &
-                 WADATS(IMOD)%THP0 (NSEALM), WADATS(IMOD)%FP1(NSEALM), &
-                 WADATS(IMOD)%THP1 (NSEALM) )
+      ALLOCATE ( WADATS(IMOD)%HS   (NSEALM), WADATS(IMOD)%WLM (NSEALM), &
+                 WADATS(IMOD)%T02  (NSEALM), WADATS(IMOD)%T0M1(NSEALM), &
+                 WADATS(IMOD)%T01  (NSEALM), WADATS(IMOD)%FP0 (NSEALM), &
+                 WADATS(IMOD)%THM  (NSEALM), WADATS(IMOD)%THS (NSEALM), &
+                 WADATS(IMOD)%THP0 (NSEALM), WADATS(IMOD)%FP1 (NSEALM), &
+                 WADATS(IMOD)%THP1 (NSEALM), WADATS(IMOD)%HSIG(NSEALM) )
 !
       WADATS(IMOD)%HS     = UNDEF
       WADATS(IMOD)%WLM    = UNDEF
@@ -841,6 +857,7 @@
       WADATS(IMOD)%THP0   = UNDEF
       WADATS(IMOD)%FP1    = UNDEF
       WADATS(IMOD)%THP1   = UNDEF
+      WADATS(IMOD)%HSIG   = UNDEF
 !
 ! 3) Frequency-dependent standard parameters
 !
@@ -860,7 +877,7 @@
       ALLOCATE ( WADATS(IMOD)%PHS(NSEALM,0:NOSWLL),                   &
                  WADATS(IMOD)%PTP(NSEALM,0:NOSWLL),                   &
                  WADATS(IMOD)%PLP(NSEALM,0:NOSWLL),                   &
-                 WADATS(IMOD)%PTH(NSEALM,0:NOSWLL),                   &
+                 WADATS(IMOD)%PDIR(NSEALM,0:NOSWLL),                  &
                  WADATS(IMOD)%PSI(NSEALM,0:NOSWLL),                   &
                  WADATS(IMOD)%PWS(NSEALM,0:NOSWLL),                   &
                  WADATS(IMOD)%PWST(NSEALM), WADATS(IMOD)%PNR(NSEALM) )
@@ -868,7 +885,7 @@
       WADATS(IMOD)%PHS    = UNDEF
       WADATS(IMOD)%PTP    = UNDEF
       WADATS(IMOD)%PLP    = UNDEF
-      WADATS(IMOD)%PTH    = UNDEF
+      WADATS(IMOD)%PDIR   = UNDEF
       WADATS(IMOD)%PSI    = UNDEF
       WADATS(IMOD)%PWS    = UNDEF
       WADATS(IMOD)%PWST   = UNDEF
@@ -1013,10 +1030,16 @@
 !
           ALLOCATE ( WADATS(IMOD)%DDDX(NY,NX)  ,                      &
                      WADATS(IMOD)%DDDY(NY,NX)  ,                      &
+                     WADATS(IMOD)%DCDX(0:NK+1,NY,NX)  ,               &
+                     WADATS(IMOD)%DCDY(0:NK+1,NY,NX)  ,               &
                      WADATS(IMOD)%DCXDX(NY,NX) ,                      &
                      WADATS(IMOD)%DCYDX(NY,NX) ,                      &
                      WADATS(IMOD)%DCXDY(NY,NX) ,                      &
                      WADATS(IMOD)%DCYDY(NY,NX) )
+!
+!/SMC          ALLOCATE ( WADATS(IMOD)%DHDX(NSEA) ,                        &
+!/SMC                     WADATS(IMOD)%DHDY(NSEA) ,                        &
+!/SMC                     WADATS(IMOD)%DHLMT(NTH,NSEA) )
 !
           ALLOCATE ( WADATS(IMOD)%ALPHA(NK,NSEAL) )
 !
@@ -1045,6 +1068,14 @@
 !/PR3                     WADATS(IMOD)%MAPWN2(NSPEC+NTH)  ,           &
 !/PR3                     WADATS(IMOD)%MAPTRN(NY*NX) )
 !/PR3          WADATS(IMOD)%MAPTH2 = 0
+!
+!/SMC          ALLOCATE ( WADATS(IMOD)%MAPX2(NY*NX)     ,             &
+!/SMC                     WADATS(IMOD)%MAPY2(NY*NX)     ,             &
+!/SMC                     WADATS(IMOD)%MAPAXY(NY*NX)    ,             &
+!/SMC                     WADATS(IMOD)%MAPXY(NSEA)      ,             &
+!/SMC                     WADATS(IMOD)%MAPTH2(NSPEC)    ,             &
+!/SMC                     WADATS(IMOD)%MAPWN2(NSPEC+NTH) )
+!/SMC          WADATS(IMOD)%MAPTH2 = 0
 !
           ALLOCATE ( WADATS(IMOD)%IAPPRO(NSPEC) ,                     &
                      WADATS(IMOD)%SPPNT(NTH,NK,4) )
@@ -1220,6 +1251,12 @@
           ALLOCATE ( WADATS(IMOD)%XTHP0(1) )
         END IF
 !
+      IF ( FLAGS( 2, 10) ) THEN
+          ALLOCATE ( WADATS(IMOD)%XHSIG(NXXX) )
+        ELSE
+          ALLOCATE ( WADATS(IMOD)%XHSIG(1) )
+        END IF
+!
 !     IF ( FLAGS( 2,xx) ) THEN
 !         ALLOCATE ( WADATS(IMOD)%XFP1(NXXX) )
 !       ELSE
@@ -1241,6 +1278,7 @@
       WADATS(IMOD)%XTHM   = UNDEF
       WADATS(IMOD)%XTHS   = UNDEF
       WADATS(IMOD)%XTHP0  = UNDEF
+      WADATS(IMOD)%XHSIG  = UNDEF
 !     WADATS(IMOD)%XFP1   = UNDEF
 !     WADATS(IMOD)%XTHP1  = UNDEF
 !
@@ -1295,9 +1333,9 @@
         END IF
 !
       IF ( FLAGS( 4, 4) ) THEN
-          ALLOCATE ( WADATS(IMOD)%XPTH(NXXX,0:NOSWLL) )
+          ALLOCATE ( WADATS(IMOD)%XPDIR(NXXX,0:NOSWLL) )
         ELSE
-          ALLOCATE ( WADATS(IMOD)%XPTH(1,1) )
+          ALLOCATE ( WADATS(IMOD)%XPDIR(1,1) )
         END IF
 !
       IF ( FLAGS( 4, 5) ) THEN
@@ -1327,7 +1365,7 @@
       WADATS(IMOD)%XPHS   = UNDEF
       WADATS(IMOD)%XPTP   = UNDEF
       WADATS(IMOD)%XPLP   = UNDEF
-      WADATS(IMOD)%XPTH   = UNDEF
+      WADATS(IMOD)%XPDIR  = UNDEF
       WADATS(IMOD)%XPSI   = UNDEF
       WADATS(IMOD)%XPWS   = UNDEF
       WADATS(IMOD)%XPWST  = UNDEF
@@ -1920,6 +1958,15 @@
 !/PR3      NACT   => WADATS(IMOD)%NACT
 !/PR3      NCENT  => WADATS(IMOD)%NCENT
 !
+!/SMC      NMX0   => WADATS(IMOD)%NMX0
+!/SMC      NMX1   => WADATS(IMOD)%NMX1
+!/SMC      NMX2   => WADATS(IMOD)%NMX2
+!/SMC      NMY0   => WADATS(IMOD)%NMY0
+!/SMC      NMY1   => WADATS(IMOD)%NMY1
+!/SMC      NMY2   => WADATS(IMOD)%NMY2
+!/SMC      NACT   => WADATS(IMOD)%NACT
+!/SMC      NMXY   => WADATS(IMOD)%NMXY
+!
 !/NL1      NFR    => WADATS(IMOD)%NFR
 !/NL1      NFRHGH => WADATS(IMOD)%NFRHGH
 !/NL1      NFRCHG => WADATS(IMOD)%NFRCHG
@@ -1980,6 +2027,7 @@
           THP0   => WADATS(IMOD)%THP0
           FP1    => WADATS(IMOD)%FP1
           THP1   => WADATS(IMOD)%THP1
+          HSIG   => WADATS(IMOD)%HSIG
 !
           EF     => WADATS(IMOD)%EF
           TH1M   => WADATS(IMOD)%TH1M
@@ -1990,7 +2038,7 @@
           PHS    => WADATS(IMOD)%PHS
           PTP    => WADATS(IMOD)%PTP
           PLP    => WADATS(IMOD)%PLP
-          PTH    => WADATS(IMOD)%PTH
+          PDIR   => WADATS(IMOD)%PDIR
           PSI    => WADATS(IMOD)%PSI
           PWS    => WADATS(IMOD)%PWS
           PWST   => WADATS(IMOD)%PWST
@@ -2052,10 +2100,16 @@
 !
               DDDX   => WADATS(IMOD)%DDDX
               DDDY   => WADATS(IMOD)%DDDY
+              DCDX   => WADATS(IMOD)%DCDX
+              DCDY   => WADATS(IMOD)%DCDY
               DCXDX  => WADATS(IMOD)%DCXDX
               DCYDX  => WADATS(IMOD)%DCYDX
               DCXDY  => WADATS(IMOD)%DCXDY
               DCYDY  => WADATS(IMOD)%DCYDY
+!
+!/SMC              DHDX   => WADATS(IMOD)%DHDX
+!/SMC              DHDY   => WADATS(IMOD)%DHDY
+!/SMC              DHLMT  => WADATS(IMOD)%DHLMT
 !
               ALPHA  => WADATS(IMOD)%ALPHA
 !
@@ -2094,6 +2148,13 @@
 !/PR3              MAPTH2 => WADATS(IMOD)%MAPTH2
 !/PR3              MAPWN2 => WADATS(IMOD)%MAPWN2
 !/PR3              MAPTRN => WADATS(IMOD)%MAPTRN
+!
+!/SMC              MAPX2  => WADATS(IMOD)%MAPX2
+!/SMC              MAPY2  => WADATS(IMOD)%MAPY2
+!/SMC              MAPAXY => WADATS(IMOD)%MAPAXY
+!/SMC              MAPXY  => WADATS(IMOD)%MAPXY
+!/SMC              MAPTH2 => WADATS(IMOD)%MAPTH2
+!/SMC              MAPWN2 => WADATS(IMOD)%MAPWN2
 !
                IF (GTYPE .EQ. UNGTYPE) ITER   => WADATS(IMOD)%ITER
 !
@@ -2237,6 +2298,7 @@
           THM    => WADATS(IMOD)%XTHM
           THS    => WADATS(IMOD)%XTHS
           THP0   => WADATS(IMOD)%XTHP0
+          HSIG   => WADATS(IMOD)%XHSIG
 !         FP1    => WADATS(IMOD)%XFP1
 !         THP1   => WADATS(IMOD)%XTHP1
 !
@@ -2245,7 +2307,7 @@
           PHS    => WADATS(IMOD)%XPHS
           PTP    => WADATS(IMOD)%XPTP
           PLP    => WADATS(IMOD)%XPLP
-          PTH    => WADATS(IMOD)%XPTH
+          PDIR   => WADATS(IMOD)%XPDIR
           PSI    => WADATS(IMOD)%XPSI
           PWS    => WADATS(IMOD)%XPWS
           PWST   => WADATS(IMOD)%XPWST

@@ -5,7 +5,7 @@
 !/                  | WAVEWATCH III           NOAA/NCEP |
 !/                  |           H. L. Tolman            |
 !/                  |                        FORTRAN 90 |
-!/                  | Last update :         21-Aug-2013 |
+!/                  | Last update :         10-Feb-2014 |
 !/                  +-----------------------------------+
 !/
 !/    04-Jan-2001 : Origination.                        ( version 2.00 )
@@ -33,12 +33,18 @@
 !/                  (W. E. Rogers & T. J. Campbell, NRL)
 !/    05-Feb-2011 : Implement unstructured grid        ( version 3.14.3 )
 !/                  (A. Roland and F. Ardhuin) 
+!/    12-Jun-2012 : Add /RTD option or rotated grid option. 
+!/                  (Jian-Guo Li)                       ( version 4.06 )
 !/    25-Dec-2012 : New output structure and smaller    ( version 4.11 )
 !/                  memory footprint.
-!/    15-Apr-2013 : New subroutine to read param. names ( version 4.10 )
+!/    15-Apr-2013 : New subroutine to read param. names ( version 4.11 )
 !/    21-Aug-2013 : Bug correction in W3IOGO: UBR, ABR  ( version 4.11 )
+!/    11-Nov-2013 : SMC and rotated grid incorporated in the main 
+!/                  trunk                               ( version 4.13 )
+!/    31-Jan-2014 : Bug fix warning output (Tolman).    ( version 4.18 )
+!/    10-Feb-2014 : Bug correction for US3D: div. by df ( version 4.18 ) 
 !/
-!/    Copyright 2009-2012 National Weather Service (NWS),
+!/    Copyright 2009-2014 National Weather Service (NWS),
 !/       National Oceanic and Atmospheric Administration.  All rights
 !/       reserved.  WAVEWATCH III is a trademark of the NWS. 
 !/       No unauthorized use without permission.
@@ -102,6 +108,7 @@
 !       !/ST2   Source term set 2 (Tolman and Chalikov)
 !       !/ST3   Source term set 3 (WAM 4+)
 !       !/ST4   Source term set 4 (Ardhuin et al. 2009, 2010)
+!       !/ST6   Source term set 6 (BYDRZ)
 !       !/STX   Open source term slot (implemented as ST0).
 !
 !       !/S     Enable subroutine tracing.
@@ -216,10 +223,11 @@
 !/                  | WAVEWATCH III           NOAA/NCEP |
 !/                  |           F. Ardhuin              |
 !/                  |                        FORTRAN 90 |
-!/                  | Last update :         15-Apr-2013 |
+!/                  | Last update :         31-Jan-2014 |
 !/                  +-----------------------------------+
 !/
 !/    15-Apr-2013 : Origination.                        ( version 4.10 )
+!/    31-Jan-2014 : Bug fix warning output (Tolman).    ( version 4.18 )
 !/
 !  1. Purpose :
 !
@@ -270,7 +278,8 @@
 !
 !/ ------------------------------------------------------------------- /
       USE CONSTANTS
-      USE W3ODATMD, ONLY: NOGRP, NGRPP, NOGE, IDOUT, NAPERR
+      USE W3GDATMD, ONLY: E3DF, P2MSF, US3DF
+      USE W3ODATMD, ONLY: NOGRP, NGRPP, NOGE, IDOUT, NAPERR, FLOG
       USE W3SERVMD, ONLY: NEXTLN, STRSPLIT, STR_TO_UPPER
 !/S      USE W3SERVMD, ONLY: STRACE
 !
@@ -303,6 +312,7 @@
 !
       IERR=0
       FLG2D(:,:)=.FALSE. ! Initialize FLG2D 
+      FLG1D(:)=.FALSE. ! Initialize FLOG 
       NAMES =.FALSE.
 !        
       DO IFI=1,NOGRP ! Loop over field output groups
@@ -353,6 +363,9 @@
 !
          TESTSTR=OUT_NAMES(IOUT+1)
          SELECT CASE(TRIM(TESTSTR(1:6)))
+!
+! Group 1
+!
            CASE('DPT')
              FLG2D(1,1)=.TRUE.
            CASE('CUR')
@@ -370,15 +383,17 @@
 !/BT4           CASE('D50')
 !/BT4             FLG2D(1,8)=.TRUE.
 !
+! Group 2
+!
            CASE('HS')
              FLG2D(2,1)=.TRUE.
            CASE('LM')
              FLG2D(2,2)=.TRUE.
            CASE('T02')
              FLG2D(2,3)=.TRUE.
-           CASE('T01')
-             FLG2D(2,4)=.TRUE.
            CASE('T0M1')
+             FLG2D(2,4)=.TRUE.
+           CASE('T01')
              FLG2D(2,5)=.TRUE.
            CASE('FP')
              FLG2D(2,6)=.TRUE.
@@ -388,15 +403,33 @@
              FLG2D(2,8)=.TRUE.
            CASE('DP')
              FLG2D(2,9)=.TRUE.
+           CASE('HIG')
+             FLG2D(2,10)=.TRUE.
+!
+! Group 3
 !
            CASE('EF')
-             FLG2D(3,1)=.TRUE.
+             IF (E3DF(1,1).EQ.1) THEN 
+               FLG2D(3,1)=.TRUE.
+             ELSE
+               WRITE(NDSEN,1008) 'EF','E3D'
+               END IF
            CASE('TH1M')
-             FLG2D(3,2)=.TRUE.
+             IF (E3DF(2,1).EQ.1) THEN 
+               FLG2D(3,2)=.TRUE.
+             ELSE
+               WRITE(NDSEN,1008) 'TH1M','TH1MF'
+               END IF
            CASE('STH1M')
-             FLG2D(3,3)=.TRUE.
+             IF (E3DF(3,1).EQ.1) THEN 
+               FLG2D(3,3)=.TRUE.
+             ELSE
+               WRITE(NDSEN,1008) 'STH1M','STH1MF'
+               END IF
            CASE('WN')
              FLG2D(3,6)=.TRUE.
+!
+! Group 4
 !
            CASE('PHS')
              FLG2D(4,1)=.TRUE.
@@ -404,9 +437,9 @@
              FLG2D(4,2)=.TRUE.
            CASE('PLP')
              FLG2D(4,3)=.TRUE.
-           CASE('PTH')
+           CASE('PDIR')
              FLG2D(4,4)=.TRUE.
-           CASE('PSP')
+           CASE('PSPR')
              FLG2D(4,5)=.TRUE.
            CASE('PWS')
              FLG2D(4,6)=.TRUE.
@@ -414,6 +447,8 @@
              FLG2D(4,7)=.TRUE.
            CASE('PNR')
              FLG2D(4,8)=.TRUE.
+!
+! Group 5
 !
            CASE('UST')
              FLG2D(5,1)=.TRUE.
@@ -436,6 +471,8 @@
            CASE('WCM')
              FLG2D(5,10)=.TRUE.
 !
+! Group 6
+!
            CASE('SXY')
              FLG2D(6,1)=.TRUE.
            CASE('TWO')
@@ -451,9 +488,23 @@
            CASE('P2S')
              FLG2D(6,7)=.TRUE.
            CASE('USF')
-             FLG2D(6,8)=.TRUE.
+             IF (US3DF(1).EQ.1) THEN 
+               FLG2D(6,8)=.TRUE.
+             ELSE
+               WRITE(NDSEN,1008) 'USF','US3D'
+               END IF
            CASE('P2L')
-             FLG2D(6,9)=.TRUE.
+             IF (P2MSF(1).EQ.1) THEN 
+               FLG2D(6,9)=.TRUE.
+             ELSE
+               WRITE(NDSEN,1008) 'P2L','P2SF'
+               END IF
+           CASE('TWI')
+             FLG2D(6,10)=.TRUE.
+           CASE('FIC')
+             FLG2D(6,11)=.TRUE.
+!
+! Group 7
 !
            CASE('ABR')
              FLG2D(7,1)=.TRUE.
@@ -466,10 +517,14 @@
            CASE('TBB')
              FLG2D(7,5)=.TRUE.
 !
+! Group 8
+!
            CASE('MSS')
              FLG2D(8,1)=.TRUE.
            CASE('MSC')
              FLG2D(8,2)=.TRUE.
+!
+! Group 9
 !
            CASE('DTD')
              FLG2D(9,1)=.TRUE.
@@ -482,17 +537,23 @@
            CASE('CFK')
              FLG2D(9,5)=.TRUE.
 !
+! Group 10
+!
            CASE('U1')
              FLG2D(10,1)=.TRUE.
            CASE('U2')
              FLG2D(10,1)=.TRUE.
            CASE DEFAULT
-             WRITE (NDSO,1004) TRIM(TESTSTR)
+             IF ( IAPROC .EQ. NAPERR ) WRITE (NDSO,1004) TRIM(TESTSTR)
            END SELECT
-          IOUT=IOUT+1
-          END DO 
 !
-        END IF
+          IF(ANY(FLG2D(IFI,:))) FLG1D(IFI)=.TRUE. !Update FLOG
+!
+          IOUT=IOUT+1
+!
+        END DO 
+!
+      END IF
 !
       IF ( NDSS.NE.NDSO .AND. IAPROC .EQ. NAPOUT ) THEN
         FLT    = .TRUE.
@@ -522,10 +583,7 @@
  2003 CONTINUE
       IF ( IAPROC .EQ. NAPERR ) WRITE (NDSEN, 1003) IERR
       RETURN 
- 2004 CONTINUE
-      IF ( IAPROC .EQ. NAPERR ) WRITE (NDSEN, 1004) IERR
-      IERR=0
-      RETURN 
+!2004 CONTINUE ! replaced by warning in code ....
  2005 CONTINUE
       IF ( IAPROC .EQ. NAPERR ) WRITE (NDSEN, 1005) AFLG
       RETURN 
@@ -561,6 +619,10 @@
                '     NUMBER OF REQUESTED OUTPUT FIELD FLAGS IN GROUP ',&
               I2, /,' LESS THAN AVAILABLE, CHECK DOCS FOR MORE OPTIONS')
 !
+ 1008 FORMAT (/' *** WAVEWATCH III WARNING  : '/                       &
+               '     PARAMETER ',A,' not allowed: need to set parameter ',A, &
+               '     in OUTS namelist (in ww3_grid.inp)')
+!
       END SUBROUTINE W3READFLGRD
 
 !/ ------------------------------------------------------------------- /
@@ -588,6 +650,7 @@
 !/                  (Chris Bunney, UK Met Office)       ( version 3.13 )
 !/    25-Dec-2012 : New output structure and smaller    ( version 4.11 )
 !/                  memory footprint.
+!/    10-Feb-2014 : Bug correction for US3D: div. by df ( version 4.18 ) 
 !/
 !  1. Purpose :
 !
@@ -646,6 +709,7 @@
 !     !/ST1   Source term set 1 (WAM equiv.)
 !     !/ST2   Source term set 2 (Tolman and Chalikov)
 !     !/ST3   Source term set 3 (WAM 4+)
+!     !/ST6   Source term set 6 (BYDRZ)
 !     !/STX   Open source term slot (implemented as ST0).
 !
 !     !/S     Enable subroutine tracing.
@@ -661,16 +725,17 @@
       USE W3ADATMD, ONLY: HS, WLM, T02, T0M1, T01, FP0, THM, THS, THP0
 
       USE W3ADATMD, ONLY: FP1, THP1, ABA, ABD, UBA, UBD, FCUT,  &
-                          SXX, SYY, SXY, PHS, PTP, PLP, PTH, PSI, PWS,&
+                          SXX, SYY, SXY, PHS, PTP, PLP, PDIR, PSI, PWS,&
                           PWST, PNR, USERO, TAUOX, TAUOY, TAUWIX,     &
                           TAUWIY, PHIAW, PHIOC, TUSX, TUSY, PRMS, TPMS,&
                           USSX, USSY, MSSX, MSSY, MSCX, MSCY, CHARN,  &
                           TAUWNX,  TAUWNY, BHD,                    &
                           CGE, BEDFORMS, WHITECAP, TAUBBL, PHIBBL,    &
                           CFLXYMAX, CFLTHMAX, CFLKMAX, P2SMS,         &
-                          US3D, EF, TH1M, STH1M, TH2M, STH2M
+                          US3D, EF, TH1M, STH1M, TH2M, STH2M, HSIG
       USE W3ODATMD, ONLY: NDST, UNDEF, IAPROC, NAPROC, NAPFLD,        &
-                          ICPRT, DTPRT, WSCUT, NOSWLL, FLOGRD, FLOGR2
+                          ICPRT, DTPRT, WSCUT, NOSWLL, FLOGRD, FLOGR2,&
+                          NOGRP, NGRPP
 !/S      USE W3SERVMD, ONLY: STRACE
 !
       IMPLICIT NONE
@@ -704,12 +769,19 @@
                                  ETMSSL(NSEAL), ETMSSCL(NSEAL),       &
                                  ETTPMM(NSEAL), ETF(NSEAL), ET1(NSEAL)
       REAL                       USSCO, FT1
-      REAL, SAVE              :: HSMIN = 0.05
+      REAL, SAVE              :: HSMIN = 0.01
+      LOGICAL                 :: FLOLOC(NOGRP,NGRPP)
 !/
 !/ ------------------------------------------------------------------- /
 !/
 !/S      CALL STRACE (IENT, 'W3OUTG')
 !
+      DO I=1,NOGRP 
+        DO J=1,NGRPP
+          FLOLOC(I,J)=((FLOUTG.AND.FLOGRD(I,J)).OR.(FLOUTG2.AND.FLOGR2(I,J)))
+          END DO
+        END DO
+! 
       FXPMC  = 0.66 * GRAV / 28.
       HSMIN  = HSMIN
       FT1    =  0.3333 * SIG(NK)**2 * DTH * SIG(NK)
@@ -762,6 +834,7 @@
       THM    = UNDEF
       THS    = UNDEF
       THP0   = UNDEF
+      HSIG   = UNDEF
 !
       FP1    = UNDEF
       THP1   = UNDEF
@@ -785,7 +858,7 @@
 ! 2.b Integrate energy in band
 !
         DO ITH=1, NTH
-!/OMP1/!$OMP PARALLEL DO PRIVATE(JSEA)
+!/OMP1/!$OMP PARALLEL DO PRIVATE(JSEA,ISEA,FACTOR)
           DO JSEA=1, NSEAL
             NKH(JSEA)    =MIN ( NK ,   &
                     INT(FACTI2+FACTI1*LOG(MAX(1.E-7,FCUT(JSEA)))) )
@@ -810,13 +883,14 @@
 !
 ! 2.c Finalize integration over band and update mean arrays
 !
-!/OMP1/!$OMP PARALLEL DO PRIVATE(JSEA,ISEA,FACTOR)
+!/OMP1/!$OMP PARALLEL DO PRIVATE(JSEA,ISEA,FACTOR,FACTOR2,KD,FKD,USSCO,M1)
         DO JSEA=1, NSEAL
 !/DIST          ISEA         = IAPROC + (JSEA-1)*NAPROC
 !/SHRD          ISEA         = JSEA
           FACTOR       = DDEN(IK) / CG(IK,ISEA)
           EBD(IK,JSEA) = AB(JSEA) * FACTOR
           ET (JSEA)    = ET (JSEA) + EBD(IK,JSEA)
+!/IG1     IF (IK.EQ.NINT(IGPARS(5))) HSIG(JSEA) = 4*SQRT(ET(JSEA))
           ETF(JSEA)    = ETF(JSEA) + EBD(IK,JSEA) * CG(IK,ISEA)
           EWN(JSEA)    = EWN(JSEA) + EBD(IK,JSEA) / WN(IK,ISEA)
           ETR(JSEA)    = ETR(JSEA) + EBD(IK,JSEA) / SIG(IK)
@@ -845,7 +919,10 @@
 !
             UBS(JSEA) = UBS(JSEA) + AB(JSEA) * SIG(IK)**2     
 !
-!   Microseismic equivalent pressure spectral density
+!   2nd order equivalent surface pressure spectral density at K=0
+!   this is used for microseismic or microbarom sources 
+!   Finite water depth corrections (Ardhuin & Herbers 2013) are not 
+!   included here. 
 !                                                               
             FACTOR2 = DTH*2/(TPI**2)                        &
                       * SIG(IK)                             &
@@ -855,7 +932,7 @@
 !   Integration over seismic radian frequency : *2*dsigma
 !
               PRMS(JSEA)  = PRMS(JSEA) + FACTOR2 * 2 * DSII(IK) 
-              IF ( FLOGRD (6, 9).AND.(IK.GE.P2MSF(2).AND.IK.LE.P2MSF(3)))   &
+              IF ( FLOLOC (6, 9).AND.(IK.GE.P2MSF(2).AND.IK.LE.P2MSF(3)))   &
                 P2SMS(JSEA,IK) = FACTOR2 * 2 * TPI  
               IF (FACTOR2 .GT. ETTPMM(JSEA)) THEN
                 ETTPMM(JSEA) = FACTOR2 
@@ -899,22 +976,22 @@
           SXY(JSEA)    = SXY(JSEA)  + ABXY(JSEA)
           EBD(IK,JSEA) = EBD(IK,JSEA) / DSII(IK)
 !
-          IF ( FLOGRD( 3, 1).AND.(IK.GE.E3DF(2,1).AND.IK.LE.E3DF(3,1)))   &
-            EF(JSEA,IK)  = EBD(IK,JSEA)   
+          IF ( FLOLOC( 3, 1).AND.(IK.GE.E3DF(2,1).AND.IK.LE.E3DF(3,1)))   &
+            EF(JSEA,IK)  = EBD(IK,JSEA) * TPI
 !
           USSX(JSEA)  = USSX(JSEA) + ABX(JSEA)*USSCO               
           USSY(JSEA)  = USSY(JSEA) + ABY(JSEA)*USSCO         
 !
 ! Fills the 3D Stokes drift spectrum array
 !
-          IF ( FLOGRD( 6, 8).AND.(IK.GE.US3DF(2).AND.IK.LE.US3DF(3) ))   THEN 
-            US3D(JSEA,IK)    =  ABX(JSEA)*USSCO    
-            US3D(JSEA,NK+IK) =  ABY(JSEA)*USSCO  
+          IF ( FLOLOC( 6, 8).AND.(IK.GE.US3DF(2).AND.IK.LE.US3DF(3) ))   THEN 
+            US3D(JSEA,IK)    =  ABX(JSEA)*USSCO/(DSII(IK)*TPIINV) 
+            US3D(JSEA,NK+IK) =  ABY(JSEA)*USSCO/(DSII(IK)*TPIINV)   
             END IF  
-          IF ( FLOGRD( 3, 2).AND.(IK.GE.E3DF(2,1).AND.IK.LE.E3DF(3,2)))  &
+          IF ( FLOLOC( 3, 2).AND.(IK.GE.E3DF(2,1).AND.IK.LE.E3DF(3,2)))  &
             TH1M(JSEA,IK)= MOD ( 630. - RADE*ATAN2(ABY(JSEA),ABX(JSEA)) , 360. )
           M1 = SQRT(ABX(JSEA)**2+ABY(JSEA)**2)/MAX(1E-20,AB(JSEA))
-          IF ( FLOGRD( 3, 3).AND.(IK.GE.E3DF(2,3).AND.IK.LE.E3DF(3,3)))  &
+          IF ( FLOLOC( 3, 3).AND.(IK.GE.E3DF(2,3).AND.IK.LE.E3DF(3,3)))  &
              STH1M(JSEA,IK)= SQRT(ABS(2.*(1-M1)))*RADE
           END DO
 !FA  TH2M AND STH2M CAN BE ADDED HERE 
@@ -974,10 +1051,16 @@
               END IF
             IF ( ABS(ETX(JSEA))+ABS(ETY(JSEA)) .GT. 1.E-7 ) THEN
                 THM(JSEA) = ATAN2(ETY(JSEA),ETX(JSEA))
+!/RTD  !!  Subtract AnglD from mean direction and wrap to 0-2Pi. JGLi12Jun2012
+!/RTD            THM(JSEA) = THM(JSEA) - AnglD(ISEA)*DERA
+!/RTD            IF( THM(JSEA) .LT. 0.0 )  THM(JSEA) = THM(JSEA) + TPi
               END IF
             ABR(JSEA) = SQRT ( 2. * MAX ( 0. , ABR(JSEA) ) )
             IF ( ABR(JSEA) .GE. 1.E-7 ) THEN
                 ABD(JSEA) = ATAN2(ABD(JSEA),ABA(JSEA))
+!/RTD  !!  Subtract AnglD from bottom rms direction and wrap to 0-2Pi. JGLi12Jun2012
+!/RTD            ABD(JSEA) = ABD(JSEA) - AnglD(ISEA)*DERA
+!/RTD            IF( ABD(JSEA) .LT. 0.0 )  ABD(JSEA) = ABD(JSEA) + TPi
               ELSE
                 ABD(JSEA) = 0.
               ENDIF
@@ -985,6 +1068,9 @@
             UBR(JSEA) = SQRT ( 2. * MAX ( 0. , UBR(JSEA) ) )
             IF ( UBR(JSEA) .GE. 1.E-7 ) THEN
                 UBD(JSEA) = ATAN2(UBD(JSEA),UBA(JSEA))
+!/RTD  !!  Subtract AnglD from bottom wave direction and wrap to 0-2Pi. JGLi12Jun2012
+!/RTD            UBD(JSEA) = UBD(JSEA) - AnglD(ISEA)*DERA
+!/RTD            IF( UBD(JSEA) .LT. 0.0 )  UBD(JSEA) = UBD(JSEA) + TPi
               ELSE
                 UBD(JSEA) = 0.
               ENDIF
@@ -997,11 +1083,6 @@
               T02(JSEA) = TPI / SIG(NK)
               T01(JSEA)= T02(JSEA)     
               ENDIF
-!
-            MSSX(JSEA) = 100. * SQRT(MSSX(JSEA)) 
-            MSSY(JSEA) = 100. * SQRT(MSSY(JSEA)) 
-            MSCX(JSEA) = 100. * MSCX(JSEA)
-            MSCY(JSEA) = 100. * MSCY(JSEA)
 !
 !  Add here USERO(JSEA,1) ... 
 !
@@ -1048,6 +1129,15 @@
 !/ST3        IKP1(JSEA) = 0
 !/ST4        FP1 (JSEA) = UNDEF
 !/ST4        IKP1(JSEA) = 0
+!/ST6        FP1 (JSEA) = UNDEF
+!/ST6        IKP1(JSEA) = NK
+!/ST6        FPISTR     = MAX ( 0.003 , FPIS(ISEA) * UST(ISEA) / GRAV )
+!/ST6        FP1STR     = 3.6E-4 + 0.92*FPISTR - 6.3E-10/FPISTR**3
+!/ST6        FP1TST     = FP1STR / UST(ISEA) * GRAV
+!/ST6        IF ( FP1TST.LE.SIG(NK) .AND. FP1TST.GT.SIG(1) ) THEN
+!/ST6            FP1 (JSEA) = TPIINV * FP1TST
+!/ST6            IKP1(JSEA) = MAX ( 1 , NINT(FACTI2+FACTI1*LOG(FP1TST)) )
+!/ST6          END IF
 !/STX        FP1 (JSEA) = UNDEF
 !/STX        IKP1(JSEA) = NK
 !/STX        FPISTR     = MAX ( 0.003 , FPIS(ISEA) * UST(ISEA) / GRAV )
@@ -1176,6 +1266,9 @@
         IF ( ABS(ETX(JSEA))+ABS(ETY(JSEA)) .GT. 1.E-7 .AND.           &
              FP0(JSEA).NE.UNDEF )                                     &
             THP0(JSEA) = ATAN2(ETY(JSEA),ETX(JSEA))
+!/RTD  !!  Subtract AnglD from peak direction and wrap to 0-2Pi.  JGLi12Jun2012
+!/RTD            THP0(JSEA) = THP0(JSEA) - AnglD(ISEA)*DERA
+!/RTD            IF( THP0(JSEA) .LT. 0.0 )  THP0(JSEA) = THP0(JSEA) + TPi
         ETX(JSEA) = 0.
         ETY(JSEA) = 0.
         IKP1(JSEA) = MAX ( 1 , IKP1(JSEA) )
@@ -1214,6 +1307,9 @@
         IF ( ABS(ETX(JSEA))+ABS(ETY(JSEA)) .GT. 1.E-7 .AND.           &
              FP1(JSEA) .NE. UNDEF )                                   &
             THP1(JSEA) = ATAN2(ETY(JSEA),ETX(JSEA))
+!/RTD  !!  Subtract AnglD from THP1 direction and wrap to 0-2Pi.  JGLi12Jun2012
+!/RTD            THP1(JSEA) = THP1(JSEA) - AnglD(ISEA)*DERA
+!/RTD            IF( THP1(JSEA) .LT. 0.0 )  THP1(JSEA) = THP1(JSEA) + TPi
         END DO
 !
 ! 5.  Test output (local to MPP only)
@@ -1250,7 +1346,7 @@
           PHS    = UNDEF
           PTP    = UNDEF
           PLP    = UNDEF
-          PTH    = UNDEF
+          PDIR   = UNDEF
           PSI    = UNDEF
           PWS    = UNDEF
           PWST   = UNDEF
@@ -1276,7 +1372,7 @@
                     PHS(JSEA,0) = DTPRT(1,I)
                     PTP(JSEA,0) = DTPRT(2,I)
                     PLP(JSEA,0) = DTPRT(3,I)
-                    PTH(JSEA,0) = ( 270. - DTPRT(4,I) ) * DERA
+                    PDIR(JSEA,0) = ( 270. - DTPRT(4,I) ) * DERA
                     PSI(JSEA,0) = DTPRT(5,I)
                     PWS(JSEA,0) = DTPRT(6,I)
                     I      = I + 1
@@ -1286,7 +1382,7 @@
                   PHS(JSEA,J) = DTPRT(1,I)
                   PTP(JSEA,J) = DTPRT(2,I)
                   PLP(JSEA,J) = DTPRT(3,I)
-                  PTH(JSEA,J) = ( 270. - DTPRT(4,I) ) * DERA
+                  PDIR(JSEA,J) = ( 270. - DTPRT(4,I) ) * DERA
                   PSI(JSEA,J) = DTPRT(5,I)
                   PWS(JSEA,J) = DTPRT(6,I)
                   I      = I + 1
@@ -1341,6 +1437,7 @@
 !/    25-Dec-2012 : New output structure and smaller    ( version 4.11 )
 !/                  memory footprint.
 !/    21-Aug-2013 : Added missing cos,sin for UBA, ABA  ( version 4.11 )
+!/    27-Nov-2013 : Management of coupling output       ( version 4.18 )
 !  1. Purpose :
 !
 !     Read/write gridded output.
@@ -1348,110 +1445,6 @@
 !  2. Method :
 !
 !     Fields in file are determined by flags in FLOGRD in W3ODATMD.
-!
-! Firt two columns: fields in gx_outf (GXO) and ww3_grib (GRB)
-!
-! G  G
-! R  X Grp  Param Code     Output  Parameter/Group
-! B  O Numb Numbr Name        Tag  Definition 
-! --------------------------------------------------
-!       1                          Forcing Fields
-!  -------------------------------------------------
-! T  T  1     1   DW         DPT   Water depth.
-! T  T  1     2   C[X,Y]     CUR   Current velocity.
-! T  T  1     3   UA         WND   Wind speed.
-! T  T  1     4   AS         AST   Air-sea temperature difference.
-! T  T  1     5   WLV        WLV   Water levels.
-! T  T  1     6   ICE        ICE   Ice concentration.
-! T  T  1     7   IBG        IBG   Iceberg-induced damping
-! T  T  1     8   D50        D50   Median sediment grain size
-!  -------------------------------------------------
-!       2                          Standard mean wave Parameters
-!  -------------------------------------------------
-! T  T  2     1   HS         HS    Wave height.
-! T  T  2     2   WLM        LM    Mean wave length.
-! T  T  2     3   T02        T02   Mean wave period (Tm02).
-! T  T  2     4   T0M1       T0M1  Mean wave period (Tm0,-1).
-! T  T  2     5   T01        T01   Mean wave period (Tm01).
-! T  T  2     6   FP0        FP    Peak frequency.
-! T  T  2     7   THM        DIR   Mean wave direction.
-! T  T  2     8   THS        SPR   Mean directional spread.
-! T  T  2     9   THP0       DP    Peak direction.
-!  -------------------------------------------------
-!       3                          Spectral Parameters (first 5)
-!  -------------------------------------------------
-! F  F  3     1   Ef         EF    Wave frequency spectrum
-! F  F  3     2   th1m       TH1M  Mean wave direction from a1,b2
-! F  F  3     3   sth1m      STH1M Directional spreading from a1,b2
-! F  F  3     4   th2m             Mean wave direction from a2,b2
-! F  F  3     5   sth2m            Directional spreading from a2,b2
-! F  F  3     6   WN         WN    Wavenumber array
-!  -------------------------------------------------
-!       4                          Spectral Partition Parameters 
-!  -------------------------------------------------
-! T  T  4     1   PHS        PHS   Partitioned wave heights.
-! T  T  4     2   PTP        PTP   Partitioned peak period.
-! T  T  4     3   PLP        PLP   Partitioned peak wave length.
-! T  T  4     4   PTH        PDIR  Partitioned mean direction.
-! T  T  4     5   PSI        PSPR  Partitioned mean directional spread.
-! T  T  4     6   PWS        PWS   Partitionned wind sea fraction.
-! T  T  4     7   PWST       TWS   Total wind sea fraction.
-! T  T  4     8   PNR        PNR   Number of partitions.
-!  -------------------------------------------------
-!       5                          Atmosphere-waves layer
-!  -------------------------------------------------
-! T  T  5     1   UST        UST   Friction velocity.
-! F  T  5     2   CHARN      CHA   Charnock parameter
-! F  T  5     3   CGE        CGE   Energy flux
-! F  T  5     4   PHIAW      FAW   Air-sea energy flux
-! F  T  5     5   TAUWI[X,Y] TAW   Net wave-supported stress
-! F  T  5     6   TAUWN[X,Y] TWA   Negative part of the wave-supported stress
-! F  F  5     7   WHITECAP   WCC   Whitecap coverage
-! F  F  5     8   WHITECAP   WCF   Whitecap thickness
-! F  F  5     9   WHITECAP   WCH   Mean breaking height
-! F  F  5    10   WHITECAP   WCM   Whitecap moment
-!  -------------------------------------------------
-!       6                          Wave-ocean layer 
-!  -------------------------------------------------
-! F  F  6     1   S[XX,YY,XY] SXY  Radiation stresses.
-! F  F  6     2   TAUO[X,Y]  TWO   Wave to ocean momentum flux
-! F  F  6     3   BHD        BHD   Bernoulli head (J term) 
-! F  F  6     4   PHIOC      FOC   Wave to ocean energy flux
-! F  F  6     5   TUS[X,Y]   TUS   Stokes transport
-! F  F  6     6   USS[X,Y]   USS   Surface Stokes drift
-! F  F  6     7   [PR,TP]MS  P2S   Second-order sum pressure 
-! F  F  6     8   US3D       USF   Spectrum of surface Stokes drift
-! F  F  6     9   P2SMS      P2L   Micro seism  source term
-!  -------------------------------------------------
-!       7                          Wave-bottom layer 
-!  -------------------------------------------------
-! F  F  7     1   ABA        ABR   Near bottom rms amplitides.
-! F  F  7     2   UBA        UBR   Near bottom rms velocities.
-! F  F  7     3   BEDFORMS   BED   Bedforms
-! F  F  7     4   PHIBBL     FBB   Energy flux due to bottom friction 
-! F  F  7     5   TAUBBL     TBB   Momentum flux due to bottom friction
-!  -------------------------------------------------
-!       8                          Spectrum parameters
-!  -------------------------------------------------
-! F  F  8     1   MSS[X,Y]   MSS   Mean square slopes
-! F  F  8     2   MSC[X,Y]   MSC   Spectral level at high frequency tail
-!  -------------------------------------------------
-!       9                          Numerical diagnostics  
-!  -------------------------------------------------
-! T  T  9     1   DTDYN      DTD   Average time step in integration.
-! T  T  9     2   FCUT       FC    Cut-off frequency.
-! T  T  9     3   CFLXYMAX   CFX   Max. CFL number for spatial advection. 
-! T  T  9     4   CFLTHMAX   CFD   Max. CFL number for theta-advection. 
-! F  F  9     5   CFLKMAX    CFK   Max. CFL number for k-advection. 
-!  -------------------------------------------------
-!       10                         User defined          
-!  -------------------------------------------------
-! F  F  10    1              U1    User defined #1. (requires coding ...)
-! F  F  10    2              U2    User defined #1. (requires coding ...)
-!  -------------------------------------------------
-!
-!     Section 4 consist of a set of fields, index 0 = wind sea, index
-!     1:NOSWLL are first NOSWLL swell fields.
 !
 !  3. Parameters :
 !
@@ -1489,8 +1482,9 @@
 !     - MAPSTA is dumped as it contains information on the ice edge.
 !       Dynamic ice edges require MAPSTA to be dumped every time step.
 !     - The output file has the pre-defined name 'out_grd.FILEXT'.
-!     - The current components CX and CY are converted to the absolute
-!       value and direction in this routine.
+!     - The current components CX and CY are written to out_grd as
+!       components, but converted to magnitude and direction in most
+!       gridded and point output post-processors (except gx_outf).
 !     - All written direction are in degrees, nautical convention,
 !       but in reading, all is convered back to radians and cartesian
 !       conventions.
@@ -1527,14 +1521,14 @@
       USE W3ADATMD, ONLY: HS, WLM, T02, T0M1, T01, FP0, THM, THS, THP0
       USE W3ADATMD, ONLY: FP1, THP1, DTDYN, &
                           FCUT, ABA, ABD, UBA, UBD, SXX, SYY, SXY,    &
-                          PHS, PTP, PLP, PTH, PSI, PWS, PWST, PNR,    &
+                          PHS, PTP, PLP, PDIR, PSI, PWS, PWST, PNR,    &
                           USERO, TAUOX, TAUOY, TAUWIX, TAUWIY,  &
                           PHIAW, PHIOC, TUSX, TUSY, PRMS, TPMS,       &
                           USSX, USSY, MSSX, MSSY, MSCX, MSCY,         &
                           TAUWNX, TAUWNY, CHARN, BHD,              &
                           PHIBBL, TAUBBL, WHITECAP, BEDFORMS, CGE,    &
                           CFLXYMAX, CFLTHMAX, CFLKMAX, P2SMS, US3D, EF, &
-                          TH1M, STH1M, TH2M, STH2M
+                          TH1M, STH1M, TH2M, STH2M, HSIG
       USE W3ODATMD, ONLY: NOGRP, NGRPP, IDOUT, UNDEF, NDST, NDSE,     &
                           FLOGRD, IPASS => IPASS1, WRITE => WRITE1,   &
                           FNMPRE, NOSWLL, NOEXTR
@@ -1712,7 +1706,7 @@
                 IF ( FLOGRD( 4, 1) ) PHS (ISEA,:) = UNDEF
                 IF ( FLOGRD( 4, 2) ) PTP (ISEA,:) = UNDEF
                 IF ( FLOGRD( 4, 3) ) PLP (ISEA,:) = UNDEF
-                IF ( FLOGRD( 4, 4) ) PTH (ISEA,:) = UNDEF
+                IF ( FLOGRD( 4, 4) ) PDIR (ISEA,:) = UNDEF
                 IF ( FLOGRD( 4, 5) ) PSI (ISEA,:) = UNDEF
                 IF ( FLOGRD( 4, 6) ) PWS (ISEA,:) = UNDEF
                 IF ( FLOGRD( 4, 7) ) PWST(ISEA  ) = UNDEF
@@ -1892,6 +1886,8 @@
                     WRITE ( NDSOG ) THS(1:NSEA)
                   ELSE IF ( IFI .EQ. 2 .AND. IFJ .EQ. 9 ) THEN
                     WRITE ( NDSOG ) THP0(1:NSEA)
+                  ELSE IF ( IFI .EQ. 2 .AND. IFJ .EQ. 10 ) THEN
+                    WRITE ( NDSOG ) HSIG(1:NSEA)
 !
 !     Section 3)
 !
@@ -1917,7 +1913,7 @@
                   ELSE IF ( IFI .EQ. 4 .AND. IFJ .EQ. 3 ) THEN
                     WRITE ( NDSOG ) PLP(1:NSEA,0:NOSWLL)
                   ELSE IF ( IFI .EQ. 4 .AND. IFJ .EQ. 4 ) THEN
-                    WRITE ( NDSOG ) PTH(1:NSEA,0:NOSWLL)
+                    WRITE ( NDSOG ) PDIR(1:NSEA,0:NOSWLL)
                   ELSE IF ( IFI .EQ. 4 .AND. IFJ .EQ. 5 ) THEN
                     WRITE ( NDSOG ) PSI(1:NSEA,0:NOSWLL)
                   ELSE IF ( IFI .EQ. 4 .AND. IFJ .EQ. 6 ) THEN
@@ -2109,6 +2105,9 @@
                   ELSE IF ( IFI .EQ. 2 .AND. IFJ .EQ. 9 ) THEN
                     READ (NDSOG,END=801,ERR=802,IOSTAT=IERR)         &
                                                          THP0(1:NSEA)
+                  ELSE IF ( IFI .EQ. 2 .AND. IFJ .EQ. 10 ) THEN
+                    READ (NDSOG,END=801,ERR=802,IOSTAT=IERR)         &
+                                                         HSIG(1:NSEA)
 !
 !     Section 3)
 !
@@ -2144,7 +2143,7 @@
                                                   PLP(1:NSEA,0:NOSWLL)
                   ELSE IF ( IFI .EQ. 4 .AND. IFJ .EQ. 4 ) THEN
                     READ (NDSOG,END=801,ERR=802,IOSTAT=IERR)         &
-                                                  PTH(1:NSEA,0:NOSWLL)
+                                                  PDIR(1:NSEA,0:NOSWLL)
                   ELSE IF ( IFI .EQ. 4 .AND. IFJ .EQ. 5 ) THEN
                     READ (NDSOG,END=801,ERR=802,IOSTAT=IERR)         &
                                                   PSI(1:NSEA,0:NOSWLL)

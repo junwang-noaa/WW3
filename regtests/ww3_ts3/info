@@ -10,6 +10,7 @@
 #                         2: Tolman and Chalikov (1996)                     #
 #                         3: WAM 4.                                         #
 #                         4: Ardhuin et al. (2010)                          #
+#                         6: BYDRZ (2013)                                   #
 #   !/PRn                Selecting one of the propagation schemes.          #
 #                         1: First order.                                   #
 #                         2: UQ schemes                                     #   
@@ -31,32 +32,93 @@
 #     + Spectral grid: ntheta = 24, nf = 25, f1 = 0.04, fgamma = 1.1,       #
 #   * switch options : (self explanatory)                                   #
 #       - switch_ST1_PR1                                                    #
-#       - switch_ST1_PR2                                                    #
-#       - switch_ST1_PR3                                                    #
+#       - switch_ST1_PR2_UNO                                                #
+#       - switch_ST1_PR2_UQ                                                 #
+#       - switch_ST1_PR3_UNO                                                #
+#       - switch_ST1_PR3_UQ                                                 #
 #       - switch_ST2_PR1                                                    #
-#       - switch_ST2_PR2                                                    #
-#       - switch_ST2_PR3 (default)                                          #
+#       - switch_ST2_PR2_UNO                                                #
+#       - switch_ST2_PR2_UQ                                                 #
+#       - switch_ST2_PR3_UNO                                                #
+#       - switch_ST2_PR3_UQ (default)                                       #
 #       - switch_ST3_PR1                                                    #
-#       - switch_ST3_PR2                                                    #
-#       - switch_ST3_PR3                                                    #
+#       - switch_ST3_PR2_UNO                                                #
+#       - switch_ST3_PR2_UQ                                                 #
+#       - switch_ST3_PR3_UNO                                                #
+#       - switch_ST3_PR3_UQ                                                 #
 #       - switch_ST4_PR1                                                    #
-#       - switch_ST4_PR2                                                    #
-#       - switch_ST4_PR3                                                    #
+#       - switch_ST4_PR2_UNO                                                #
+#       - switch_ST4_PR2_UQ                                                 #
+#       - switch_ST4_PR3_UNO                                                #
+#       - switch_ST4_PR3_UQ                                                 #
+#       - switch_ST6_PR1                                                    #
+#       - switch_ST6_PR2_UQ                                                 #
+#       - switch_ST6_PR2_UNO                                                #
+#       - switch_ST6_PR3_UQ                                                 #
+#       - switch_ST6_PR3_UNO                                                #
 #       - switch_ST1_PR1_MPI                                                #
-#       - switch_ST1_PR2_MPI                                                #
-#       - switch_ST1_PR3_MPI                                                #
+#       - switch_ST1_PR2_UNO_MPI                                            #
+#       - switch_ST1_PR2_UQ_MPI                                             #
+#       - switch_ST1_PR3_UNO_MPI                                            #
+#       - switch_ST1_PR3_UQ_MPI                                             #
 #       - switch_ST2_PR1_MPI                                                #
-#       - switch_ST2_PR2_MPI                                                #
-#       - switch_ST2_PR3_MPI                                                #
+#       - switch_ST2_PR2_UNO_MPI                                            #
+#       - switch_ST2_PR2_UQ_MPI                                             #
+#       - switch_ST2_PR3_UNO_MPI                                            #
+#       - switch_ST2_PR3_UQ_MPI                                             #
 #       - switch_ST3_PR1_MPI                                                #
-#       - switch_ST3_PR2_MPI                                                #
-#       - switch_ST3_PR3_MPI                                                #
+#       - switch_ST3_PR2_UNO_MPI                                            #
+#       - switch_ST3_PR2_UQ_MPI                                             #
+#       - switch_ST3_PR3_UNO_MPI                                            #
+#       - switch_ST3_PR3_UQ_MPI                                             #
 #       - switch_ST4_PR1_MPI                                                #
-#       - switch_ST4_PR2_MPI                                                #
-#       - switch_ST4_PR3_MPI                                                #
+#       - switch_ST4_PR2_UNO_MPI                                            #
+#       - switch_ST4_PR2_UQ_MPI                                             #
+#       - switch_ST4_PR3_UNO_MPI                                            #
+#       - switch_ST4_PR3_UQ_MPI                                             #
+#       - switch_ST6_PR1_MPI                                                #
+#       - switch_ST6_PR2_UQ_MPI                                             #
+#       - switch_ST6_PR2_UNO_MPI                                            #
+#       - switch_ST6_PR3_MPI                                                #
+#       - switch_ST6_PR3_UQ_MPI                                             #
+#       - switch_ST6_PR3_UNO_MPI                                            #
+#       - switch_ST1_PR1_OMP                                                #
+#       - switch_ST1_PR2_UNO_OMP                                            #
+#       - switch_ST1_PR2_UQ_OMP                                             #
+#       - switch_ST1_PR3_UNO_OMP                                            #
+#       - switch_ST1_PR3_UQ_OMP                                             #
+#       - switch_ST2_PR1_OMP                                                #
+#       - switch_ST2_PR2_UNO_OMP                                            #
+#       - switch_ST2_PR2_UQ_OMP                                             #
+#       - switch_ST2_PR3_UNO_OMP                                            #
+#       - switch_ST2_PR3_UQ_OMP                                             #
+#       - switch_ST3_PR1_OMP                                                #
+#       - switch_ST3_PR2_UNO_OMP                                            #
+#       - switch_ST3_PR2_UQ_OMP                                             #
+#       - switch_ST3_PR3_UNO_OMP                                            #
+#       - switch_ST3_PR3_UQ_OMP                                             #
+#       - switch_ST4_PR1_OMP                                                #
+#       - switch_ST4_PR2_UNO_OMP                                            #
+#       - switch_ST4_PR2_UQ_OMP                                             #
+#       - switch_ST4_PR3_UNO_OMP                                            #
+#       - switch_ST4_PR3_UQ_OMP                                             #
+#       - switch_ST6_PR1_OMP                                                #
+#       - switch_ST6_PR2_UQ_OMP                                             #
+#       - switch_ST6_PR2_UNO_OMP                                            #
+#       - switch_ST6_PR3_OMP                                                #
+#       - switch_ST6_PR3_UQ_OMP                                             #
+#       - switch_ST6_PR3_UNO_OMP                                            #
+#                                                                           #
+#  Example run_test commands:                                               #
+#  (some details will vary by local system and configuration)               #
+#  ./bin/run_test  -s ST1_PR1 -w work_ST1_PR1 ../ ww3_ts3                   #
+#  ./bin/run_test  -s ST1_PR1_OMP -w work_ST1_PR1_OMP -f -O -n 3  \         #
+#                                             ../ ww3_ts3                   #
+#  ./bin/run_test  -s ST1_PR1_MPI -w work_ST1_PR1_MPI -f -p mpirun -n 3  \  #
+#                                             ../ ww3_ts3                   #
 #                                                                           #
 #                                              Hendrik Tolman, Nov 2002     #
-#                                                   Last Mod : Jul 2013     #
+#                                                   Last Mod : Dec 2013     #
 #                                                                           #
 #    Copyright 2009-2013 National Weather Service (NWS),                    #
 #       National Oceanic and Atmospheric Administration.  All rights        #

@@ -27,16 +27,23 @@
 #   * nearly wave blocking (moderate currents)                              #
 #   * grid definition same as blocking case                                 #
 #   * switch options :                                                      #
-#     + switch_PR1 : First order scheme                                     #
-#     + switch_PR2 : UQ scheme with diffusion (off)                         #
-#     + switch_PR3 : UQ scheme with averaging (off) (default)               #
+#     + switch_PR1     : First order scheme                                 #
+#     + switch_PR2_UNO : UNO scheme with diffusion (off)                    #
+#     + switch_PR2_UQ  : UQ scheme with diffusion (off)                     #
+#     + switch_PR3_UNO : UNO scheme with averaging (off)                    #
+#     + switch_PR3_UQ  : UQ scheme with averaging (off) (default)           #
 # - Test case input_moderate_current:                                       #
 #   * Current too weak to block wave propagation.                           #
 #   * All else as in default tests.                                         #
 #   * Presently not added in regresssion text matrix.                       #
 #                                                                           #
+#  Example run_test commands:                                               #
+#  (some details will vary by local system and configuration)               #
+#  ./bin/run_test -s PR1                           ../ ww3_tp1.6            #
+#  ./bin/run_test -s PR1 -i input_moderate_current ../ ww3_tp1.6            #
+#                                                                           #
 #                                              Hendrik Tolman, Jun 2002     #
-#                                                   Last Mod : Jul 2013     #
+#                                                   Last Mod : Dec 2013     #
 #                                                                           #
 #    Copyright 2009-2013 National Weather Service (NWS),                    #
 #       National Oceanic and Atmospheric Administration.  All rights        #

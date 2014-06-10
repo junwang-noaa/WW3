@@ -10,7 +10,7 @@
 !/                  |             E. Rogers             |
 !/                  |            T. Campbell            |
 !/                  |                        FORTRAN 90 |
-!/                  | Last update :         26-Dec-2012 |
+!/                  | Last update :         06-Feb-2014 |
 !/                  +-----------------------------------+
 !/
 !/    14-Jan-1999 : Final FORTRAN 77                    ( version 1.18 )
@@ -51,8 +51,11 @@
 !/                  from 3.15 (HLT).                    ( version 4.08 )
 !/    23-Aug-2012 : Adding movable bed friction BT4     ( version 4.08 )
 !/    26-Dec-2012 : Modified obsolete declarations.     ( version 4.11 )
+!/    10-Sep-2013 : Implement second order correction   ( version 4.12 )
+!/                  (F. Ardhuin)
+!/    06-Feb-2014 : Fix header format in part. files.   ( version 4.18 )
 !/
-!/    Copyright 2009-2012 National Weather Service (NWS),
+!/    Copyright 2009-2014 National Weather Service (NWS),
 !/       National Oceanic and Atmospheric Administration.  All rights
 !/       reserved.  WAVEWATCH III is a trademark of the NWS. 
 !/       No unauthorized use without permission.
@@ -88,7 +91,7 @@
 !                                      3 : Table of 1-D time scales.
 !                                      4 : Transfer file.
 !
-!       4 : Partitioning and bulletins 
+!       4 : Partitioning and bulletins
 !                                      1 : Spectral partitions table
 !                                      2 : Bulletins ASCII format
 !                                      3 : Bulletins CSV format
@@ -135,6 +138,10 @@
 !     - Transfder file written to ww3.yymmddhh.spc with multiple
 !       spectra and times in file. yymmddhh relates to first
 !       output (NDSTAB).
+!     - !/IC1 !/IC2 !/IC3 are not included in dissipation term
+!       FIXME: ICE is a dummy variable at the moment
+!              Include ice parameters in point output file out_pnt.ww3
+!              Ice coupling to SIN, SDS and SIC similar to w3srcemd.ftn
 !
 !  8. Structure :
 !
@@ -171,6 +178,8 @@
                           HST, TPT, DMT, ASCBLINE, CSVBLINE
 !/NCO       USE W3BULLMD, ONLY: CASCBLINE
 !/O14      USE W3ODATMD, ONLY: GRDID
+!/IG1       USE W3GIG1MD, ONLY: W3ADDIG
+!/IG1       USE W3CANOMD, ONLY: W3ADD2NDORDER
 !
       IMPLICIT NONE
 !/
@@ -633,6 +642,10 @@
 !
       IOUT   = 0
 !
+!/IC1      WRITE(NDSO,3960)
+!/IC2      WRITE(NDSO,3960)
+!/IC3      WRITE(NDSO,3960)
+
       DO
         DTEST  = DSEC21 ( TIME , TOUT )
         IF ( DTEST .GT. 0. ) THEN
@@ -725,7 +738,7 @@
                ' --------------------------------------------------'/ &
                '      First time         : ',A)
   941 FORMAT ( '      Interval           : ',A/                       &
-               '      Number of requests : ',I4)
+               '      Number of requests : ',I6)
   942 FORMAT (/'  Output type ',I2,' :'/                              &
                ' --------------------------------------------------'/ &
                '      ',A/)
@@ -822,6 +835,16 @@
  1012 FORMAT (/' *** WAVEWATCH III ERROR IN W3OUTP : '/               &
                '     MULTIPLE OUTPUT POINTS DEFINED, ITYPE =',I4,/    &
                '     ONLY SINGLE POINT ALLOWED IN THIS VERSION'/)
+!/IC1 3960 FORMAT (/' *** WAVEWATCH-III WARNING IN W3OUTP :'/         &
+!/IC1               '     Ice source terms !/IC1 skipped'/            &
+!/IC1               '     in dissipation term.'/)
+!/IC2 3960 FORMAT (/' *** WAVEWATCH-III WARNING IN W3OUTP :'/         &
+!/IC2               '     Ice source terms !/IC2 skipped'/            &
+!/IC2               '     in dissipation term.'/)
+!/IC3 3960 FORMAT (/' *** WAVEWATCH-III WARNING IN W3OUTP :'/         &
+!/IC3               '     Ice source terms !/IC3 skipped'/            &
+!/IC3               '     in dissipation term.'/)
+!
 !/
 !/ Internal subroutine W3EXPO ---------------------------------------- /
 !/
@@ -836,7 +859,7 @@
 !/                  |            F. Ardhuin             |
 !/                  |             A. Chawla             |
 !/                  |                        FORTRAN 90 |
-!/                  | Last update :         26-Dec-2012 |
+!/                  | Last update :         06-Feb-2014 |
 !/                  +-----------------------------------+
 !/
 !/    08-Jun-1999 : Final FORTRAN 77                    ( version 1.18 )
@@ -866,6 +889,7 @@
 !/    16-Jul-2012 : Move GMD (SNL3) and nonlinear filter (SNLS)
 !/                  from 3.15 (HLT).                    ( version 4.08 )
 !/    26-Dec-2012 : Modified obsolete declarations.     ( version 4.11 )
+!/    06-Feb-2014 : Fix header format in part. files.   ( version 4.18 )
 !/
 !  1. Purpose :
 !
@@ -926,6 +950,7 @@
 !       !/STx    Source term package
 !       !/NLx    Nonlinear interaction package
 !       !/BTx    Bottom friction package
+!       !/ICx    S_ice source term package
 !       !/DBx    Depth-induced breaking package
 !       !/TRx    Triad interaction package
 !       !/BSx    Bottom scattering package
@@ -939,12 +964,16 @@
 !/FLX1      USE W3FLX1MD
 !/FLX2      USE W3FLX2MD
 !/FLX3      USE W3FLX3MD
+!/FLX4      USE W3FLX4MD
 !/LN1      USE W3SLN1MD
 !/LNX      USE W3SLNXMD
 !/ST1      USE W3SRC1MD
 !/ST2      USE W3SRC2MD
 !/ST3      USE W3SRC3MD
 !/ST4      USE W3SRC4MD
+!/ST6      USE W3SRC6MD
+!/ST6      USE W3SWLDMD, ONLY : W3SWL6
+!/ST6      USE W3GDATMD, ONLY : SWL6S6
 !/STX      USE W3SRCXMD
 !/NL1      USE W3SNL1MD
 !/NL2      USE W3SNL2MD
@@ -954,6 +983,8 @@
 !/BT1      USE W3SBT1MD
 !/BT2      USE W3SBT2MD
 !/BT4      USE W3SBT4MD
+!/BT8      USE W3SBT8MD
+!/BT9      USE W3SBT9MD
 !/BTX      USE W3SBTXMD
 !/DB1      USE W3SDB1MD
 !/DBX      USE W3SDBXMD
@@ -992,6 +1023,7 @@
 !/ST3                                 TAUWNX, TAUWNY
 !/ST4      REAL                    :: AMAX, FMEANS, FMEANWS, TAUWX, TAUWY, &
 !/ST4                                 TAUWNX, TAUWNY, FMEAN1, WHITECAP(1:4)
+!/ST6      REAL                    :: AMAX, TAUWX, TAUWY, TAUWNX, TAUWNY
 !/BS1      REAL                    :: TAUSCX, TAUSCY
 !/BT4      REAL                    :: D50, PSIC, BEDFORM(3), TAUBBL(2)
            REAL                    :: ICE
@@ -1006,11 +1038,13 @@
                                  SDS(NK,NTH), SBT(NK,NTH), XLN(NTH,NK),&
                                  XIN(NTH,NK), XNL(NTH,NK), XTR(NTH,NK),&
                                  XDS(NTH,NK), XDB(NTH,NK), XBT(NTH,NK),&
-                                 XBS(NTH,NK), XXX(NTH,NK), STT(NK,NTH)
+                                 XBS(NTH,NK), XXX(NTH,NK), STT(NK,NTH),&
+                                 XWL(NTH,NK)
       REAL                    :: SIN1(NK), SNL1(NK), SDS1(NK),         &
                                  SBT1(NK), STT1(NK), E1ALL(NK,5)
 !/ST3      LOGICAL                 :: LLWS(NSPEC)
 !/ST4      LOGICAL                 :: LLWS(NSPEC)
+!/ST4      REAL                    :: LAMBDA(NSPEC)
       CHARACTER               :: DTME21*23
       CHARACTER(LEN=4)         VAR1(5)
       CHARACTER(LEN=1)         IDLAT, IDLON
@@ -1044,6 +1078,7 @@
           XDB = 0.
           XBT = 0.
           XBS = 0.
+          XWL = 0.
           XXX = 0.
         END IF
 !
@@ -1163,6 +1198,17 @@
 !/T              WRITE (NDST,9011) IK, TPI/SIG(IK), WN(IK), CG(IK)
 !
               END DO
+
+!
+! Computes 2nd order spectrum 
+!
+!/IG1      IF (IGPARS(2).EQ.1) THEN 
+!/IG1        IF(IGPARS(1).EQ.1) THEN 
+!/IG1          CALL W3ADDIG(SPCO(:,J),DPO(J),WN,CG,0)
+!/IG1        ELSE
+!/IG1          CALL W3ADD2NDORDER(SPCO(:,J),DPO(J),WN,CG,0)
+!/IG1          END IF
+!/IG1        END IF
 !
 ! 3.  Prepare spectra etc.
 ! 3.a Mean wave parameters.
@@ -1293,6 +1339,7 @@
 !/ST4                ZWND   = ZZWND
 !/ST4                TAUWX  = 0.
 !/ST4                TAUWY  = 0.
+!/ST6                ZWND   = 10.
                 USTAR  = 1.
 !
 !/ST1                CALL W3SPR1 (A, CG, WN, EMEAN, FMEAN, WNMEAN, AMAX)
@@ -1305,13 +1352,16 @@
 !/ST4                CALL W3SPR4 (A, CG, WN, EMEAN, FMEAN,  FMEAN1,        &
 !/ST4                             WNMEAN, AMAX, UABS, UDIRR, USTAR, USTD,&
 !/ST4                             TAUWX, TAUWY, CD, Z0, CHARN, LLWS, FMEANWS )
-
+!/ST6                CALL W3SPR6 (A, CG, WN, EMEAN, FMEAN, WNMEAN, AMAX, FP)
+!
 !/FLX1                CALL W3FLX1 ( ZWND, UABS, UDIRR,                   &
 !/FLX1                              USTAR, USTD, Z0, CD )
 !/FLX2                CALL W3FLX2 ( ZWND, DEPTH, FP, UABS, UDIRR,        &
 !/FLX2                                          USTAR, USTD, Z0, CD )
 !/FLX3                CALL W3FLX3 ( ZWND, DEPTH, FP, UABS, UDIRR,        &
 !/FLX3                                          USTAR, USTD, Z0, CD )
+!/FLX4                CALL W3FLX4 ( ZWND, UABS, UDIRR, USTAR, USTD, Z0, CD )
+!/FLXX                CALL W3FLXX
 !
                 DO ITT=1, 3
 !/ST2                  CALL W3SIN2 (A, CG, WN2, UABS, UDIRR, CD, Z0,    &
@@ -1330,7 +1380,7 @@
 !/ST4                  IY=1
 !/ST4                  CALL W3SIN4 ( A, CG, WN2, UABS, USTAR, DAIR/DWAT,&
 !/ST4                               ASO(J), UDIRR, Z0, CD, TAUWX, TAUWY,&
-!/ST4                               TAUWNX, TAUWNY, ICE, XIN, DIA, LLWS, IX, IY )
+!/ST4                               TAUWNX, TAUWNY, XIN, DIA, LLWS, IX, IY, LAMBDA )
 !/ST4                  CALL W3SPR4 (A, CG, WN, EMEAN, FMEAN,  FMEAN1,      &
 !/ST4                             WNMEAN, AMAX, UABS, UDIRR, USTAR, USTD,&
 !/ST4                             TAUWX, TAUWY, CD, Z0, CHARN, LLWS, FMEANWS )
@@ -1398,6 +1448,7 @@
 !/ST4                USTD   = 0.
 !/ST4                TAUWX  = 0.
 !/ST4                TAUWY  = 0.
+!/ST6                ZWND   = 10.
 !
 !/ST0                FHIGH  = SIG(NK)
 !/ST1                CALL W3SPR1 (A, CG, WN, EMEAN, FMEAN, WNMEAN, AMAX)
@@ -1413,6 +1464,9 @@
 !/ST4                CALL W3SPR4 (A, CG, WN, EMEAN, FMEAN,  FMEAN1,        &
 !/ST4                             WNMEAN, AMAX, UABS, UDIRR, USTAR, USTD,&
 !/ST4                             TAUWX, TAUWY, CD, Z0, CHARN, LLWS, FMEANWS )
+!/ST6                CALL W3SPR6 (A, CG, WN, EMEAN, FMEAN, WNMEAN, AMAX, FP)
+!/ST6                FHIGH  = SIG(NK)
+!/STX                CALL W3SPRX
 !
 !/FLX1                CALL W3FLX1 ( ZWND, UABS, UDIRR,                   &
 !/FLX1                              USTAR, USTD, Z0, CD )
@@ -1420,6 +1474,8 @@
 !/FLX2                                          USTAR, USTD, Z0, CD )
 !/FLX3                CALL W3FLX3 ( ZWND, DEPTH, FP, UABS, UDIRR,        &
 !/FLX3                                          USTAR, USTD, Z0, CD )
+!/FLX4                CALL W3FLX4 ( ZWND, UABS, UDIRR, USTAR, USTD, Z0, CD )
+!/FLXX                CALL W3FLXX
 !
                 DO ITT=1, 3
 !/ST2                  CALL W3SIN2 (A, CG, WN2, UABS, UDIRR, CD, Z0,    &
@@ -1437,7 +1493,7 @@
 !/ST4                             TAUWX, TAUWY, CD, Z0, CHARN, LLWS, FMEANWS )
 !/ST4                  CALL W3SIN4 ( A, CG, WN2, UABS, USTAR, DAIR/DWAT,&
 !/ST4                                ASO(J), UDIRR, Z0, CD,TAUWX, TAUWY, &
-!/ST4                                TAUWNX, TAUWNY, ICE, XIN, DIA, LLWS, IX, IY )
+!/ST4                                TAUWNX, TAUWNY, XIN, DIA, LLWS, IX, IY, LAMBDA )
 !/FLX2                  CALL W3FLX2 ( ZWND, DEPTH, FP, UABS, UDIRR,      &
 !/FLX2                                            USTAR, USTD, Z0, CD )
 !/FLX3                  CALL W3FLX3 ( ZWND, DEPTH, FP, UABS, UDIRR,      &
@@ -1460,7 +1516,9 @@
 !/ST4                    CALL W3SIN4 ( A, CG, WN2, UABS, USTAR,       &
 !/ST4                                  DAIR/DWAT, ASO(J), UDIRR,      &
 !/ST4                            Z0, CD, TAUWX, TAUWY,TAUWNX, TAUWNY, &
-!/ST4                            ICE, XIN, DIA, LLWS, IX, IY )
+!/ST4                            XIN, DIA, LLWS, IX, IY, LAMBDA )
+!/ST6                    CALL W3SIN6 (A, CG, WN2, USTAR, UDIRR, CD,   &
+!/ST6                          TAUWX, TAUWY, TAUWNX, TAUWNY, XIN, DIA )
 !/STX                    CALL W3SINX
                   END IF
                 IF ( FLSRCE(3) ) THEN
@@ -1479,7 +1537,9 @@
 !/ST3                    CALL W3SDS3 ( A, WN, CG, EMEAN, FMEANS, WNMEAN,  &
 !/ST3                                  USTAR, USTD, DEPTH, XDS, DIA, IX, IY )
 !/ST4                    CALL W3SDS4 ( A, WN, CG,  USTAR, USTD, DEPTH, XDS, &
-!/ST4                                  DIA, IX, IY, WHITECAP )
+!/ST4                                  DIA, IX, IY, LAMBDA, WHITECAP )
+!/ST6                    CALL W3SDS6 ( A, CG, WN,            XDS, DIA )
+!/ST6                    IF (SWL6S6) CALL W3SWL6 ( A, CG, WN,  XWL, DIA )
 !/STX                    CALL W3SDSX
 !
 !/DB1                    CALL W3SDB1 ( A, WN2, DEPTH, EMEAN, FMEAN,   &
@@ -1498,6 +1558,13 @@
 
 !/BT4                    CALL W3SBT4 ( A, CG, WN, DEPTH, D50, PSIC, TAUBBL,   & 
 !/BT4                                       BEDFORM, XBT, DIA, IX, IY )
+
+!/BT8                    CALL W3SBT8 ( A, DEPTH, XBT, DIA, IX, IY )
+
+!/BT9                    CALL W3SBT9 ( A, DEPTH, XBT, DIA, IX, IY )
+
+!/BTX                    CALL W3SBTX
+
 !
 !/BS1                    CALL W3SBS1 ( A, CG, WN, DEPTH,              &
 !/BS1                           CAO(J)*COS(CDO(J)), CAO(J)*SIN(CDO(J)), &
@@ -1538,8 +1605,9 @@
                     SWN(IK,ITH) = ( XLN(ITH,IK) + XIN(ITH,IK) ) * FACTOR
                     SNL(IK,ITH) = ( XNL(ITH,IK) + XTR(ITH,IK) ) * FACTOR
                     SDS(IK,ITH) = ( XDS(ITH,IK) + XDB(ITH,IK) ) * FACTOR
+!/ST6               SDS(IK,ITH) =   SDS(IK,ITH) +(XWL(ITH,IK)   * FACTOR)
                     SBT(IK,ITH) = ( XBT(ITH,IK) * XBS(ITH,IK) ) * FACTOR
-                    STT(IK,ITH) = SWN(IK,ITH) + SNL(IK,ITH) +          &
+                    STT(IK,ITH) = SWN(IK,ITH) + SNL(IK,ITH) + SDS(IK,ITH) + &
                                   SBT(IK,ITH) + XXX(ITH,IK) * FACTOR
                     E1  (IK) = E1  (IK) + E(IK,ITH)
                     SIN1(IK) = SIN1(IK) + SWN(IK,ITH)
@@ -2020,9 +2088,9 @@
   922 FORMAT (' '/' ')
 !
   940 FORMAT (1X,I8.8,1X,I6.6,2F8.3,2X,'''',A10,'''',            &
-              1X,I2,F7.1,F5.1,f6.1,F5.2,F6.1)
+              1X,I3,F7.1,F5.1,f6.1,F5.2,F6.1)
   943 FORMAT (1X,I8.8,1X,I6.6,2(F8.1,'E3'),2X,'''',A10,'''',     &
-              1X,I2,F7.1,F5.1,f6.1,F5.2,F6.1)
+              1X,I3,F7.1,F5.1,f6.1,F5.2,F6.1)
   941 FORMAT ('        hs     tp     lp       theta     sp      wf')
   942 FORMAT (I3,3F8.2,2F9.2,F7.2)
 !

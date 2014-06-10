@@ -9,8 +9,6 @@
 *
 * General set up - - - - - - - - - - - - - - - - - - - - - - - - -
 *
-* pull OK
-  'enable print plot.grads'
   'set display color white'
   'clear'
 *
@@ -318,15 +316,15 @@
         line = sublin(result,2)
         t1 = subwrd(line,1)
         t2 = subwrd(line,2)
-        ID = subwrd(line,3)
+        ID = subwrd(line,4)
         if ( ID = 'WMWAVE' )
-          ID2 = subwrd(line,4)
+          ID2 = subwrd(line,5)
           if ( ID2 = 'TIME' )
             ttime.jj.i = t1
             jj = jj + 1
           endif
           if ( ID2 = 'ST03' )
-            imod = subwrd(line,5)
+            imod = subwrd(line,6)
             if ( imod > mmx )
               mmx = imod
             endif
@@ -544,7 +542,7 @@
 *
 * End of operations  - - - - - - - - - - - - - - - - - - - - - - -
 *
-  'print'
+  'printim ww3_profile.png'
 *
   say ' '
   say '-------------------------'
@@ -552,8 +550,6 @@
   say '-------------------------'
   say ' '
 *
-  prompt 'Hit return to quit ...'
-  pull go_on
   'quit'
 *
 * End of profile.gs  - - - - - - - - - - - - - - - - - - - - - - -

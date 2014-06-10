@@ -6,7 +6,7 @@
 !/                  |           F. Ardhuin              |
 !/                  |           M. Accensi              |
 !/                  |                        FORTRAN 90 |
-!/                  | Last update :         02-Jul-2013 |
+!/                  | Last update :         02-Nov-2013 |
 !/                  +-----------------------------------+
 !/
 !/    17-Mar-2010 : Creation                            ( version 3.14_SHOM )
@@ -14,6 +14,7 @@
 !/    13-Mar-2012 : Update of NC attributes             ( version 4.04 )
 !/    02-Apr-2013 : New structure of output fields.     ( version 4.10 )
 !/    02-Jul-2013 : Bug correction for lat in unst grid ( version 4.11 )
+!/    02-Nov-2013 : Removes unnecessary IDFM            ( version 4.12 )
 !/
 !/    Copyright 2009-2013 National Weather Service (NWS),
 !/       National Oceanic and Atmospheric Administration.  All rights
@@ -100,11 +101,11 @@
       USE W3ADATMD, ONLY: DW, UA, UD, AS, CX, CY, HS, WLM, T0M1, THM,  &
                           THS, FP0, THP0, FP1, THP1, DTDYN, FCUT,      &
                           ABA, ABD, UBA, UBD, SXX, SYY, SXY, USERO,    &
-                          PHS, PTP, PLP, PTH, PSI, PWS, PWST, PNR,     &
+                          PHS, PTP, PLP, PDIR, PSI, PWS, PWST, PNR,    &
                           TAUOX, TAUOY, TAUWIX,                        &
                           TAUWIY, PHIAW, PHIOC, TUSX, TUSY, PRMS, TPMS,&
                           USSX, USSY, MSSX, MSSY, MSCX, MSCY, CHARN,   &
-                          TAUWNX, TAUWNY, BHD, T02, CGE,            &
+                          TAUWNX, TAUWNY, BHD, T02, HSIG, CGE,         &
                           T01, BEDFORMS, WHITECAP, TAUBBL, PHIBBL,     &
                           CFLTHMAX, CFLXYMAX, CFLKMAX ,                &
                           P2SMS, EF, US3D, TH1M, STH1M, TH2M, STH2M, WN
@@ -124,7 +125,7 @@
                                  NDSTRC, NTRACE, IERR, I, J, I1F, I2F,    &
                                  TOUT(2), TDUM(2), IOTEST, NOUT, IFI, IFJ,&
                                  NCTYPE, IX1, IXN, IXS, IY1, IYN, IYS,    &
-                                 IDFM, IOUT, S3, S4, S5, IP,              &
+                                 IOUT, S3, S4, S5, IP,                    &
                                  NBIPART, CNTIPART, NCVARTYPE
       INTEGER, ALLOCATABLE    :: TABIPART(:)
 !/S      INTEGER, SAVE           :: IENT = 0
@@ -275,14 +276,13 @@
       READ (NDSI,*,END=801,ERR=802) S3
       CALL NEXTLN ( COMSTR , NDSI , NDSE )
       READ (NDSI,*,END=801,ERR=802)                               &
-            IX1, IXN, IY1, IYN, IDFM
+            IX1, IXN, IY1, IYN
       IX1    = MAX ( IX1 , 1 )
       IXN    = MIN ( IXN , NX )
       IY1    = MAX ( IY1 , 1 )
       IYN    = MIN ( IYN , NY )
-!      IF (IDFM.LT.1 .OR. IDFM.GT.3) IDFM   = 1
       VECTOR = .TRUE.
-      WRITE (NDSO,3940) IX1, IXN, IY1, IYN, IDFM
+      WRITE (NDSO,3940) IX1, IXN, IY1, IYN
 
 !
 ! ... Output of output fields
@@ -691,7 +691,7 @@
             ELSE IF ( IFI .EQ. 1 .AND. IFJ .EQ. 2 ) THEN
               FSC    = 0.01
               ENAME  = '.cur'
-              UNITS  = 'm/s'
+              UNITS  = 'm s-1'
               CALL W3S2XY ( NSEA, NSEA, NX+1, NY, CX(1:NSEA)        &
                                                         , MAPSF, XX )
               CALL W3S2XY ( NSEA, NSEA, NX+1, NY, CY(1:NSEA)        &
@@ -727,7 +727,7 @@
             ELSE IF ( IFI .EQ. 1 .AND. IFJ .EQ. 3 ) THEN
               FSC    = 0.1
               ENAME  = '.wnd'
-              UNITS  = 'm/s'
+              UNITS  = 'm s-1'
               CALL W3S2XY ( NSEA, NSEA, NX+1, NY, UA(1:NSEA)        &
                                                         , MAPSF, XX )
               CALL W3S2XY ( NSEA, NSEA, NX+1, NY, UD(1:NSEA)        &
@@ -791,7 +791,7 @@
 !
             ELSE IF ( IFI .EQ. 1 .AND. IFJ .EQ. 6 ) THEN
               FSC    = 0.001
-              UNITS  = ' '
+              UNITS  = '1'
               ENAME  = '.ice'
               CALL W3S2XY ( NSEA, NSEA, NX+1, NY, ICE   , MAPSF, X1 )
               NFIELD=1
@@ -975,6 +975,20 @@
               vmin = 0 
               vmax = 360
 !
+            ELSE IF ( IFI .EQ. 2 .AND. IFJ .EQ. 10 ) THEN
+              FSC    = 0.0002
+              UNITS  = 'm'
+              ENAME  = '.hig'
+              CALL W3S2XY ( NSEA, NSEA, NX+1, NY, HSIG, MAPSF, X1 )
+              NFIELD=1
+              varnm(1)='hig'
+              varnl(1)='infragravity_wave_height'
+              varns(1)='sea_surface_wave_infragravity_significant_height' 
+              varng(1)='infragravity_significant_wave_height' 
+              varnc(1)=''
+              vmin = 0 
+              vmax = 5000
+!
             ELSE IF ( IFI .EQ. 3 .AND. IFJ .EQ. 1 ) THEN
               NFIELD = 1
               FLFRQ  = .TRUE.
@@ -983,11 +997,11 @@
               varng(1)=varns(1)
               varnc(1)=''
               IF (NCVARTYPE.LE.3) THEN 
-                UNITS  = 'log10(m2s+1E-12)'
+                UNITS  = 'log10(m2 s+1E-12)'
                 varns(1)='base_ten_logarithm_of_power_spectral_density_of_surface_elevation'
                 FSC     = 0.0004
               ELSE
-                UNITS  = 'm2/Hz'
+                UNITS  = 'm2 s'
                 varns(1)='power_spectral_density_of_surface_elevation'
                 FSC     = 1.
                 END IF
@@ -1106,10 +1120,10 @@
             ELSE IF ( IFI .EQ. 4 .AND. IFJ .EQ. 1 ) THEN
               FSC    = 0.002
               UNITS  = 'm'
-              WRITE(ENAME,'(A3,I1)') '.phs',IPART
+              WRITE(ENAME,'(A4,I1)') '.phs',IPART
               CALL W3S2XY ( NSEA, NSEA, NX+1, NY, PHS(:,IPART), MAPSF, X1 )
               NFIELD=1
-              WRITE(varnm(1),'(A2,I1)') 'phs',IPART 
+              WRITE(varnm(1),'(A3,I1)') 'phs',IPART 
               WRITE(varnl(1),'(A,I1)') 'wave significant height partition ',IPART 
               WRITE(varns(1),'(A,I1)') 'sea_surface_wave_significant_height_partition_',IPART 
               WRITE(varng(1),'(A,I1)') 'significant_wave_height_partition_',IPART 
@@ -1120,10 +1134,10 @@
             ELSE IF ( IFI .EQ. 4 .AND. IFJ .EQ. 2 ) THEN
               FSC    = 0.01
               UNITS  = 's'
-              WRITE(ENAME,'(A3,I1)') '.ptp',IPART
+              WRITE(ENAME,'(A4,I1)') '.ptp',IPART
               CALL W3S2XY ( NSEA, NSEA, NX+1, NY, PTP(:,IPART), MAPSF, X1 )
               NFIELD=1
-              WRITE(varnm(1),'(A2,I1)') 'ptp',IPART 
+              WRITE(varnm(1),'(A3,I1)') 'ptp',IPART 
               WRITE(varnl(1),'(A,I1)') 'peak period partition ',IPART 
               WRITE(varns(1),'(A,I1)') 'sea_surface_wave_peak_period_partition_',IPART
               WRITE(varng(1),'(A,I1)') 'dominant_wave_period_partition_',IPART
@@ -1134,10 +1148,10 @@
             ELSE IF ( IFI .EQ. 4 .AND. IFJ .EQ. 3 ) THEN
               FSC    = 1.
               UNITS  = 'm'
-              WRITE(ENAME,'(A3,I1)') '.plp',IPART
+              WRITE(ENAME,'(A4,I1)') '.plp',IPART
               CALL W3S2XY ( NSEA, NSEA, NX+1, NY, PLP(:,IPART), MAPSF, X1 )
               NFIELD=1
-              WRITE(varnm(1),'(A2,I1)') 'plp',IPART 
+              WRITE(varnm(1),'(A3,I1)') 'plp',IPART 
               WRITE(varnl(1),'(A,I1)') 'peak wave length partition ',IPART 
               WRITE(varns(1),'(A,I1)') 'peak_wave_length_partition_',IPART
               WRITE(varng(1),'(A,I1)') 'peak_wave_length_partition_',IPART
@@ -1148,15 +1162,15 @@
             ELSE IF ( IFI .EQ. 4 .AND. IFJ .EQ. 4 ) THEN
               FSC    = 1.
               UNITS  = 'degree'
-              WRITE(ENAME,'(A3,I1)') '.pdir',IPART
+              WRITE(ENAME,'(A5,I1)') '.pdir',IPART
               DO ISEA=1, NSEA
-                IF ( PTH(ISEA,IPART) .NE. UNDEF ) THEN
-                  PTH(ISEA,IPART) = MOD ( 630-RADE*PTH(ISEA,IPART) , 360. )
+                IF ( PDIR(ISEA,IPART) .NE. UNDEF ) THEN
+                  PDIR(ISEA,IPART) = MOD ( 630-RADE*PDIR(ISEA,IPART) , 360. )
                   END IF
                 END DO
-              CALL W3S2XY ( NSEA, NSEA, NX+1, NY, PTH(:,IPART), MAPSF, X1 )
+              CALL W3S2XY ( NSEA, NSEA, NX+1, NY, PDIR(:,IPART), MAPSF, X1 )
               NFIELD=1
-              WRITE(varnm(1),'(A2,I1)') 'pdir',IPART 
+              WRITE(varnm(1),'(A4,I1)') 'pdir',IPART 
               WRITE(varnl(1),'(A,I1)') 'wave mean direction partition ',IPART 
               WRITE(varns(1),'(A,I1)') 'sea_surface_wave_from_direction_partition_',IPART
               WRITE(varng(1),'(A,I1)') 'wave_from_direction_partition_',IPART
@@ -1167,10 +1181,10 @@
             ELSE IF ( IFI .EQ. 4 .AND. IFJ .EQ. 5 ) THEN
               FSC    = 0.1
               UNITS  = 'degree'
-              WRITE(ENAME,'(A3,I1)') '.pspr',IPART
+              WRITE(ENAME,'(A5,I1)') '.pspr',IPART
               CALL W3S2XY ( NSEA, NSEA, NX+1, NY, PSI(:,IPART), MAPSF, X1 )
               NFIELD=1
-              WRITE(varnm(1),'(A2,I1)') 'pspr',IPART 
+              WRITE(varnm(1),'(A4,I1)') 'pspr',IPART 
               WRITE(varnl(1),'(A,I1)') 'directional spread partition ',IPART 
               WRITE(varns(1),'(A,I1)') 'sea_surface_wave_directional_spread_partition_',IPART
               WRITE(varng(1),'(A,I1)') 'directional_spread_partition_',IPART
@@ -1180,11 +1194,11 @@
 !
             ELSE IF ( IFI .EQ. 4 .AND. IFJ .EQ. 6 ) THEN
               FSC    = 0.001
-              UNITS  = ' '
-              WRITE(ENAME,'(A3,I1)') '.pws',IPART
+              UNITS  = '1'
+              WRITE(ENAME,'(A4,I1)') '.pws',IPART
               CALL W3S2XY ( NSEA, NSEA, NX+1, NY, PWS(:,IPART), MAPSF, X1 )
               NFIELD=1
-              WRITE(varnm(1),'(A2,I1)') 'pws',IPART
+              WRITE(varnm(1),'(A3,I1)') 'pws',IPART
               WRITE(varnl(1),'(A,I1)') 'wind sea fraction in partition ',IPART 
               WRITE(varns(1),'(A,I1)') 'wind_sea_fraction_in_partition_',IPART 
               WRITE(varng(1),'(A,I1)') 'wind_sea_fraction_in_partition_',IPART
@@ -1223,7 +1237,7 @@
             ELSE IF ( IFI .EQ. 5 .AND. IFJ .EQ. 1 ) THEN
               FSC    = 0.01
               ENAME  = '.ust'
-              UNITS  = 'm/s'
+              UNITS  = 'm s-1'
               DO ISEA=1, NSEA
                 UABS   = SQRT(UST(ISEA)**2+USTDIR(ISEA)**2)
                  IF (UABS.GE.10.) THEN
@@ -1278,10 +1292,10 @@
 !
             ELSE IF ( IFI .EQ. 5 .AND. IFJ .EQ. 3 ) THEN
               FSC    = 0.1           !0.01
-              UNITS  = 'kW/m'
+              UNITS  = 'kW m-1'
               ENAME  = '.cge' 
               CGE=CGE*0.001  ! from W / m to kW / m 
-              CALL W3S2XY ( NSEA, NSEA, NX+1, NY, CGE, MAPSF, X1 )
+              CALL W3S2XY ( NSEA, NSEA, NX+1, NY, CGE(1:NSEA), MAPSF, X1 )
               NFIELD=1
               varnm(1)='cge'
               varnl(1)='wave energy flux'
@@ -1294,7 +1308,7 @@
             ELSE IF ( IFI .EQ. 5 .AND. IFJ .EQ. 4 ) THEN
               IF (NCVARTYPEI.EQ.3) NCVARTYPE=4
               FSC    = 0.1
-              UNITS  = 'Wm-2'
+              UNITS  = 'W m-2'
               ENAME  = '.faw'
               CALL W3S2XY ( NSEA, NSEA, NX+1, NY, PHIAW(1:NSEA) , MAPSF, X1 )
               NFIELD=1
@@ -1308,7 +1322,7 @@
 !
             ELSE IF ( IFI .EQ. 5 .AND. IFJ .EQ. 5 ) THEN
               FSC    = 0.000001
-              UNITS  = 'm2s-2'
+              UNITS  = 'm2 s-2'
               ENAME  = '.taw'
               CALL W3S2XY ( NSEA, NSEA, NX+1, NY, TAUWIX(1:NSEA)        &
                                                         , MAPSF, XX )
@@ -1343,7 +1357,7 @@
             ELSE IF ( IFI .EQ. 5 .AND. IFJ .EQ. 6 ) THEN
               FSC    = 0.0001
               ENAME  = '.twa'
-              UNITS  = 'm2/s2'
+              UNITS  = 'm2 s-2'
               CALL W3S2XY ( NSEA, NSEA, NX+1, NY, TAUWNX(1:NSEA)     &
                                                         , MAPSF, XX )
               CALL W3S2XY ( NSEA, NSEA, NX+1, NY, TAUWNY(1:NSEA)     &
@@ -1425,7 +1439,7 @@
             ELSE IF ( IFI .EQ. 6 .AND. IFJ .EQ. 1 ) THEN
               FSC    = 10.
               FSC3    = 1.
-              UNITS  = 'N/m'
+              UNITS  = 'N m-1'
               ENAME  = '.sxy'
               CALL W3S2XY ( NSEA, NSEA, NX+1, NY, SXX(1:NSEA)       &
                                                         , MAPSF, X1 )
@@ -1455,7 +1469,7 @@
 !
             ELSE IF ( IFI .EQ. 6 .AND. IFJ .EQ. 2 ) THEN
               FSC    = 0.000001
-              UNITS  = 'm2/s2'
+              UNITS  = 'm2 s-2'
               ENAME  = '.two'
               CALL W3S2XY ( NSEA, NSEA, NX+1, NY, TAUOX(1:NSEA)        &
                                                         , MAPSF, XX )
@@ -1477,7 +1491,7 @@
 !
             ELSE IF ( IFI .EQ. 6 .AND. IFJ .EQ. 3 ) THEN
               FSC    = 0.1
-              UNITS  = 'N/m'
+              UNITS  = 'N m-1'
               ENAME  = '.bhd'
               CALL W3S2XY ( NSEA, NSEA, NX+1, NY, BHD(1:NSEA)    &
                                                         , MAPSF, X1 )
@@ -1493,7 +1507,7 @@
             ELSE IF ( IFI .EQ. 6 .AND. IFJ .EQ. 4 ) THEN
               IF (NCVARTYPEI.EQ.3) NCVARTYPE=4
               FSC    = 0.1
-              UNITS  = 'W/m2'
+              UNITS  = 'W m-2'
               ENAME  = '.foc'
               DO ISEA=1, NSEA
                  PHIOC(ISEA)=MIN(3000.,PHIOC(ISEA))
@@ -1511,7 +1525,7 @@
 !
             ELSE IF ( IFI .EQ. 6 .AND. IFJ .EQ. 5 ) THEN
               FSC    = 0.001
-              UNITS  = 'm2s-1'
+              UNITS  = 'm2 s-1'
               ENAME  = '.tus'
               CALL W3S2XY ( NSEA, NSEA, NX+1, NY, TUSX(1:NSEA)        &
                                                         , MAPSF, XX )
@@ -1544,7 +1558,7 @@
 !
             ELSE IF ( IFI .EQ. 6 .AND. IFJ .EQ. 6 ) THEN
               FSC    = 0.0005
-              UNITS  = 'm/s'
+              UNITS  = 'm s-1'
               ENAME  = '.uss'
               DO ISEA=1, NSEA
                  USSX(ISEA)=MAX(-0.9998,MIN(0.9998,USSX(ISEA)))
@@ -1617,7 +1631,7 @@
               varng(2)='northward_spectral_variance_of_surface_stokes_drift'
               varnc(1)='usf=sqrt(uusf**2+vusf**2)'
               varnc(2)='usf=sqrt(uusf**2+vusf**2)'
-              UNITS   = 'm/s'
+              UNITS   = 'm s-1'
               I1F=US3DF(2)
               I2F=US3DF(3)
               DO IK= I1F,I2F
@@ -1651,10 +1665,10 @@
                   CALL W3S2XY ( NSEA, NSEA, NX+1,NY,P2SMS(:,IK),MAPSF, XX )
                   IF (NCVARTYPE.EQ.2) THEN 
                      WHERE ( XX.GE.0.) XX = ALOG10(XX*(DWAT*GRAV)**2+1E-12)
-                     UNITS  = 'log10(Pa2s+1E-12)'
+                     UNITS  = 'log10(Pa2 s+1E-12)'
                   ELSE 
                      WHERE ( XX.GE.0.) XX = XX*(DWAT*GRAV)**2
-                     UNITS  = 'Pa2s'
+                     UNITS  = 'Pa2 s'
                      END IF
                 
                   XK(:,:,IK)=XX
@@ -1688,7 +1702,7 @@
             ELSE IF ( IFI .EQ. 7 .AND. IFJ .EQ. 2 ) THEN
               FSC    = 0.01
               ENAME  = '.ubr'
-              UNITS  = 'ms-1'
+              UNITS  = 'm s-1'
               CALL W3S2XY ( NSEA, NSEA, NX+1, NY, UBA(1:NSEA)       &
                                                         , MAPSF, XX )
               CALL W3S2XY ( NSEA, NSEA, NX+1, NY, UBD(1:NSEA)       &
@@ -1736,7 +1750,7 @@
 !
             ELSE IF ( IFI .EQ. 7 .AND. IFJ .EQ. 4 ) THEN
               FSC    = 0.1
-              UNITS  = 'W/m2'
+              UNITS  = 'W m-2'
               ENAME  = '.fbb'
               CALL W3S2XY ( NSEA, NSEA, NX+1, NY, PHIBBL(1:NSEA)    &
                                                         , MAPSF, X1 )
@@ -1751,7 +1765,7 @@
 !
             ELSE IF ( IFI .EQ. 7 .AND. IFJ .EQ. 5 ) THEN
               FSC    = 0.000001
-              UNITS  = 'm2/s2'
+              UNITS  = 'm2 s-2'
               ENAME  = '.tbb'
               CALL W3S2XY ( NSEA, NSEA, NX+1, NY, TAUOX(1:NSEA)        &
                                                         , MAPSF, XX )
@@ -1777,8 +1791,6 @@
               UNITS  = '1'
               CALL W3S2XY ( NSEA, NSEA, NX+1,NY,MSSX,MAPSF, XX )
               CALL W3S2XY ( NSEA, NSEA, NX+1,NY,MSSY,MAPSF, XY )
-              XX=(XX*0.01)**2
-              XY=(XY*0.01)**2
               NFIELD=2
               varnm(1)='mssx'
               varnm(2)='mssy'
@@ -1794,7 +1806,7 @@
               vmax = 30000
 !
             ELSE IF ( IFI .EQ. 8 .AND. IFJ .EQ. 2 ) THEN
-              FSC    = 0.0001
+              FSC    = 1E-7     
               ENAME  = '.msc'
               UNITS  = '1'
               CALL W3S2XY ( NSEA, NSEA, NX+1,NY,MSCX,MAPSF, XX )
@@ -1849,7 +1861,7 @@
 !
             ELSE IF ( IFI .EQ. 9 .AND. IFJ .EQ. 3 ) THEN
               FSC    = 0.01
-              UNITS  = '  '
+              UNITS  = '1'
               ENAME  = '.cfx'
               CALL W3S2XY ( NSEA, NSEA, NX+1, NY, CFLXYMAX  , MAPSF, X1 )
               NFIELD=1
@@ -1863,7 +1875,7 @@
 !
             ELSE IF ( IFI .EQ. 9 .AND. IFJ .EQ. 4 ) THEN
               FSC    = 0.01
-              UNITS  = '  '
+              UNITS  = '1'
               ENAME  = '.cfd'
               CALL W3S2XY ( NSEA, NSEA, NX+1, NY, CFLTHMAX  , MAPSF, X1 )
               NFIELD=1
@@ -1877,7 +1889,7 @@
 !
             ELSE IF ( IFI .EQ. 9 .AND. IFJ .EQ. 5 ) THEN
               FSC    = 0.01
-              UNITS  = '  '
+              UNITS  = '1'
               ENAME  = '.cfk'
               CALL W3S2XY ( NSEA, NSEA, NX+1, NY, CFLKMAX  , MAPSF, X1 )
               NFIELD=1
@@ -2121,11 +2133,12 @@
 ! Writes frequencies
 !
                   IF (extradim.EQ.1) THEN
-                    IF (.NOT.ALLOCATED(freq)) ALLOCATE(freq(I2F-I1F+1))
+                    ALLOCATE(freq(I2F-I1F+1))
                     DO i=1,I2F-I1F+1
                       freq(i)=SIG(I1F-1+i)*TPIINV
                     END DO
                     iret=nf90_put_var(ncid,varid(3),freq)
+                    DEALLOCATE(freq)
                   END IF
 !
 ! Writes Triangles
@@ -2259,7 +2272,6 @@
                 !  call check_err(iret)
                 !  END DO
 
-
 !  
 ! new time step for existing file
 !
@@ -2356,7 +2368,7 @@
               WRITE(stopdate,'(I4.4,A,5(I2.2,A))') iyc,'-',imc,'-',idc,'T',ihc,':',iminc,':',isc,'Z' 
               iret=nf90_put_att(ncid,NF90_GLOBAL,'stop_date',stopdate)
               iret=nf90_enddef(ncid)
-
+              call check_err(iret)
 
               timenc=DBLE(julday(idc,imc,iyc))+(DBLE(ihc)+(DBLE(iminc)+(DBLE(isc)/60.))/60.)/24.
               Jday0=julday(1,1,1990)

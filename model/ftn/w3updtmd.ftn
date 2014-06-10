@@ -5,7 +5,7 @@
 !/                  | WAVEWATCH III           NOAA/NCEP |
 !/                  |           H. L. Tolman            |
 !/                  |                        FORTRAN 90 |
-!/                  | Last update :         06-Jun-2012 |
+!/                  | Last update :         13-Nov-2013 |
 !/                  +-----------------------------------+
 !/
 !/    21-Jan-2000 : Origination.                        ( version 2.00 )
@@ -36,10 +36,16 @@
 !/    13-Mar-2012 : Add initialization of UST on re-    ( version 4.07 )
 !/                  activation of grid point.
 !/    06-Jun-2012 : Porting bugfixes from 3.14 to 4.07  ( version 4.07 )
+!/    12-Jun-2012 : Add /RTD option or rotated grid option. 
+!/                  (Jian-Guo Li)                       ( version 4.07 )
 !/    26-Sep-2012 : Adding update from tidal analysis   ( version 4.08 )
 !/                  (F. Ardhuin)
+!/    16-Sep-2013 : Add Arctic part for SMC grid.       ( version 4.11 )
+!/    11-Nov-2013 : SMC and rotated grid incorporated in the main 
+!/                  trunk                               ( version 4.13 )
+!/    13-Nov-2013 : Moved reflection from ww3_grid.ftn  ( version 4.13 )
 !/
-!/    Copyright 2009-2012 National Weather Service (NWS),
+!/    Copyright 2009-2013 National Weather Service (NWS),
 !/       National Oceanic and Atmospheric Administration.  All rights
 !/       reserved.  WAVEWATCH III is a trademark of the NWS. 
 !/       No unauthorized use without permission.
@@ -364,6 +370,7 @@
 !/    26-Dec-2002 : Moving grid wind correction.        ( version 3.02 )
 !/    15-Dec-2004 : Multiple grid version.              ( version 3.06 )
 !/    04-Jul-2006 : Consolidate stress arrays.          ( version 3.09 )
+!/    16-Sep-2013 : Rotating wind for Arctic part.      ( version 4.11 )
 !/
 !  1. Purpose :
 !
@@ -436,6 +443,7 @@
       USE W3GDATMD, ONLY: NX, NY, NSEA, MAPSF
 !/RWND      USE W3GDATMD, ONLY:   RWINDC
 !/ST2      USE W3GDATMD, ONLY: ZWIND, OFSTAB, FFNG, FFPS, CCNG, CCPS, SHSTAB
+!/ARC      USE W3GDATMD, ONLY: NARC, NGLO, ANGARC 
       USE W3WDATMD, ONLY: TIME, ASF
       USE W3ADATMD, ONLY: DW, CX, CY, UA, UD, U10, U10D, AS,          &
                           UA0, UAI, UD0, UDI, AS0, ASI
@@ -457,6 +465,7 @@
                                  UXR, UYR
 !/WNT2      REAL                    :: RD2
 !/STAB2      REAL                    :: STAB0, STAB, THARG1, THARG2, COR1, COR2
+      REAL                    :: UDARC
 !/
 !/ ------------------------------------------------------------------- /
 !/
@@ -512,7 +521,7 @@
 !
 ! 3.  Actual wind for all grid points
 !
-!/OMP1/!$OMP PARALLEL DO PRIVATE (ISEA,UI2,UXR,UYR)
+!/OMP1/!$OMP PARALLEL DO PRIVATE (ISEA,UI2,UXR,UYR,UDARC)
       DO ISEA=1, NSEA
 !
         UA(ISEA) = UA0(ISEA) + RD * UAI(ISEA)
@@ -524,6 +533,12 @@
 !/MGW        UYR        = UA(ISEA)*SIN(UD(ISEA)) + VGY
 !/MGW        UA(ISEA) = MAX ( 0.001 , SQRT(UXR**2+UYR**2) )
 !/MGW        UD(ISEA) = MOD ( TPI+ATAN2(UYR,UXR) , TPI )
+!/ARC  !Li   Rotate wind direction by ANGARC for Arctic part cells.
+!/ARC        IF( ISEA .GT. NGLO ) THEN
+!/ARC            UDARC = UD(ISEA) + ANGARC( ISEA - NGLO )*DERA
+!/ARC            UD(ISEA) = MOD ( TPI + UDARC, TPI )
+!/ARC        ENDIF
+!
         AS(ISEA) = AS0(ISEA) + RD * ASI(ISEA)
 !        IF (UA(ISEA).NE.UA(ISEA)) WRITE(6,*) 'BUG WIND:',ISEA,UA(ISEA),MAPSF(ISEA,1), MAPSF(ISEA,2),UA0(ISEA),RD,UAI(ISEA)
 !        IF (UD(ISEA).NE.UD(ISEA)) WRITE(6,*) 'BUG WIN2:',ISEA,UD(ISEA),MAPSF(ISEA,1), MAPSF(ISEA,2)
@@ -832,6 +847,8 @@
 !/    15-Dec-2004 : Multiple grid version.              ( version 3.06 )
 !/    07-Sep-2005 : Moving update to end of time step.  ( version 3.08 )
 !/    17-Aug-2010 : Add initialization ABPI0-N(:,0).  ( version 3.14.5 )
+!/    12-Jun-2012 : Add /RTD option or rotated grid option. 
+!/                  (Jian-Guo Li)                       ( version 4.06 )
 !/
 !  1. Purpose :
 !
@@ -883,6 +900,9 @@
 !
 !/ ------------------------------------------------------------------- /
       USE W3GDATMD, ONLY: NSPEC, MAPWN, SIG2, DDEN
+!/RTD !!   Use rotation angle and action conversion sub.  JGLi12Jun2012
+!/RTD      USE W3GDATMD, ONLY: NK, NTH, NSPEC, AnglD 
+!/RTD      USE W3SERVMD, ONLY: w3acturn
       USE W3ADATMD, ONLY: CG
       USE W3ODATMD, ONLY: NBI, ABPI0, ABPIN, ISBPI, IPBPI, RDBPI,     &
                           BBPI0, BBPIN
@@ -897,6 +917,8 @@
       INTEGER                 :: IBI, ISP, ISEA
 !/S      INTEGER, SAVE           :: IENT = 0
 !/T0      REAL                    :: HS1, HS2
+!/RTD !!    Declare a temporary spectr variable.  JGLi12Jun2012 
+!/RTD       REAL :: Spectr(NSPEC), AnglBP
 !/
 !/ ------------------------------------------------------------------- /
 !/
@@ -940,8 +962,16 @@
                        + RDBPI(IBI,3) * ABPIN(ISP,IPBPI(IBI,3))       &
                        + RDBPI(IBI,4) * ABPIN(ISP,IPBPI(IBI,4)) )
           END DO
-        END DO
 !
+!/RTD !!  Rotate the spectra if model is on rotated grid.  JGLi12Jun2012
+!/RTD        Spectr = BBPIN(:,IBI)
+!/RTD        AnglBP = AnglD(ISEA)
+!/RTD        CALL  w3acturn( NTH, NK, AnglBP, Spectr )
+!/RTD        BBPIN(:,IBI) = Spectr
+!/RTD
+!
+        END DO
+
 ! 3.  Wave height test output ---------------------------------------- *
 !
 !/T0      WRITE (NDST,9000)
@@ -1068,6 +1098,8 @@
 !/S      INTEGER, SAVE            :: IENT = 0
       INTEGER                 :: MAPICE(NY,NX)
       LOGICAL                 :: LOCAL
+      LOGICAL                 :: NOICEPHYSICS
+
 !/
 !/ ------------------------------------------------------------------- /
 !/
@@ -1084,8 +1116,15 @@
 !/T      WRITE (NDST,9010) TIME, TICE, TIN
       TICE(1) = TIN(1)
       TICE(2) = TIN(2)
+
+! 1.b If Ice physics used, return without deactivating any points
 !
-! 1.b Process maps
+
+     NOICEPHYSICS=.FALSE.
+!/IC0     NOICEPHYSICS=.TRUE.
+
+!
+! 1.c Process maps
 !
       MAPICE = MOD(MAPST2,2)
       MAPST2 = MAPST2 - MAPICE
@@ -1098,12 +1137,15 @@
 !
         IX        = MAPSF(ISEA,1)
         IY        = MAPSF(ISEA,2)
+
+! ice and berg are in the module
+
         ICE(ISEA) = ICEI(IX,IY)
         BERG(ISEA)= BERGI(IX,IY)
 !
 ! 2.b Sea point to be de-activated..
 !
-        IF ( ICEI(IX,IY).GE.FICEN .AND. MAPICE(IY,IX).EQ.0 ) THEN
+        IF ( ICEI(IX,IY).GE.FICEN .AND. MAPICE(IY,IX).EQ.0 .AND. NOICEPHYSICS) THEN
             MAPSTA(IY,IX) = - ABS(MAPSTA(IY,IX))
             MAPICE(IY,IX) = 1
             IF ( LOCAL .AND. MOD(ISEA-IAPROC,NAPROC) .EQ. 0 ) THEN
@@ -1123,7 +1165,7 @@
 !
 ! 2.b Ice point to be re-activated.
 !
-        IF ( ICEI(IX,IY).LT.FICEN .AND. MAPICE(IY,IX).EQ.1 ) THEN
+        IF ( ICEI(IX,IY).LT.FICEN .AND. MAPICE(IY,IX).EQ.1 .AND. NOICEPHYSICS) THEN
 !
             MAPICE(IY,IX) = 0
             UST(ISEA)     = 0.05
@@ -1265,12 +1307,12 @@
 !/ ------------------------------------------------------------------- /
       USE W3GDATMD, ONLY: NX, NY, NSEA, NSEAL, MAPSF, MAPSTA, MAPST2, &
                           ZB, DMIN, NK, NTH, NSPEC, SIG, DSIP,        &
-                          MAPWN, MAPTH, FACHFA, GTYPE, UNGTYPE
+                          MAPWN, MAPTH, FACHFA, GTYPE, UNGTYPE, W3SETREF
       USE W3WDATMD, ONLY: TIME, TLEV, WLV, UST
       USE W3ADATMD, ONLY: CG, WN, DW
       USE W3IDATMD, ONLY: TLN, WLEV
       USE W3SERVMD, ONLY: EXTCDE
-      USE W3DISPMD, ONLY: NAR1D, DFAC, N1MAX, ECG1, EWN1, DSIE
+      USE W3DISPMD, ONLY: WAVNU1
       USE W3TRIAMD, ONLY: SETUGIOBP
       USE W3TIMEMD
 !/TIDE      USE W3GDATMD, ONLY: YGRD
@@ -1293,8 +1335,8 @@
 !/S      INTEGER, SAVE           :: IENT = 0
       INTEGER                 :: MAPDRY(NY,NX)
       REAL                    :: DWO(NSEA), KDCHCK, WNO(0:NK+1),      &
-                                 CGO(0:NK+1), DEPTH, SQRTH, SIX,      &
-                                 R1, R2, RDK, RD1, RD2, TA(NTH,NK),   &
+                                 CGO(0:NK+1), DEPTH,                  &
+                                 RDK, RD1, RD2, TA(NTH,NK),           &
                                  OWN(NK), DWN(NK)
       REAL                    :: KDMAX = 4., RDKMIN = 0.05
 !/T3      REAL                    :: OUT(NK,NTH)
@@ -1415,28 +1457,13 @@
 ! 2.b Update grid and save old grid
 !
             DEPTH  = MAX ( DMIN, DW(ISEA) )
-            SQRTH  = SQRT(DEPTH)
 !
             DO IK=0, NK+1
               WNO(IK) = WN(IK,ISEA)
               CGO(IK) = CG(IK,ISEA)
 !
-!/ --- INLINED WAVNU1 (START) ---------------------------------------- /
-!
-              SIX    = SIG(IK) * SQRTH
-              I1     = INT(SIX/DSIE)
-              IF (I1.LE.N1MAX) THEN
-                  I2 = I1 + 1
-                  R1 = SIX/DSIE - REAL(I1)
-                  R2 = 1. - R1
-                  WN(IK,ISEA) = ( R2*EWN1(I1) + R1*EWN1(I2) ) / DEPTH
-                  CG(IK,ISEA) = ( R2*ECG1(I1) + R1*ECG1(I2) ) * SQRTH
-                ELSE
-                  WN(IK,ISEA) = SIG(IK)*SIG(IK)/GRAV
-                  CG(IK,ISEA) = 0.5 * GRAV / SIG(IK)
-                END IF
-!
-!/ --- INLINED WAVNU1 (END) ------------------------------------------ /
+!             Calculate wavenumbers and group velocities.
+              CALL WAVNU1(SIG(IK),DEPTH,WN(IK,ISEA),CG(IK,ISEA))
 !
               END DO
 !
@@ -1614,7 +1641,11 @@
 !
 ! 4. Re-generates the boundary data ---------------------------------- *
 !
-      IF (GTYPE.EQ.UNGTYPE) CALL SETUGIOBP
+      IF (GTYPE.EQ.UNGTYPE) THEN 
+        CALL SETUGIOBP
+!/REF1      ELSE 
+!/REF1        CALL W3SETREF
+      ENDIF 
 !
       RETURN
 !
@@ -1709,7 +1740,7 @@
       USE W3GDATMD, ONLY: NX, NY, NSEA, MAPSTA, MAPSF,                &
                           TRFLAG, FICE0, FICEN, FICEL,                &
                           RLGTYPE, CLGTYPE, GTYPE, FLAGLL,            &
-                          HPFAC, HQFAC, FFACBERG 
+                          HPFAC, HQFAC, FFACBERG
       USE W3WDATMD, ONLY: ICE, BERG
       USE W3ADATMD, ONLY: ATRNX, ATRNY
 !
@@ -1743,7 +1774,6 @@
 !
 ! 2.  Filling arrays from TRNX/Y for obstructions -------------------- *
 ! 2.a TRFLAG = 0, no action needed
-!
       IF ( TRFLAG .EQ. 0 ) THEN
 !/T          WRITE (NDST,9001) 'NO FURTHER ACTION REQUIRED'
           RETURN
@@ -1896,6 +1926,16 @@
                 TRIY(IXY)=1.
               END IF
             ELSE
+
+! begin temporary notes to document method of 3.14 public release: 
+!            LICE0  = FICE0*MIN(DX,DY) ...................................... changed
+!            LICEN  = FICEN*MIN(DX,DY) ...................................... changed
+!            TRIX(IXY) = ( LICEN - ICE(ISEA)*DX ) / ( LICEN - LICE0 ) ..... unchanged
+!            TRIX(IXY) = MAX ( 0. , MIN ( 1. , TRIX(IXY) ) ) .............. unchanged
+!            TRIY(IXY) = ( LICEN - ICE(ISEA)*DY ) / ( LICEN - LICE0 ) ..... unchanged
+!            TRIY(IXY) = MAX ( 0. , MIN ( 1. , TRIY(IXY) ) ) .............. unchanged
+! end temporary notes to document method of 3.14 public release: 
+
 !              LICE0  = FICE0*MIN(DX,DY)
 !              LICEN  = FICEN*MIN(DX,DY)
               IF (FICEL.GT.0.) THEN
@@ -1906,6 +1946,15 @@
                 LICE0  = FICE0*DX
                 LICEN  = FICEN*DX
                 TRIX(IXY) = ( LICEN - ICE(ISEA)*DX ) / ( LICEN - LICE0 )
+
+! begin temporary notes
+!                TRIX = (   LICEN    - ICE(ISEA)*DX ) / (   LICEN -      LICE0 )
+!    thus, it is TRIX=  ( (FICEN*DX) - ICE(ISEA)*DX ) / ( (FICEN*DX) - (FICE0*DX) )
+!    thus, it is TRIX=  (   FICEN -    ICE(ISEA) )   /  (  FICEN     -   FICE0 )
+!    in other words, the variables DX DY are not used
+!                    and the variables LICE0 LICEN are not necessary.
+! end temporary notes
+
                 LICE0  = FICE0*DY
                 LICEN  = FICEN*DY
                 TRIY(IXY) = ( LICEN - ICE(ISEA)*DY ) / ( LICEN - LICE0 )

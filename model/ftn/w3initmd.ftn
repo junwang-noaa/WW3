@@ -5,7 +5,7 @@
 !/                  | WAVEWATCH III           NOAA/NCEP |
 !/                  |           H. L. Tolman            |
 !/                  |                        FORTRAN 90 |
-!/                  | Last update :         02-Jul-2013 |
+!/                  | Last update :         14-Nov-2013 |
 !/                  +-----------------------------------+
 !/
 !/    28-Dec-2004 : Origination (out of W3WAVEMD).      ( version 3.06 )
@@ -45,9 +45,12 @@
 !/    03-Sep-2012 : Clean up of UG grids                ( version 4.08 )
 !/    30-Sep-2012 : Implemetation of tidal constituents ( version 4.09 )
 !/    07-Dec-2012 : Initialize UST non-zero.            ( version 4.11 )
+!/    12-Dec-2012 : Changes for SMC grid.  JG_Li        ( version 4.11 )
 !/    26-Dec-2012 : Modify field output MPI for new     ( version 4.11 )
 !/                  structure and smaller memory footprint.
 !/    02-Jul-2013 : Bug fix MPI_FLOAT -> MPI_REAL.      ( version 4.11 )
+!/    10-Oct-2013 : CG and WN values at DMIN for ISEA=0 ( version 4.12 )
+!/    14-Nov-2013 : Remove UST(DIR) initialization.     ( version 4.13 )
 !/
 !/    Copyright 2009-2013 National Weather Service (NWS),
 !/       National Oceanic and Atmospheric Administration.  All rights
@@ -100,12 +103,11 @@
       PUBLIC
 !/
       REAL, PARAMETER                :: CRITOS = 15.
-      CHARACTER(LEN=10), PARAMETER   :: WWVER  = '4.11 '
+      CHARACTER(LEN=10), PARAMETER   :: WWVER  = '5.00  '
       CHARACTER(LEN=512), PARAMETER  :: SWITCHES  = &
-          &"PUT_SW1&
-          &PUT_SW2&
-          &PUT_SW3"
-
+                    'PUT_SW1' // &
+                    'PUT_SW2' // &
+                    'PUT_SW3'
 !/
       CONTAINS
 !/ ------------------------------------------------------------------- /
@@ -262,6 +264,10 @@
 !       restart file. To assure consistency within the model, the
 !       water level and ice coverage are re-evaluated at the 0th
 !       time step in the actual wave model routine.
+!     - When running regtests in cases where disk is non-local 
+!       (i.e. NFS used), there can be a huge improvment in compute
+!       time by using /var/tmp/ for log files. 
+!       See commented line at "OPEN (MDS(1),FILE=..."
 !
 !  8. Structure :
 !
@@ -325,7 +331,7 @@
       USE W3ARRYMD, ONLY: PRTBLK
 !/
       USE W3GDATMD, ONLY: NX, NY, NSEA, NSEAL, MAPSTA, MAPST2, MAPFS, &
-                          FLAGLL,   &
+                          MAPSF, FLAGLL,   &
                           ICLOSE, ZB, TRNX, TRNY, DMIN, DTCFL, DTMAX, &
                           FLCK, NK, NTH, NSPEC, SIG, GNAME
       USE W3WDATMD, ONLY: TIME, TLEV, TICE, WLV, UST, USTDIR, VA
@@ -341,8 +347,9 @@
       USE W3ADATMD, ONLY: NSEALM, IAPPRO, FLCOLD, FLIWND, DW, CG, WN, &
                           UA, UD, U10, U10D, AS
 !/MPI      USE W3ADATMD, ONLY: MPI_COMM_WAVE, MPI_COMM_WCMP
-      USE W3IDATMD, ONLY: FLLEV, FLCUR, FLWIND, FLICE
-      USE W3DISPMD, ONLY: NAR1D, DFAC, N1MAX, ECG1, EWN1, DSIE
+      USE W3IDATMD, ONLY: FLLEV, FLCUR, FLWIND, FLICE, FLMDN, FLMTH,  &
+                          FLMVS, FLIC1, FLIC2, FLIC3, FLIC4, FLIC5 
+      USE W3DISPMD, ONLY: WAVNU1
 !/
       IMPLICIT NONE
 !
@@ -375,8 +382,7 @@
 !/MPI      INTEGER, ALLOCATABLE    :: TMPRNK(:)
       INTEGER, ALLOCATABLE    :: NT(:), MAPTST(:,:)
 !/T      INTEGER, SAVE           :: NXS = 49
-      REAL                    :: DTTST, DEPTH, SQRTH, SIX, R1, R2,    &
-                                 FRACOS
+      REAL                    :: DTTST, DEPTH, FRACOS
       REAL                    :: FACTOR
 !/T       REAL, ALLOCATABLE      :: XOUT(:,:)
       LOGICAL                 :: OPENED
@@ -500,6 +506,7 @@
 !
       IF ( OUTPTS(IMOD)%IAPROC .EQ. OUTPTS(IMOD)%NAPLOG )             &
           OPEN (MDS(1),FILE=FNMPRE(:J)//LFILE(:IFL),ERR=888,IOSTAT=IERR)
+!         OPEN (MDS(1),FILE='/var/tmp/'//LFILE(:IFL),ERR=888,IOSTAT=IERR)
 !
       IF ( MDS(3).NE.MDS(1) .AND. MDS(3).NE.MDS(4) .AND. TSTOUT ) THEN
           INQUIRE (MDS(3),OPENED=OPENED)
@@ -846,11 +853,18 @@
       MAPTST = MOD(MAPST2/2,2)
       MAPST2 = MAPST2 - 2*MAPTST
 !
-      DO IY=1, NY
-        DO IX=1, NX
-          ISEA   = MAPFS(IY,IX)
+!Li   For multi-resolution SMC grid, these 1-NX and 1-NY nested loops
+!Li   may miss the refined cells as they are not 1-1 corresponding to
+!Li   the (Nx,NY) regular grid.  The loop is now modified to run over
+!Li   full NSEA points.   JGLi24Jan2012
+!Li   DO IY=1, NY
+!Li     DO IX=1, NX
+!Li       ISEA   = MAPFS(IY,IX)
+      DO ISEA=1, NSEA
+              IX = MAPSF(ISEA,1)
+              IY = MAPSF(ISEA,2)
 !/T          MAPOUT(IX,IY) = MAPSTA(IY,IX)
-          IF ( ISEA .NE. 0) THEN
+!Li          IF ( ISEA .NE. 0) THEN
               DW(ISEA) = MAX ( 0. , WLV(ISEA)-ZB(ISEA) )
 !/T              XOUT(IX,IY) = DW(ISEA)
               IF ( WLV(ISEA)-ZB(ISEA) .LE.0. ) THEN
@@ -861,8 +875,8 @@
                       VA(:,JSEA) = 0.
                     END IF
                 END IF
-            END IF
-           END DO
+!Li         END IF
+!Li        END DO
          END DO
 !
       MAPST2 = MAPST2 + 2*MAPTST
@@ -886,39 +900,31 @@
 ! 5.b Fill wavenumber and group velocity arrays.
 !
 !/NEC/!CDIR LOOPCNT=100000
-      DO IS=1, NSEA
-        DEPTH  = MAX ( DMIN , DW(IS) )
-        SQRTH  = SQRT(DEPTH)
+      DO IS=0, NSEA
+        IF (IS.GT.0) THEN
+          DEPTH  = MAX ( DMIN , DW(IS) )
+        ELSE
+          DEPTH = DMIN
+          END IF 
 !
 !/T1        WRITE (NDST,9051) IS, DEPTH
 !
 !/NEC/!CDIR LOOPCNT=100000
         DO IK=0, NK+1
 !
-! Inlined version of WAVNU1.
-!
-          SIX    = SIG(IK) * SQRTH
-          I1     = INT(SIX/DSIE)
-          IF (I1.LE.N1MAX) THEN
-              I2 = I1 + 1
-              R1 = SIX/DSIE - REAL(I1)
-              R2 = 1. - R1
-              WN(IK,IS) = ( R2*EWN1(I1) + R1*EWN1(I2) ) / DEPTH
-              CG(IK,IS) = ( R2*ECG1(I1) + R1*ECG1(I2) ) * SQRTH
-            ELSE
-              WN(IK,IS) = SIG(IK)*SIG(IK)/GRAV
-              CG(IK,IS) = 0.5 * GRAV / SIG(IK)
-            END IF
+!         Calculate wavenumbers and group velocities.
+          CALL WAVNU1(SIG(IK),DEPTH,WN(IK,IS),CG(IK,IS))
 !
 !/T1          WRITE (NDST,9052) IK, TPI/SIG(IK), WN(IK,IS), CG(IK,IS)
 !
           END DO
         END DO
 !
-      DO IK=1, NK
-        CG(IK,0) = CG(IK,1)
-        WN(IK,0) = WN(IK,1)
-        END DO
+! Commented by FA with version 4.12 
+!      DO IK=1, NK
+!        CG(IK,0) = CG(IK,1)
+!        WN(IK,0) = WN(IK,1)
+!        END DO
 !
 ! 6.  Initialize arrays ---------------------------------------------- /
 !     Some initialized in W3IORS
@@ -930,8 +936,6 @@
 !
       AS     = UNDEF
 !
-      UST   (:) = 1.E-5
-      USTDIR(:) = 0.
       AS    (0) = 0.
       DW    (0) = 0.
 !
@@ -949,6 +953,24 @@
           IF (   FLICE    ) WRITE (NDSO,974) 'Prescribed'
           IF (.NOT. FLICE ) WRITE (NDSO,974) 'No'
 !
+          IF (   FLMDN    ) WRITE (NDSO,9972) 'Prescribed'
+          IF (.NOT. FLMDN ) WRITE (NDSO,9972) 'No'
+          IF (   FLMTH    ) WRITE (NDSO,9971) 'Prescribed'
+          IF (.NOT. FLMTH ) WRITE (NDSO,9971) 'No'
+          IF (   FLMVS    ) WRITE (NDSO,9970) 'Prescribed'
+          IF (.NOT. FLMVS ) WRITE (NDSO,9970) 'No'
+
+          IF (   FLIC1    ) WRITE (NDSO,9973) 'Prescribed'
+          IF (.NOT. FLIC1 ) WRITE (NDSO,9973) 'No'
+          IF (   FLIC2    ) WRITE (NDSO,9974) 'Prescribed'
+          IF (.NOT. FLIC2 ) WRITE (NDSO,9974) 'No'
+          IF (   FLIC3    ) WRITE (NDSO,9975) 'Prescribed'
+          IF (.NOT. FLIC3 ) WRITE (NDSO,9975) 'No'
+          IF (   FLIC4    ) WRITE (NDSO,9976) 'Prescribed'
+          IF (.NOT. FLIC4 ) WRITE (NDSO,9976) 'No'
+          IF (   FLIC5    ) WRITE (NDSO,9977) 'Prescribed'
+          IF (.NOT. FLIC5 ) WRITE (NDSO,9977) 'No'
+
           IF ( FLOUT(1) ) THEN
               WRITE (NDSO,975)
               DO J=1,NOGRP
@@ -1053,6 +1075,15 @@
   972 FORMAT ( ' ',A,' curents.')
   973 FORMAT ( ' ',A,' winds.')
   974 FORMAT ( ' ',A,' ice fields.')
+  9972 FORMAT( ' ',A,' mud density.')
+  9971 FORMAT( ' ',A,' mud thickness.')
+  9970 FORMAT( ' ',A,' mud viscosity.')
+  9973 FORMAT( ' ',A,' ice parameter 1')
+  9974 FORMAT( ' ',A,' ice parameter 2')
+  9975 FORMAT( ' ',A,' ice parameter 3')
+  9976 FORMAT( ' ',A,' ice parameter 4')
+  9977 FORMAT( ' ',A,' ice parameter 5')
+
 !
   975 FORMAT (/' Gridded output fields : '/                           &
                '--------------------------------------------------')
@@ -1521,14 +1552,15 @@
 !/MPI      USE W3ADATMD, ONLY: T0M1, THM, THS, FP0, THP0, FP1, THP1,   &
 !/MPI                          DTDYN, FCUT, SPPNT, ABA, ABD, UBA, UBD,&
 !/MPI                          SXX, SYY, SXY, USERO, PHS, PTP, PLP,   &
-!/MPI                          PTH, PSI, PWS, PWST, PNR, PHIAW, PHIOC,&
+!/MPI                          PDIR, PSI, PWS, PWST, PNR, PHIAW, PHIOC,&
 !/MPI                          TUSX, TUSY, TAUWIX, TAUWIY, TAUOX,     &
 !/MPI                          TAUOY, USSX, USSY, MSSX, MSSY,         &
 !/MPI                          MSCX, MSCY, PRMS, TPMS, CHARN,         &
 !/MPI                          TAUWNX, TAUWNY, BHD, CGE,           &
 !/MPI                          CFLXYMAX, CFLTHMAX, CFLKMAX, WHITECAP, &
-!/MPI                          BEDFORMS, PHIBBL, TAUBBL, T01,        &
-!/MPI                          P2SMS, US3D, EF,  TH1M, STH1M, TH2M, STH2M
+!/MPI                          BEDFORMS, PHIBBL, TAUBBL, T01,         &
+!/MPI                          P2SMS, US3D, EF,  TH1M, STH1M, TH2M,   &
+!/MPI                          STH2M, HSIG
 !/MPI      USE W3GDATMD, ONLY: NK
 !/MPI      USE W3ODATMD, ONLY: NDST, IAPROC, NAPROC, NTPROC, FLOUT,   &
 !/MPI                          NAPFLD, NAPPNT, NAPRST, NAPBPT, NAPTRK,&
@@ -1687,6 +1719,14 @@
 !/MPIT      WRITE (NDST,9011) IH, ' 2/09', IROOT, IT, IRQGO(IH), IERR
 !/MPI                END IF
 !
+!/MPI              IF ( FLGRDALL( 2, 10) ) THEN
+!/MPI                  IH     = IH + 1
+!/MPI                  IT     = IT + 1
+!/MPI      CALL MPI_SEND_INIT (HSIG (1),NSEALM , MPI_REAL, IROOT,    &
+!/MPI                                IT, MPI_COMM_WAVE, IRQGO(IH), IERR)
+!/MPIT      WRITE (NDST,9011) IH, ' 2/10', IROOT, IT, IRQGO(IH), IERR
+!/MPI                END IF
+!
 !/MPI              IF ( FLGRDALL( 3, 1) ) THEN 
 !/MPI                  DO IK=E3DF(2,1),E3DF(3,1)
 !/MPI                    IH     = IH + 1
@@ -1771,7 +1811,7 @@
 !/MPI                DO K=0, NOSWLL
 !/MPI                  IH     = IH + 1
 !/MPI                  IT     = IT + 1
-!/MPI      CALL MPI_SEND_INIT (PTH(1,K),NSEALM , MPI_REAL, IROOT,    &
+!/MPI      CALL MPI_SEND_INIT (PDIR(1,K),NSEALM , MPI_REAL, IROOT,    &
 !/MPI                                IT, MPI_COMM_WAVE, IRQGO(IH), IERR)
 !/MPIT      WRITE (NDST,9011) IH, ' 4/04', IROOT, IT, IRQGO(IH), IERR
 !/MPI                  END DO
@@ -1871,12 +1911,12 @@
 !/MPI              IF ( FLGRDALL( 5, 6) ) THEN
 !/MPI                  IH     = IH + 1
 !/MPI                  IT     = IT + 1
-!/MPI      CALL MPI_SEND_INIT (TAUWIX(1),NSEALM , MPI_REAL, IROOT,   &
+!/MPI      CALL MPI_SEND_INIT (TAUWNX(1),NSEALM , MPI_REAL, IROOT,   &
 !/MPI                                IT, MPI_COMM_WAVE, IRQGO(IH), IERR)
 !/MPIT      WRITE (NDST,9011) IH, ' 5/06', IROOT, IT, IRQGO(IH), IERR
 !/MPI                    IH     = IH + 1
 !/MPI                    IT     = IT + 1
-!/MPI      CALL MPI_SEND_INIT (TAUWIY(1),NSEALM , MPI_REAL, IROOT,   &
+!/MPI      CALL MPI_SEND_INIT (TAUWNY(1),NSEALM , MPI_REAL, IROOT,   &
 !/MPI                                IT, MPI_COMM_WAVE, IRQGO(IH), IERR)
 !/MPIT      WRITE (NDST,9011) IH, ' 5/06', IROOT, IT, IRQGO(IH), IERR
 !/MPI                END IF
@@ -2261,6 +2301,14 @@
 !/MPIT      WRITE (NDST,9011) IH, ' 2/09', IFROM, IT, IRQGO2(IH), IERR
 !/MPI                  END IF
 !
+!/MPI                IF ( FLGRDALL( 2, 10) ) THEN
+!/MPI                    IH     = IH + 1
+!/MPI                    IT     = IT + 1
+!/MPI      CALL MPI_RECV_INIT (HSIG (I0),1,WW3_FIELD_VEC, IFROM, IT,  &
+!/MPI                               MPI_COMM_WAVE, IRQGO2(IH), IERR )
+!/MPIT      WRITE (NDST,9011) IH, ' 2/10', IFROM, IT, IRQGO2(IH), IERR
+!/MPI                  END IF
+!
 !/MPI                IF ( FLGRDALL( 3, 1) ) THEN 
 !/MPI                    DO IK=E3DF(2,1),E3DF(3,1)
 !/MPI                      IH     = IH + 1
@@ -2345,7 +2393,7 @@
 !/MPI                  DO K=0, NOSWLL
 !/MPI                    IH     = IH + 1
 !/MPI                    IT     = IT + 1
-!/MPI      CALL MPI_RECV_INIT (PTH(I0,K),1,WW3_FIELD_VEC, IFROM, IT,  &
+!/MPI      CALL MPI_RECV_INIT (PDIR(I0,K),1,WW3_FIELD_VEC, IFROM, IT,  &
 !/MPI                               MPI_COMM_WAVE, IRQGO2(IH), IERR )
 !/MPIT      WRITE (NDST,9011) IH, ' 4/04', IFROM, IT, IRQGO2(IH), IERR
 !/MPI                    END DO

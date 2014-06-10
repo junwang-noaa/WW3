@@ -43,14 +43,10 @@ $                               see w3iogo.ftn for additional doc.
 $          
 $
    20080310 000000  600  20080525 000000
-$----------------------------------------------------------------
-$ Output request flags identifying fields as in ww3_shel input and
-$ section 2.4 of the manual.
 $
 N
-DPT HS FP DIR SPR 
 $
-$----------------------------------------------------------------
+DPT HS FP DIR SPR 
 $
 $ Type 2 : Point output
 $          Standard line and a number of lines identifying the 

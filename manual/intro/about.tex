@@ -1,0 +1,69 @@
+\vssub
+\subsection{~About this manual}
+\vssub
+
+This is the user manual and system documentation of version \WWver\ of the
+third-generation wind-wave modeling framework \ww. This underlying model has
+been developed at the Marine Modeling and Analysis Branch (MMAB) of the
+Environmental Modeling Center (EMC) of the National Centers for Environmental
+Prediction (NCEP). It is based on WAVEWATCH~I and WAVEWATCH~II as developed at
+Delft University of Technology, and NASA Goddard Space Flight Center,
+respectively. \ws\ differs from its predecessors in all major aspects; i.e.,
+governing equations, program structure, numerical and physical approaches.
+
+This manual describes the governing equations, numerical approaches,
+compilation, and running of \ws. The format of a combined user manual and
+system documentation has been chosen, to give users the necessary background
+to include new physical and numerical approaches in the framework according to
+their own specifications.  This approach became more important as \ws\
+developed into a wave modeling framework. By design, a user can apply his or
+her numerical or physical approaches, and thus develop a new wave model based
+on the \ws\ framework. In such an approach, optimization, parallelization,
+nesting, input and output service programs from the framework can be easily
+shared between actual models.  Whereas this document is intended to be
+complete and self-contained, this is not the case for all elements in the
+system documentation. For additional system details, reference is made to the
+source code, which is fully documented. Note that a best practices guide for
+code development for \ws\ is now available \citep{tol:MMAB10a, tol:MMAB14b}.
+
+The governing equations and numerical approaches used in this model are
+described in chapters~\ref{chapt:eq} and \ref{chapt:num}. Running the model is
+described in chapter~\ref{chapt:run}. Installing \ws\ is described in
+chapter~\ref{chapt:impl}. Finally, a short system documentation is given in
+chapter~\ref{chapt:sys}. A thorough knowledge of \ws\ can be obtained by
+following chapters~\ref{chapt:eq} through \ref{chapt:impl}. A shortcut is to
+first install the model (chapter~\ref{chapt:impl}), and then successively
+modify input files in example runs (chapter~\ref{chapt:run}).
+
+\vspace{\baselineskip} 
+\noindent 
+The present model version (\WWver) is a developmental version based on the
+last official model release (version 4.18). Since the latter release the
+following modifications have been made:
+
+\begin{list}{$\bullet$}{\rightmargin 5mm \parsep 0mm \itemsep 0mm}
+
+\item Preparing for next model version, adding optional instrumentation to code
+      for profiling of memory use (model version 5.00). 
+
+\end{list}
+
+\vspace{\baselineskip} \noindent 
+Up to date information on this model can be found (including bugs and bug
+fixes) on the \ws\ web page, and comments, questions and suggestions should be
+directed to the NCEP E-mail address
+
+\begin{center}
+http://polar.ncep.noaa.gov/waves/wavewatch/wavewatch.shtml
+\end{center}
+
+\noindent
+or to the general \ws\ mail group list
+
+\begin{center}
+NCEP.EMC.wavewatch@NOAA.gov
+\end{center}
+
+\noindent
+NCEP will redirect questions regarding contributions from outside NCEP to the
+respective authors of the codes.

@@ -125,7 +125,7 @@
      USE W3ADATMD, ONLY:  CFLXYMAX, CFLTHMAX, AS, CX, CY, UA, UD, WN, &
                           DW, HS, WLM, T01, T0M1, T02, THM, THS, FP0,&
                           THP0, FP1, THP1, ABA, ABD, UBA, UBD, FCUT,  &
-                          SXX, SYY, SXY, PHS, PTP, PLP, PTH, PSI, PWS,&
+                          SXX, SYY, SXY, PHS, PTP, PLP, PDIR, PSI, PWS,&
                           PWST, PNR, USERO, TAUOX, TAUOY, TAUWIX,     &
                           TAUWIY, PHIAW, PHIOC, TUSX, TUSY, PRMS, TPMS,&
                           USSX, USSY, MSSX, MSSY, MSCX, MSCY, CHARN,  &
@@ -201,12 +201,12 @@
 !
       CALL W3IOGR ( 'READ', NDSM )
       WRITE (NDSO,920) GNAME
-      IF ( GTYPE .EQ. CLGTYPE ) THEN                                    !TRAP
-         WRITE(*,*)'PROGRAM GXOUTF: '// &                               !TRAP
-         'GRADS OUTPUT NOT IMPLEMENTED FOR CURVILINEAR GRIDS. '// &     !TRAP
-         'NOW STOPPING.'                                                !TRAP
-         STOP                                                           !TRAP
-      END IF                                                            !TRAP
+      IF ( GTYPE .EQ. CLGTYPE ) THEN
+         WRITE(NDSE,*)'PROGRAM GXOUTF: '// &
+         'GRADS OUTPUT NOT IMPLEMENTED FOR CURVILINEAR GRIDS. '// &
+         'NOW STOPPING.'
+         CALL EXTCDE ( 1 )
+      END IF
 !
 !--- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 ! 3.  Read general data and first fields from file
@@ -368,8 +368,7 @@
       MBOUT  = .NOT. MBOUT
 !
       OPEN (NDSDAT,FILE=FNMPRE(:JLEN)//'ww3.grads',FORM='UNFORMATTED', &
-            ERR=811,IOSTAT=IERR)
-
+            ERR=811,IOSTAT=IERR, CONVERT='big_endian')
 !
 !--- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 ! 5.  Time management.
@@ -660,6 +659,7 @@
   990 FORMAT ('DSET      ww3.grads'/                                  &
               'TITLE     WAVEWATCH III gridded data'/                 &
               'OPTIONS   sequential'/                                 &
+              'OPTIONS   big_endian'/                                 &
               'UNDEF    ',F8.1/                                       &
               'XDEF     ',I4,'  LINEAR ',2F12.5/                      &
               'YDEF     ',I4,'  LINEAR ',2F12.5/                      &
@@ -977,13 +977,13 @@
 !
               ELSE IF ( J.EQ.2 .AND. K.EQ.4 ) THEN
                 FLONE = .TRUE.
-                CALL W3S2XY ( NSEA, NSEA, NX, NY, T01   , MAPSF, X1 )
+                CALL W3S2XY ( NSEA, NSEA, NX, NY, T0M1   , MAPSF, X1 )
 !
 !     Mean energy wave period Te
 !
               ELSE IF ( J.EQ.2 .AND. K.EQ.5 ) THEN
                 FLONE = .TRUE.
-                CALL W3S2XY ( NSEA, NSEA, NX, NY, T0M1   , MAPSF, X1 )
+                CALL W3S2XY ( NSEA, NSEA, NX, NY, T01   , MAPSF, X1 )
 !
 !     Peak period
 !
@@ -1041,7 +1041,7 @@
               ELSE IF ( J.EQ.4 .AND. K.EQ.4 ) THEN
                 FLPRT = .TRUE.
                 DO I=0, NOSWLL
-                  CALL W3S2XY ( NSEA, NSEA, NX, NY, PTH(:,I),         &
+                  CALL W3S2XY ( NSEA, NSEA, NX, NY, PDIR(:,I),         &
                                                    MAPSF, XA(:,:,I) )
                   END DO
 !

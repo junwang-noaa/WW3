@@ -6,7 +6,7 @@
 !/                  |           H. L. Tolman            |
 !/                  |           W. E. Rogers            |
 !/                  |                        FORTRAN 90 |
-!/                  | Last update :         05-Sep-2012 |
+!/                  | Last update :         05-Aug-2013 |
 !/                  +-----------------------------------+
 !/
 !/    28-Dec-2005 : Origination WMGLOW, WMGHGH, WMRSPC. ( version 3.08 )
@@ -37,10 +37,11 @@
 !/    06-Jun-2012 : Porting bugfixes from 3.14 to 4.07  ( version 4.07 )
 !/    05-Sep-2012 : Implementation of UNGTYPE with SCRIP
 !/                       (Mathieu Dutour Sikiric, IRB; Aron Roland, Z&P)
-!/    21-Sep-2012 : Modify WMGHGH to support SCRIP remap( version 4.XX )
+!/    21-Sep-2012 : Modify WMGHGH to support SCRIP remap( version 4.11 )
 !/                  write/read capabilities (K. Lind, NRL)
+!/    05-Aug-2013 : Change PR2/3 to UQ/UNO in distances.( version 4.12 )
 !/
-!/    Copyright 2009-2012 National Weather Service (NWS),
+!/    Copyright 2009-2013 National Weather Service (NWS),
 !/       National Oceanic and Atmospheric Administration.  All rights
 !/       reserved.  WAVEWATCH III is a trademark of the NWS. 
 !/       No unauthorized use without permission.
@@ -86,6 +87,8 @@
 !  6. Switches :
 !
 !     !/PRn  propagation scheme.
+!     !/UQ   propagation scheme.
+!     !/UNO  propagation scheme.
 !
 !     !/SHRD Distributed memory approach
 !     !/DIST
@@ -367,8 +370,8 @@
 !        in not in grid, cycle (search next grid)
 !
         IF (GRIDS(J)%GTYPE .EQ. UNGTYPE) THEN
-          CALL IS_IN_UNGRID_PLUS_COEFFICIENT(J, XA, YA, itout, IVER, JVER, RW)
-          IF (itout.eq.0) THEN
+          CALL IS_IN_UNGRID(J, XA, YA, ITOUT, IVER, JVER, RW)
+          IF (ITOUT.EQ.0) THEN
             INGRID=.FALSE.
           ELSE
             INGRID=.TRUE.
@@ -741,8 +744,7 @@
                DX_MAX_GRIDI=DIST_MAX
                DY_MAX_GRIDI=DIST_MAX
             ELSE
-               print *, 'unknown grid type. stopping.'
-               stop
+               CALL EXTCDE ( 601 )
             END IF
 
             IF ( GRIDS(J)%GTYPE .EQ. CLGTYPE ) THEN
@@ -790,14 +792,8 @@
                DX_MAX_GRIDJ=DIST_MAX
                DY_MAX_GRIDJ=DIST_MAX
            ELSE
-               PRINT *, 'UNKNOWN GRID TYPE. STOPPING.'
-               STOP
+               CALL EXTCDE ( 602 )
            END IF
-
-!!/T38      print *, 'i, x, min=', x_min_i, 'max=', x_max_i
-!!/T38      print *, 'i, y, min=', y_min_i, 'max=', y_max_i
-!!/T38      print *, 'j, x, min=', x_min_j, 'max=', x_max_j
-!!/T38      print *, 'j, y, min=', y_min_j, 'max=', y_max_j
 
            RESOL_CHECK=.FALSE.
 !/T38      RESOL_CHECK=.TRUE.
@@ -935,7 +931,7 @@
 !/                  |           H. L. Tolman            |
 !/                  |           W. E. Rogers            |
 !/                  |                        FORTRAN 90 |
-!/                  | Last update :         23-Dec-2010 |
+!/                  | Last update :         05-Aug-2013 |
 !/                  +-----------------------------------+
 !/
 !/    28-Dec-2005 : Origination.                        ( version 3.08 )
@@ -954,9 +950,10 @@
 !/                  (W. E. Rogers, NRL)
 !/    02-Aug-2011 : Adapted for use with irregular      ( version 3.14+)
 !/                  grids (W. E. Rogers, NRL)
-!/    21-Sep-2012 : Modified to implement SCRIP remap   ( version 4.XX )
+!/    21-Sep-2012 : Modified to implement SCRIP remap   ( version 4.11 )
 !/                  file read and write option
 !/                  (K. R. Lind, NRL)
+!/    05-Aug-2013 : Change PR2/3 to UQ/UNO in distances.( version 4.12 )
 !/
 !  1. Purpose :
 !
@@ -1164,22 +1161,22 @@
 
 !/T      CHARACTER(LEN=1), ALLOCATABLE :: MAPST(:,:)
 !/
-!/SCRIPTST      CHARACTER (LEN=10) :: CDATE_TIME(3)
-!/SCRIPTST      INTEGER            :: DATE_TIME(8)
-!/SCRIPTST      INTEGER            :: ELAPSED_TIME, BEG_TIME(10), END_TIME
-!/SCRIPTST      INTEGER            :: NMYOUT=42
-!/SCRIPTST      CHARACTER (LEN=14) :: CMYOUT="myout00000.lis"
-!/SCRIPTST      CHARACTER (LEN=5)  :: CRANK
+!/T38      CHARACTER (LEN=10) :: CDATE_TIME(3)
+!/T38      INTEGER            :: DATE_TIME(8)
+!/T38      INTEGER            :: ELAPSED_TIME, BEG_TIME(10), END_TIME
+!/T38      INTEGER            :: NMYOUT=42
+!/T38      CHARACTER (LEN=14) :: CMYOUT="myout00000.lis"
+!/T38      CHARACTER (LEN=5)  :: CRANK
 
-!/SCRIPTST      WRITE(CRANK, "(I5.5)") IMPROC-1
-!/SCRIPTST      CMYOUT(6:10) = CRANK(1:5)
-!/SCRIPTST      OPEN (NMYOUT, FILE=CMYOUT, STATUS="REPLACE")
+!/T38      WRITE(CRANK, "(I5.5)") IMPROC-1
+!/T38      CMYOUT(6:10) = CRANK(1:5)
+!/T38      OPEN (NMYOUT, FILE=CMYOUT, STATUS="REPLACE")
 !/S      CALL STRACE (IENT, 'WMGHGH')
 !
 !/MPI    CALL MPI_BARRIER(MPI_COMM_WORLD, IERR_MPI)
-!/SCRIPTST         CALL DATE_AND_TIME ( CDATE_TIME(1), CDATE_TIME(2), CDATE_TIME(3), DATE_TIME)
-!/SCRIPTST         BEG_TIME(1) = ((DATE_TIME(5)*60 + DATE_TIME(6))*60 + DATE_TIME(7))*1000 + DATE_TIME(8)
-!/SCRIPTST         WRITE(NMYOUT,*) "WMGHGH: START: 0 MSEC"
+!/T38         CALL DATE_AND_TIME ( CDATE_TIME(1), CDATE_TIME(2), CDATE_TIME(3), DATE_TIME)
+!/T38         BEG_TIME(1) = ((DATE_TIME(5)*60 + DATE_TIME(6))*60 + DATE_TIME(7))*1000 + DATE_TIME(8)
+!/T38         WRITE(NMYOUT,*) "WMGHGH: START: 0 MSEC"
 
 
 ! -------------------------------------------------------------------- /
@@ -1207,8 +1204,8 @@
 !!HT:
 !!HT: Set up and initialize storage data structures ....
 !!HT:
-!/SCRIPTST      CALL DATE_AND_TIME ( CDATE_TIME(1), CDATE_TIME(2), CDATE_TIME(3), DATE_TIME)
-!/SCRIPTST      BEG_TIME(2) = ((DATE_TIME(5)*60 + DATE_TIME(6))*60 + DATE_TIME(7))*1000 + DATE_TIME(8)
+!/T38      CALL DATE_AND_TIME ( CDATE_TIME(1), CDATE_TIME(2), CDATE_TIME(3), DATE_TIME)
+!/T38      BEG_TIME(2) = ((DATE_TIME(5)*60 + DATE_TIME(6))*60 + DATE_TIME(7))*1000 + DATE_TIME(8)
       DO GDST=1, NRGRD
          DO GSRC=1, NRGRD
             IF ( HGSTGE(GDST,GSRC)%INIT ) THEN
@@ -1231,10 +1228,10 @@
       GDST=-999 ! unset grid
       GSRC=-999 ! unset grid
 
-!/SCRIPTST      CALL DATE_AND_TIME (CDATE_TIME(1), CDATE_TIME(2), CDATE_TIME(3), DATE_TIME)
-!/SCRIPTST      END_TIME = ((DATE_TIME(5)*60 + DATE_TIME(6))*60 + DATE_TIME(7))*1000 + DATE_TIME(8)
-!/SCRIPTST      ELAPSED_TIME = END_TIME - BEG_TIME(2)
-!/SCRIPTST      WRITE(NMYOUT,*) "WMGHGH, LOOP 1 TOOK ", ELAPSED_TIME, " MSEC"
+!/T38      CALL DATE_AND_TIME (CDATE_TIME(1), CDATE_TIME(2), CDATE_TIME(3), DATE_TIME)
+!/T38      END_TIME = ((DATE_TIME(5)*60 + DATE_TIME(6))*60 + DATE_TIME(7))*1000 + DATE_TIME(8)
+!/T38      ELAPSED_TIME = END_TIME - BEG_TIME(2)
+!/T38      WRITE(NMYOUT,*) "WMGHGH, LOOP 1 TOOK ", ELAPSED_TIME, " MSEC"
 
 ! -------------------------------------------------------------------- /
 ! 0.a Plan future behavior by setting logical variables.
@@ -1302,10 +1299,10 @@
 !
 ! 1.b Loop over grids
 !
-!/SCRIPTST         CALL DATE_AND_TIME ( CDATE_TIME(1), CDATE_TIME(2), CDATE_TIME(3), DATE_TIME)
-!/SCRIPTST         BEG_TIME(3) = ((DATE_TIME(5)*60 + DATE_TIME(6))*60 + DATE_TIME(7))*1000 + DATE_TIME(8)
-!/SCRIPTST         ELAPSED_TIME = BEG_TIME(3) - BEG_TIME(1)
-!/SCRIPTST         WRITE(NMYOUT,*) "WMGHGH, BEGINNING BOTTLENECK LOOP AT ", ELAPSED_TIME, " MSEC"
+!/T38         CALL DATE_AND_TIME ( CDATE_TIME(1), CDATE_TIME(2), CDATE_TIME(3), DATE_TIME)
+!/T38         BEG_TIME(3) = ((DATE_TIME(5)*60 + DATE_TIME(6))*60 + DATE_TIME(7))*1000 + DATE_TIME(8)
+!/T38         ELAPSED_TIME = BEG_TIME(3) - BEG_TIME(1)
+!/T38         WRITE(NMYOUT,*) "WMGHGH, BEGINNING BOTTLENECK LOOP AT ", ELAPSED_TIME, " MSEC"
          DO GDST=1, NRGRD
 
 !/T38       IF(IMPROC.EQ.NMPERR)WRITE(MDSE,*)'GDST = ',GDST,' OUT OF ',NRGRD
@@ -1534,10 +1531,10 @@
 
       LOWRANK_GRID : DO GDST=1, NRGRD
 
-!/SCRIPTST         CALL DATE_AND_TIME ( CDATE_TIME(1), CDATE_TIME(2), CDATE_TIME(3), DATE_TIME)
-!/SCRIPTST         BEG_TIME(2) = ((DATE_TIME(5)*60 + DATE_TIME(6))*60 + DATE_TIME(7))*1000 + DATE_TIME(8)
-!/SCRIPTST         ELAPSED_TIME = BEG_TIME(2) - BEG_TIME(1)
-!/SCRIPTST         WRITE(NMYOUT,*) "WMGHGH, LOOP LOWRANK_GRID, GDST= ", GDST, " START: ", ELAPSED_TIME, " MSEC"
+!/T38         CALL DATE_AND_TIME ( CDATE_TIME(1), CDATE_TIME(2), CDATE_TIME(3), DATE_TIME)
+!/T38         BEG_TIME(2) = ((DATE_TIME(5)*60 + DATE_TIME(6))*60 + DATE_TIME(7))*1000 + DATE_TIME(8)
+!/T38         ELAPSED_TIME = BEG_TIME(2) - BEG_TIME(1)
+!/T38         WRITE(NMYOUT,*) "WMGHGH, LOOP LOWRANK_GRID, GDST= ", GDST, " START: ", ELAPSED_TIME, " MSEC"
 
 ! Test output
 !/T        WRITE (MDST,9020) GDST, GRDHGH(GDST,0)
@@ -1601,10 +1598,10 @@
 
 ! Next, we loop through the src grids for the dst grid that we are working on.
 !/SCRIP            DO JJ=1, GRDHGH(GDST,0) 
-!/SCRIPTST                      CALL DATE_AND_TIME ( CDATE_TIME(1), CDATE_TIME(2), CDATE_TIME(3), DATE_TIME)
-!/SCRIPTST                      BEG_TIME(3) = ((DATE_TIME(5)*60 + DATE_TIME(6))*60 + DATE_TIME(7))*1000 + DATE_TIME(8)
-!/SCRIPTST                      ELAPSED_TIME = BEG_TIME(3) - BEG_TIME(1)
-!/SCRIPTST                      WRITE(NMYOUT,*) "WMGHGH, LOOP JJ= ", JJ, " START: ", ELAPSED_TIME, " MSEC"
+!/T38                      CALL DATE_AND_TIME ( CDATE_TIME(1), CDATE_TIME(2), CDATE_TIME(3), DATE_TIME)
+!/T38                      BEG_TIME(3) = ((DATE_TIME(5)*60 + DATE_TIME(6))*60 + DATE_TIME(7))*1000 + DATE_TIME(8)
+!/T38                      ELAPSED_TIME = BEG_TIME(3) - BEG_TIME(1)
+!/T38                      WRITE(NMYOUT,*) "WMGHGH, LOOP JJ= ", JJ, " START: ", ELAPSED_TIME, " MSEC"
 
 !/SCRIP               GSRC   = GRDHGH(GDST,JJ)
 !/SCRIP               NISRC=GRIDS(GSRC)%NX
@@ -1618,10 +1615,10 @@
 !/SCRIPNC               INTERP_FILE1(24:26) = CSRC
 !/SCRIPNC               INTERP_FILE1(28:30) = CDST
 !/SCRIPNC               L_READ = LGRDREAD(GDST, JJ)
-!/SCRIPTST                      CALL DATE_AND_TIME ( CDATE_TIME(1), CDATE_TIME(2), CDATE_TIME(3), DATE_TIME)
-!/SCRIPTST                      BEG_TIME(4) = ((DATE_TIME(5)*60 + DATE_TIME(6))*60 + DATE_TIME(7))*1000 + DATE_TIME(8)
-!/SCRIPTST                      ELAPSED_TIME = BEG_TIME(3) - BEG_TIME(1)
-!/SCRIPTST                      WRITE(NMYOUT,*) "WMGHGH, SCRIP WRAPPER START: ", ELAPSED_TIME, " MSEC"
+!/T38                      CALL DATE_AND_TIME ( CDATE_TIME(1), CDATE_TIME(2), CDATE_TIME(3), DATE_TIME)
+!/T38                      BEG_TIME(4) = ((DATE_TIME(5)*60 + DATE_TIME(6))*60 + DATE_TIME(7))*1000 + DATE_TIME(8)
+!/T38                      ELAPSED_TIME = BEG_TIME(3) - BEG_TIME(1)
+!/T38                      WRITE(NMYOUT,*) "WMGHGH, SCRIP WRAPPER START: ", ELAPSED_TIME, " MSEC"
 !/SCRIPNC               IF (L_STOP) L_WRITE = (IMPROC .EQ. IMPROC_ASSIGN)
 !/SCRIPNC               IF ((.NOT. L_STOP) .OR. ((.NOT. L_READ) .AND. L_WRITE)) THEN 
 !/SCRIP                   IF (L_STOP) THEN ! we are sending different grids to different processors
@@ -1643,10 +1640,10 @@
 !/SCRIPNC                  CYCLE
 !/SCRIPNC                  END IF
 !/SCRIPNC               END IF
-!/SCRIPTST                      CALL DATE_AND_TIME (CDATE_TIME(1), CDATE_TIME(2), CDATE_TIME(3), DATE_TIME)
-!/SCRIPTST                      END_TIME = ((DATE_TIME(5)*60 + DATE_TIME(6))*60 + DATE_TIME(7))*1000 + DATE_TIME(8)
-!/SCRIPTST                      ELAPSED_TIME = END_TIME - BEG_TIME(4)
-!/SCRIPTST                      WRITE(NMYOUT,*) "WMGHGH, SCRIP WRAPPER, GSRC= ", GSRC, " TOOK ", ELAPSED_TIME, " MSEC"
+!/T38                      CALL DATE_AND_TIME (CDATE_TIME(1), CDATE_TIME(2), CDATE_TIME(3), DATE_TIME)
+!/T38                      END_TIME = ((DATE_TIME(5)*60 + DATE_TIME(6))*60 + DATE_TIME(7))*1000 + DATE_TIME(8)
+!/T38                      ELAPSED_TIME = END_TIME - BEG_TIME(4)
+!/T38                      WRITE(NMYOUT,*) "WMGHGH, SCRIP WRAPPER, GSRC= ", GSRC, " TOOK ", ELAPSED_TIME, " MSEC"
 
 ! SCRIP has now created the data strucure "WGTDATA" and stored the weights 
 ! in it. However, this is only for the present src grid. We want to store the
@@ -1723,10 +1720,10 @@
 !/SCRIP                  END DO !  DO JDST=1,NJDST
 !/SCRIP               ENDIF ! IF(T38)THEN
 
-!/SCRIPTST                      CALL DATE_AND_TIME (CDATE_TIME(1), CDATE_TIME(2), CDATE_TIME(3), DATE_TIME)
-!/SCRIPTST                      END_TIME = ((DATE_TIME(5)*60 + DATE_TIME(6))*60 + DATE_TIME(7))*1000 + DATE_TIME(8)
-!/SCRIPTST                      ELAPSED_TIME = END_TIME - BEG_TIME(3)
-!/SCRIPTST                      WRITE(NMYOUT,*) "WMGHGH, LOOP JJ, GSRC= ", GSRC, " TOOK ", ELAPSED_TIME, " MSEC"
+!/T38                      CALL DATE_AND_TIME (CDATE_TIME(1), CDATE_TIME(2), CDATE_TIME(3), DATE_TIME)
+!/T38                      END_TIME = ((DATE_TIME(5)*60 + DATE_TIME(6))*60 + DATE_TIME(7))*1000 + DATE_TIME(8)
+!/T38                      ELAPSED_TIME = END_TIME - BEG_TIME(3)
+!/T38                      WRITE(NMYOUT,*) "WMGHGH, LOOP JJ, GSRC= ", GSRC, " TOOK ", ELAPSED_TIME, " MSEC"
 !/SCRIP            END DO   !            DO JJ=1, GRDHGH(GDST,0) 
 !/SCRIPNC            IF (L_STOP) CYCLE
 !/SCRIP            GSRC   = -999 ! unset grid
@@ -2565,11 +2562,10 @@
 
 !/T38       WRITE(MDST,*)'WMGHGH Section 2.b.6 completed.'
 
-! Notes: We are done with the counting. If we didn't use SCRIP to get NLOC,
-!     etc., then we need to set them using the _OM variables.
+! Notes: We are done with the counting. If we didn't use SCRIP to get 
+!     TMPINT, TMPRL, then we need to set them using the _OM variables.
 
             IF(.NOT.LSCRIP)THEN
-               NLOC=NLOC_OM
                TMPINT=TMPINT_OM
                TMPRL=TMPRL_OM
             END IF
@@ -2620,8 +2616,8 @@
 
 !/PR0            NIT    = 0
 !/PR1            NIT    = ( 1 + INT(DTMAX/DTCFL-0.001) ) * 1
-!/PR2            NIT    = ( 1 + INT(DTMAX/DTCFL-0.001) ) * 3
-!/PR3            NIT    = ( 1 + INT(DTMAX/DTCFL-0.001) ) * 3
+!/UQ            NIT    = ( 1 + INT(DTMAX/DTCFL-0.001) ) * 3
+!/UNO            NIT    = ( 1 + INT(DTMAX/DTCFL-0.001) ) * 3
 
             IDSTLA=2
             IDSTHA=NX-1
@@ -2927,10 +2923,10 @@
 !/SCRIP            DEALLOCATE(ALLWGTS) 
 
          END IF !  IF ( GRDHGH(GDST,0) ...
-!/SCRIPTST         CALL DATE_AND_TIME (CDATE_TIME(1), CDATE_TIME(2), CDATE_TIME(3), DATE_TIME)
-!/SCRIPTST         END_TIME = ((DATE_TIME(5)*60 + DATE_TIME(6))*60 + DATE_TIME(7))*1000 + DATE_TIME(8)
-!/SCRIPTST         ELAPSED_TIME = END_TIME - BEG_TIME(2)
-!/SCRIPTST         WRITE(NMYOUT,*) "WMGHGH, LOOP LOWRANK_GRID, GDST= ", GDST, " TOOK ", ELAPSED_TIME, " MSEC"
+!/T38         CALL DATE_AND_TIME (CDATE_TIME(1), CDATE_TIME(2), CDATE_TIME(3), DATE_TIME)
+!/T38         END_TIME = ((DATE_TIME(5)*60 + DATE_TIME(6))*60 + DATE_TIME(7))*1000 + DATE_TIME(8)
+!/T38         ELAPSED_TIME = END_TIME - BEG_TIME(2)
+!/T38         WRITE(NMYOUT,*) "WMGHGH, LOOP LOWRANK_GRID, GDST= ", GDST, " TOOK ", ELAPSED_TIME, " MSEC"
       END DO LOWRANK_GRID
 
 !/SCRIPNC !If L_STOP is set, we are done
@@ -2976,10 +2972,10 @@
 !/T        WRITE (MDST,9029) HGSTGE(JJ,:)%NSMX
 !/T        END DO
 !
-!/SCRIPTST         CALL DATE_AND_TIME (CDATE_TIME(1), CDATE_TIME(2), CDATE_TIME(3), DATE_TIME)
-!/SCRIPTST         END_TIME = ((DATE_TIME(5)*60 + DATE_TIME(6))*60 + DATE_TIME(7))*1000 + DATE_TIME(8)
-!/SCRIPTST         ELAPSED_TIME = END_TIME - BEG_TIME(1)
-!/SCRIPTST         WRITE(NMYOUT,*) "WMGHGH, ALL TOOK ", ELAPSED_TIME, " MSEC"
+!/T38         CALL DATE_AND_TIME (CDATE_TIME(1), CDATE_TIME(2), CDATE_TIME(3), DATE_TIME)
+!/T38         END_TIME = ((DATE_TIME(5)*60 + DATE_TIME(6))*60 + DATE_TIME(7))*1000 + DATE_TIME(8)
+!/T38         ELAPSED_TIME = END_TIME - BEG_TIME(1)
+!/T38         WRITE(NMYOUT,*) "WMGHGH, ALL TOOK ", ELAPSED_TIME, " MSEC"
 
       RETURN
 !
@@ -3033,7 +3029,7 @@
 !/                  | WAVEWATCH III           NOAA/NCEP |
 !/                  |           H. L. Tolman            |
 !/                  |                        FORTRAN 90 |
-!/                  | Last update :         23-Dec-2010 |
+!/                  | Last update :         05-Aug-2013 |
 !/                  +-----------------------------------+
 !/
 !/    24-Apr-2006 : Origination.                        ( version 3.09 )
@@ -3053,6 +3049,7 @@
 !/    23-Dec-2010 : Fix HPFAC and HQFAC by including the COS(YGRD)
 !/                  factor with DXDP and DXDQ terms.    ( version 3.14 )
 !/                  (T. J. Campbell, NRL)
+!/    05-Aug-2013 : Change PR2/3 to UQ/UNO in distances.( version 4.12 )
 !/
 !  1. Purpose :
 !
@@ -3487,8 +3484,8 @@
 !
 !/PR0        NIT    = 0
 !/PR1        NIT    = ( 1 + INT(DTMAX/DTCFL-0.001) ) * 1
-!/PR2        NIT    = ( 1 + INT(DTMAX/DTCFL-0.001) ) * 3
-!/PR3        NIT    = ( 1 + INT(DTMAX/DTCFL-0.001) ) * 3
+!/UQ        NIT    = ( 1 + INT(DTMAX/DTCFL-0.001) ) * 3
+!/UNO        NIT    = ( 1 + INT(DTMAX/DTCFL-0.001) ) * 3
 !
         IF ( ICLOSE.NE.ICLOSE_NONE ) THEN
             IXL    =  1

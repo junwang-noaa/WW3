@@ -28,7 +28,8 @@
 !/                  (W. E. Rogers & T. J. Campbell, NRL)
 !/    05-Oct-2011 : Updating to the 53 output parameter ( version 4.05 )
 !/                  (Arun Chawla)
-!/    01-Mar-2013 : Adding double-index output fields   ( version 4.OF )
+!/    01-Mar-2013 : Adding double-index output fields   ( version 4.11 )
+!/                  (J-Henrique Alves)
 !/
 !/    Copyright 2009 National Weather Service (NWS),
 !/       National Oceanic and Atmospheric Administration.  All rights
@@ -71,6 +72,7 @@
 !      DSEC21    Func.   Id.    Difference between times.
 !      W3IOGR    Subr. W3IOGRMD Reading/writing model definition file.
 !      W3IOGO    Subr. W3IOGOMD Reading/writing raw gridded data file.
+!      W3READFLGRD Subr. W3IOGOMD Reading output fields flags. 
 !      W3EXGB    Subr. Internal Execute grib output.
 !      BAOPEN    Subr.          NCEP library routine.
 !      BAOPENW    Subr.          NCEP library routine.
@@ -110,7 +112,7 @@
 !      USE W3ADATMD, ONLY: W3NAUX, W3SETA
       USE W3ODATMD, ONLY: W3NOUT, W3SETO
       USE W3IOGRMD, ONLY: W3IOGR
-      USE W3IOGOMD, ONLY: W3IOGO
+      USE W3IOGOMD, ONLY: W3READFLGRD, W3IOGO
       USE W3SERVMD, ONLY : ITRACE, NEXTLN, EXTCDE
 !/S      USE W3SERVMD, ONLY : STRACE
       USE W3TIMEMD, ONLY: STME21, TICK21, DSEC21
@@ -119,7 +121,7 @@
       USE W3WDATMD, ONLY: TIME, WLV, ICE, UST, USTDIR
 !      USE W3ADATMD, ONLY: DW, UA, UD, AS, CX, CY, HS, WLM, T0M1, THM,  &
 !                          THS, FP0, THP0, FP1, THP1, DTDYN, FCUT,     &
-!                          PHS, PTP, PLP, PTH, PSI, PWS, PWST, PNR,    &
+!                          PHS, PTP, PLP, PDIR, PSI, PWS, PWST, PNR,    &
 !                          USERO
       USE W3ADATMD
       USE W3ODATMD, ONLY: NDSE, NDST, NDSO, NOGRP, NGRPP, IDOUT, UNDEF,&
@@ -206,11 +208,11 @@
       CALL W3IOGR ( 'READ', NDSM )
       WRITE (NDSO,920) GNAME
 !
-      IF ( GTYPE .EQ. CLGTYPE ) THEN                                    !TRAP
-      WRITE(*,*)'PROGRAM W3GRIB: CURVILINEAR GRID SUPPORT '// &         !TRAP
-      'FOR GRIB OUTPUT IS NOT YET IMPLEMENTED. NOW STOPPING'            !TRAP
-      STOP                                                              !TRAP
-      END IF                                                            !TRAP
+      IF ( GTYPE .EQ. CLGTYPE ) THEN
+        WRITE(NDSE,*)'PROGRAM W3GRIB: CURVILINEAR GRID SUPPORT '// & 
+        'FOR GRIB OUTPUT IS NOT YET IMPLEMENTED. NOW STOPPING'
+        CALL EXTCDE ( 1 )
+      END IF
 !
       IF ( .NOT. FLAGLL ) GOTO 810
 !
@@ -265,27 +267,18 @@
       IDTIME(21:23) = '   '
       WRITE (NDSO,941) IDTIME, NOUT
 !
-! ... Output fields
+! ... Initialize FLGRD array 
 !
-      FLREQ(:,:)=.FALSE. ! Initialize FLGRD 
+      FLREQ(:,:)=.FALSE. 
 !
-      DO IFI=1,NOGRP ! Loop over field output groups
+! ... Call to interface for reading flags or namelists
 !
-        CALL NEXTLN ( COMSTR , NDSI , NDSE )
-        READ (NDSI,*,END=801,ERR=802) FLOG(IFI)
-!
-        IF ( FLOG (IFI) ) THEN ! Skip if group not requested
-!
-            CALL NEXTLN ( COMSTR , NDSI , NDSE )
-            READ (NDSI,*,END=801,ERR=802) FLREQ(IFI,1:NOGE(IFI))
-!            FLREQ(IFI,1:NOGE(IFI)) = LTEMP(1:NOGE(IFI))
-!
-        ENDIF
-!
-      ENDDO
+      CALL W3READFLGRD ( NDSI, NDSO, 9, NDSE, COMSTR, FLOG, FLREQ,   &
+                         1, 1, IERR )
 !
 ! Inform user of parameters that were requested but failed to make the
-! grade
+! grade, as they are not available for grib encoding, or are not
+! included presently
 !
       WRITE (NDSO,944)
 ! Reset flags for variables not yet implemented in grib output
@@ -343,9 +336,11 @@
       IFIA = (/ 1, 1, 2, 2, 2, 2, 4, 4, 4, 4, 4, 5, 9, 9, 9, 9 /)
       IFJA = (/ 1, 4, 2 ,3, 5, 8, 3, 5, 6, 7, 8, 1, 1, 2, 3, 4 /)
       DO I = 1, 16 
-        FLREQ(IFIA(I),IFJA(I)) = .FALSE. ! Water depth
-        WRITE(NDSO,946) IDOUT(IFIA(I),IFJA(I)),                        &
+        IF ( FLREQ(IFIA(I),IFJA(I)) ) THEN
+          FLREQ(IFIA(I),IFJA(I)) = .FALSE. 
+          WRITE(NDSO,946) IDOUT(IFIA(I),IFJA(I)),                      &
                         '*** EXCLUDED FROM GRIB OUTPUT ***'
+        END IF
       END DO
 !
 ! Write to stdout parameters that have successfully been requested
@@ -867,6 +862,8 @@
       DO IFI=1, NOGRP
        DO IFJ=1, NGRPP
         IF ( FLREQ(IFI,IFJ) ) THEN
+
+
 !
 ! Initialize array dimension flags
 !
@@ -1123,16 +1120,16 @@
 !/NCEP2                KPDS5B  = 7
                 DO ISEA = 1,NSEA
                   DO I = 0,NOSWLL
-                     IF ( PTH(ISEA,I) .NE. UNDEF ) THEN
-                        PTH(ISEA,I) = MOD ( 630 - RADE*PTH(ISEA,I) , 360. )
+                     IF ( PDIR(ISEA,I) .NE. UNDEF ) THEN
+                        PDIR(ISEA,I) = MOD ( 630 - RADE*PDIR(ISEA,I) , 360. )
                         END IF
                      END DO
                   END DO
                 CALL W3S2XY                                           &
-                        ( NSEA, NSEA, NX, NY, PTH(:,0), MAPSF, YY(:,0) )
+                        ( NSEA, NSEA, NX, NY, PDIR(:,0), MAPSF, YY(:,0) )
                 DO I=1, NOSWLL
                   CALL W3S2XY                                         &
-                        ( NSEA, NSEA, NX, NY, PTH(:,I), MAPSF, YY(:,I) )
+                        ( NSEA, NSEA, NX, NY, PDIR(:,I), MAPSF, YY(:,I) )
                   END DO
 !
 !     Partitioned Directional spread

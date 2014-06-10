@@ -8,9 +8,8 @@
 *
 * General set up  plot wind or waves
 
-   wind = ' es'
+   wind = 'yes'
 
-  'enable print plot.grads'
   'set display color white'
   'clear'
   'run colorset.gs'
@@ -142,7 +141,7 @@ else
 
   'set strsiz 0.12'
   'set string 1 l'
-  'draw string  1.0 9.2 Moving grid test ww3_s3'
+  'draw string  1.0 9.2 Moving grid test ww3_ts3'
   'set string 1 r'
   'draw string 7.5 9.2 valid ' vdate
   'set string 1 c'
@@ -154,9 +153,7 @@ endif
 
 *  Print this page and clear
 
-  'print'
-  say 'Hit return for next plot '
-  pull go_on
+  'printim map_s3_'t'.png'
   'clear'
   'set grads off'
 

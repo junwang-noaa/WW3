@@ -5,64 +5,17 @@ $ Time, time increment and number of outputs
 $
  20020101 120000  100  10000
 $
-$--------------------------------------------------------------------- $
-$ Output request. Here a namelist is used. It is also possible to use 
-$ alist of flags for each group. See ww3_shel.inp
-$ See section 2.4 fo the manual. 
 $
-$ Output fields may be requested as a series of flags for groups and
-$ elements or as a namelist
+$ Output request flags identifying fields as in ww3_shel.inp. See that
+$ file for a full documentation of field output options. Namelist type
+$ selection is used here (for alternative F/T flags, see ww3_shel.inp).
 $
-$ 1) Flag requests
-$$ (1) Forcing Fields
-$  T
-$$ DPT CUR WND DT  WLV ICE IBG D50
-$  T   T   T   T   T   T   F   F
-$$ (2) Standard mean wave Parameters
-$  T
-$$ HS  LM  TZ  TE  TM  FP  DIR SPR DP
-$  T   T   T   T   T   T   T   T   T
-$$ (3) Frequency-dependent parameters
-$  T
-$$ EF TH1M STH1M TH1M STH1M WN
-$  T  T  T  F  F  F
-$$ (4) Spectral Partition Parameters
-$  T
-$$ PHS PTP PLP PTH PSP PWS WSF PNR
-$  T   T   T   T   T   T   T   T
-$$ (5) Atmosphere-waves layer
-$  T
-$$ UST CHN CGE FAW TAW NWS WCC WCF WCH WCM
-$  T   T   T   T   T   T   T   T   T   T
-$$ (6) Wave-Ocean layer
-$  T
-$$ SXY TWO BHD FOC TUS USS P2S U3D P2L
-$  T   T   T   T   T   T   T   F   F   F
-$$ (7) Wave-bottom layer
-$  T
-$$ ABR UBR BED FBB TBB
-$  T   T   T   T   T
-$$ (8) Spectrum parameters
-$  T
-$$ MSS MSC
-$  T   T
-$$ (9) Numerical diagnostics
-$  T
-$$ DTD FC  CFX CFD CFK
-$  T   T   T   T   T
-$$ (10) User defined (NOEXTR flags needed)
-$  F
-$$  US1  US2
-$$ T   T
-$
-$ 2) Namelist requests (requires the N flag precending namelist)
-  N 
-$  DPT CUR WND DT  WLV ICE HS  L T02 T01 TM1 FP  DIR SPR DP  EF TH1M STH1M PHS PTP PLP PTH PSP WSF TWS PNR UST CHA CGE FAW TAW TWA WCC WCF WCH WCM SXY TWO BHD FOC TUS USS P2S WN  USF P2L ABR UBR BED FBB TBB MSS MSC DTD FCT CFX CFT CFK US1 US2
-  HS L T02 T01 TM1 FP  DIR SPR EF
+  N
+  DPT HS FP T01
 $
 $--------------------------------------------------------------------- $
 $ Output type 4 [3,4] (version netCDF)   
-$        and   variable type 4 [2 = SHORT, 4 = REAL]
+$        and   variable type 4 [2 = SHORT, 3 = it depends , 4 = REAL]
 $ Output type 0 1 2 [0,1,2,3,4,5]   (swell partition)
 $ variables T [T] or not [F] in the same file
 $
@@ -77,13 +30,12 @@ $ IX, IY range
 $
  ww3.         
  6
- 1 12518 1 1 3 2
+ 1 12518 1 1 
 $
 $ For each field and time a new file is generated with the file name
 $ ww3.date_xxx.nc , where date is a conventional time idicator with S3
 $ characters,
 $ and xxx is a field identifier.
-$
 $
 $ -------------------------------------------------------------------- $
 $ End of input file                                                    $

@@ -1,0 +1,20 @@
+$ -------------------------------------------------------------------- $
+$ WAVEWATCH III Boundary input processing                              $
+$--------------------------------------------------------------------- $
+$ This program works like ww3_bound, but using input spectra in NetCDF
+$ rather than ASCI format. For a detailed description see the
+$ ww3_bound.inp input file.
+$
+ WRITE 
+$
+ 2 
+$
+ 1
+$
+SPECTRA_NC/ww3.62163_spec.nc
+SPECTRA_NC/ww3.62069_spec.nc
+'STOPSTRING'
+$
+$ -------------------------------------------------------------------- $
+$ End of input file                                                    $
+$ -------------------------------------------------------------------- $

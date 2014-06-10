@@ -196,12 +196,6 @@
       CALL W3NOUT (    6, 6 )
       CALL W3SETO ( 1, 6, 6 )
 !
-      IF ( FLAGLL ) THEN
-          FACT   = 1.
-        ELSE
-          FACT   = 1.E-3
-        END IF
-!
       NDSI   = 10
       NDSM   = 20
       NDSOP  = 20
@@ -224,7 +218,8 @@
       IF (COMSTR.EQ.' ') COMSTR = '$'
       WRITE (NDSO,901) COMSTR
 !
-      OPEN (NDSGRD,FILE=FNMPRE(:J)//'ww3.spec.grads',FORM='UNFORMATTED')
+      OPEN (NDSGRD,FILE=FNMPRE(:J)//'ww3.spec.grads',                 &
+            FORM='UNFORMATTED', CONVERT='big_endian')
       OPEN (NDSPNT,FILE=FNMPRE(:J)//'ww3.mean.grads',FORM='FORMATTED')
       OPEN (NDSCGR,FILE=FNMPRE(:J)//'ww3.spec.ctl',FORM='FORMATTED')
 !
@@ -233,6 +228,11 @@
 !
       CALL W3IOGR ( 'READ', NDSM )
       WRITE (NDSO,920) GNAME
+      IF ( FLAGLL ) THEN
+          FACT   = 1.
+        ELSE
+          FACT   = 1.E-3
+        END IF
 !
 !--- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 ! 3.  Read general data and first fields from file
@@ -482,6 +482,7 @@
   970 FORMAT ('DSET      ww3.spec.grads'/                             &
               'TITLE     WAVEWATCH III spectra and source terms'/     &
               'OPTIONS   sequential'/                                 &
+              'OPTIONS   big_endian'/                                 &
               'UNDEF    ',E10.2/                                      &
               'XDEF     ',I4,'  LINEAR ',2F8.2/                       &
               'YDEF     ',I4,'  LEVELS ',5F8.4)
@@ -601,6 +602,7 @@
 !       !/STx    Source term package
 !       !/NLx    Nonlinear interaction package
 !       !/BTx    Bottom friction package
+!       !/ICx    Ice source term package
 !       !/DBx    Depth-induced breaking package
 !       !/TRx    Triad interaction package
 !       !/BSx    Bottom scattering package
@@ -614,12 +616,16 @@
 !/FLX1      USE W3FLX1MD
 !/FLX2      USE W3FLX2MD
 !/FLX3      USE W3FLX3MD
+!/FLX4      USE W3FLX4MD
 !/LN1      USE W3SLN1MD
 !/LNX      USE W3SLNXMD
 !/ST1      USE W3SRC1MD
 !/ST2      USE W3SRC2MD
 !/ST3      USE W3SRC3MD
 !/ST4      USE W3SRC4MD
+!/ST6      USE W3SRC6MD
+!/ST6      USE W3SWLDMD, ONLY : W3SWL6
+!/ST6      USE W3GDATMD, ONLY : SWL6S6
 !/STX      USE W3SRCXMD
 !/NL1      USE W3SNL1MD
 !/NL2      USE W3SNL2MD
@@ -628,7 +634,11 @@
 !/NLS      USE W3SNLSMD
 !/BT1      USE W3SBT1MD
 !/BT4      USE W3SBT4MD
+!/BT8      USE W3SBT8MD
 !/BTX      USE W3SBTXMD
+!/IC1      USE W3SIC1MD
+!/IC2      USE W3SIC2MD
+!/IC3      USE W3SIC3MD
 !/DB1      USE W3SDB1MD
 !/DBX      USE W3SDBXMD
 !/TRX      USE W3STRXMD
@@ -659,6 +669,7 @@
 !/ST3                                 TAUWNX, TAUWNY
 !/ST4      REAL                    :: FMEANWS, TAUWX, TAUWY, AMAX, &
 !/ST4                                 TAUWNX, TAUWNY,  FMEAN1, WHITECAP(1:4)
+!/ST6      REAL                    :: AMAX, TAUWX, TAUWY, TAUWNX, TAUWNY
 !/BS1      REAL                    :: TAUSCX, TAUSCY
 !/BT3      REAL                    :: D50
 !/BT4      REAL                    :: D50, PSIC, BEDFORM(3), TAUBBL(2)
@@ -672,9 +683,11 @@
                                  SDS(NK,NTH), SBT(NK,NTH), XLN(NTH,NK),&
                                  XWI(NTH,NK), XNL(NTH,NK), XTR(NTH,NK),&
                                  XDS(NTH,NK), XDB(NTH,NK), XBT(NTH,NK),&
-                                 XBS(NTH,NK), XXX(NTH,NK), STT(NK,NTH)
+                                 XBS(NTH,NK), XXX(NTH,NK), STT(NK,NTH),&
+                                 XWL(NTH,NK)
 !/ST3      LOGICAL                :: LLWS(NTH,NK) 
 !/ST4      LOGICAL                :: LLWS(NTH,NK)
+!/ST4      REAL                   :: LAMBDA(NSPEC)
       CHARACTER               :: DTME21*23
 !/
 !/ ------------------------------------------------------------------- /
@@ -695,6 +708,7 @@
       XDB = 0.
       XBT = 0.
       XBS = 0.
+      XWL = 0.
       XXX = 0.
 !
 !/T      WRITE (NDST,9000) (FLREQ(J),J=1,NOPTS)
@@ -868,6 +882,7 @@
 !/ST4            ZWND   = ZZWND
 !/ST4            TAUWX  = 0.
 !/ST4            TAUWY  = 0.
+!/ST6            ZWND   = 10.
 !
 !/ST0            FHIGH  = SIG(NK)
 !/ST1            CALL W3SPR1 (A, CG, WN, EMEAN, FMEAN, WNMEAN, AMAX)
@@ -883,6 +898,7 @@
 !/ST4            CALL W3SPR4 (A, CG, WN, EMEAN, FMEAN,   FMEAN1,        &
 !/ST4                         WNMEAN, AMAX, UABS, UDIRR, USTAR, USTD, &
 !/ST4                         TAUWX, TAUWY, CD, Z0, CHARN, LLWS, FMEANWS)
+!/ST6            CALL W3SPR6 (A, CG, WN, EMEAN, FMEAN, WNMEAN, AMAX, FP)
 !
 !/FLX1            CALL W3FLX1 ( ZWND, UABS, UDIRR,                     &
 !/FLX1                          USTAR, USTD, Z0, CD )
@@ -890,6 +906,7 @@
 !/FLX2                          USTAR, USTD, Z0, CD )
 !/FLX3            CALL W3FLX3 ( ZWND, DEPTH, FP, UABS, UDIRR,          &
 !/FLX3                          USTAR, USTD, Z0, CD )
+!/FLX4            CALL W3FLX4 ( ZWND, UABS, UDIRR, USTAR, USTD, Z0, CD )
 !
             DO ITT=1, 3
 !/ST2              CALL W3SIN2 (A, CG, WN2, UABS, UDIRR, CD, Z0,      &
@@ -905,7 +922,7 @@
 !/ST3                         TAUWX, TAUWY, CD, Z0, CHARN, LLWS, FMEANWS)
 !/ST4              CALL W3SIN4 (A, CG, WN2, UABS, USTAR, DAIR/DWAT,   &
 !/ST4                           ASO(J), UDIRR, Z0, CD, TAUWX, TAUWY,  &
-!/ST4                           TAUWNX, TAUWNY, ICE, XWI, DIA, LLWS, IX, IY )
+!/ST4                           TAUWNX, TAUWNY, XWI, DIA, LLWS, IX, IY, LAMBDA )
 !/ST4              CALL W3SPR4 (A, CG, WN, EMEAN, FMEAN,  FMEAN1,         &
 !/ST4                         WNMEAN, AMAX, UABS, UDIRR, USTAR, USTD, &
 !/ST4                         TAUWX, TAUWY, CD, Z0, CHARN, LLWS, FMEANWS)
@@ -931,7 +948,9 @@
 !/ST4                CALL W3SIN4 (A, CG, WN2, UABS, USTAR, DAIR/DWAT, &
 !/ST4                             ASO(J), UDIRR, Z0, CD,              &
 !/ST4                             TAUWX, TAUWY, TAUWNX, TAUWNY,       &
-!/ST4                             ICE, XWI, DIA,  LLWS, IX, IY )
+!/ST4                             XWI, DIA,  LLWS, IX, IY, LAMBDA )
+!/ST6                CALL W3SIN6 (A, CG, WN2, USTAR, UDIRR, CD,   &
+!/ST6                          TAUWX, TAUWY, TAUWNX, TAUWNY, XWI, DIA )
 !/STX                CALL W3SINX
               END IF
             IF ( FLSRCE(3) ) THEN
@@ -951,7 +970,9 @@
 !/ST3                CALL W3SDS3 ( A, WN, CG, EMEAN, FMEANS, WNMEAN,         &
 !/ST3                                        USTAR, USTD, DEPTH, XDS, DIA, IX, IY )
 !/ST4                CALL W3SDS4 ( A, WN, CG,          &
-!/ST4                                        USTAR, USTD, DEPTH, XDS, DIA, IX, IY, WHITECAP )
+!/ST4                                        USTAR, USTD, DEPTH, XDS, DIA, IX, IY, LAMBDA, WHITECAP )
+!/ST6                CALL W3SDS6 ( A, CG, WN,            XDS, DIA )
+!/ST6                IF (SWL6S6) CALL W3SWL6 ( A, CG, WN,  XWL, DIA )
 !/STX                CALL W3SDSX
 !
 !/DB1                CALL W3SDB1 ( A, WN2, DEPTH, EMEAN, FMEAN, WNMEAN,  &
@@ -960,7 +981,14 @@
 !
               END IF
             IF ( FLSRCE(5) ) THEN
-!/BT1                CALL W3SBT1 ( A, CG, WN, DEPTH,             XBT, DIA )
+
+!/BT1                CALL W3SBT1 ( A, CG, WN, DEPTH,   XBT, DIA )
+!/BTX                CALL W3SBTX
+
+!/IC1                CALL W3SIC1 ( A, DEPTH, CG,      IX, IY, XBT, DIA )
+!/IC2                CALL W3SIC2 ( A, DEPTH, CG,      IX, IY, XBT, DIA )
+!/IC3                CALL W3SIC3 ( A, DEPTH, CG,  WN, IX, IY, XBT, DIA )
+
 !/BT4                    IX=1    ! to be fixed later 
 !/BT4                    IY=1    ! to be fixed later 
 !/BT4                    ISEA=1  ! to be fixed later 
@@ -970,6 +998,9 @@
 !/BT4                    CALL W3SBT4 ( A, CG, WN, DEPTH, D50, PSIC, TAUBBL,   & 
 !/BT4                                       BEDFORM, XBT, DIA, IX, IY )
 !
+
+!/BT8                CALL W3SBT8 ( A, DEPTH, XBT, DIA, IX, IY )
+
 !/BS1                CALL W3SBS1 ( A, CG, WN, DEPTH, CAO(J)*COS(CDO(J)), &
 !/BS1                              CAO(J)*SIN(CDO(J)),     &
 !/BS1                             TAUSCX, TAUSCY, XBS, DIA )
@@ -989,6 +1020,7 @@
                 SWI(IK,ITH) = ( XWI(ITH,IK) + XLN(ITH,IK) ) * FACTOR 
                 SNL(IK,ITH) = ( XNL(ITH,IK) + XTR(ITH,IK) ) * FACTOR
                 SDS(IK,ITH) = ( XDS(ITH,IK) + XDB(ITH,IK) ) * FACTOR
+!/ST6               SDS(IK,ITH) =   SDS(IK,ITH) +(XWL(ITH,IK)   * FACTOR)
                 SBT(IK,ITH) = ( XBT(ITH,IK) + XBS(ITH,IK) ) * FACTOR
                 STT(IK,ITH) = XXX(ITH,IK) * FACTOR
                 END DO
