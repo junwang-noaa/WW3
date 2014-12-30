@@ -1,3 +1,4 @@
+#include "w3macros.h"
 !/ ------------------------------------------------------------------- /
 !/NOPA     PROGRAM W3SHEL
 !/PALM     SUBROUTINE W3SHEL()
@@ -230,6 +231,7 @@
       USE W3TIMEMD
 !/TIDE      USE W3TIDEMD
 !
+!/
       IMPLICIT NONE
 !
 !/MPI      INCLUDE "mpif.h"
@@ -991,7 +993,7 @@
 !/T                        IDSTR(6), FLAGS(6), T1N,       &
 !/T                        IDSTR(7), FLAGS(7), T2N,       &
 !/T                        IDSTR(8), FLAGS(8), TG0, TGN
-!
+!   
 
       DO J=JFIRST,8
 !
@@ -1155,7 +1157,7 @@
                         CALL W3FLDG ('READ', IDSTR(J), NDSF(J),       &
                           NDST, NDSEN, NX, NY, NX, NY, TIME0, TIMEN,  &
                           TW0, WX0, WY0, DT0, TWN, WXN, WYN, DTN, IERR)
-                      END IF
+                     END IF
                   ELSE IF ( J .EQ. 4 ) THEN
                     CALL W3FLDG ('READ', IDSTR(J), NDSF(J),           &
                          NDST, NDSEN, NX, NY, NX, NY, TIME0, TIMEN,   &

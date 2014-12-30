@@ -1,3 +1,4 @@
+#include "w3macros.h"
 !/ ------------------------------------------------------------------- /
       MODULE W3SRCEMD
 !/
@@ -55,7 +56,8 @@
                           DTDYN, FCUT, DTG, TAUWX, TAUWY, TAUOX,      &
                           TAUOY, TAUWIX, TAUWIY, TAUWNX, TAUWNY,      &
                           PHIAW, CHARN, PHIOC, WHITECAP,  D50, PSIC,  &
-                          BEDFORM , PHIBBL, TAUBBL, TAUICE, PHICE ) 
+                          BEDFORM , PHIBBL, TAUBBL, TAUICE, PHICE,    &
+                          COEF) 
 !/
 !/                  +-----------------------------------+
 !/                  | WAVEWATCH III           NOAA/NCEP |

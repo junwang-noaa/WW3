@@ -1,3 +1,4 @@
+#include "w3macros.h"
 !/ ------------------------------------------------------------------- /
       MODULE W3GDATMD
 !/
@@ -7,7 +8,7 @@
 !/                  !           J. H. Alves             !
 !/                  |            F. Ardhuin             |
 !/                  |                        FORTRAN 90 |
-!/                  | Last update :         11-Jun-2014 |
+!/                  | Last update :         10-Dec-2014 |
 !/                  +-----------------------------------+
 !/
 !/    24-Jun-2005 : Origination.                        ( version 3.07 )
@@ -59,6 +60,7 @@
 !/    26-Jul-2013 : Adding IG waves                     ( version 4.16 )
 !/    18-Dec-2013 : Moving FLAGLL into GRID TYPE        ( version 4.16 )
 !/    11-Jun-2014 : Changed reflection for subgrid      ( version 5.01 )
+!/    10-Dec-2014 : Add checks for allocate status      ( version 5.04 )
 !/
 !/
 !/    Copyright 2009-2013 National Weather Service (NWS),
@@ -174,7 +176,7 @@
 !       
 !
 !      GNAME     C*30  Public   Grid name.
-!      FILEXT    C*10  Public   Extension of WAVEWATCH III file names
+!      FILEXT    C*13  Public   Extension of WAVEWATCH III file names
 !                               default in 'ww3'.
 !     ----------------------------------------------------------------
 !
@@ -522,6 +524,10 @@
 !/
       PUBLIC
 !/
+!/ Module private variable for checking error returns
+!/
+      INTEGER, PRIVATE        :: ISTAT
+!/
 !/ Conventional declarations
 !/
       INTEGER                 :: NGRIDS = -1, IGRID = -1, ISGRD = -1, &
@@ -588,7 +594,7 @@
         LOGICAL          :: FLAGLL
         LOGICAL, POINTER :: FLAGST(:)
         CHARACTER(LEN=30):: GNAME
-        CHARACTER(LEN=10):: FILEXT
+        CHARACTER(LEN=13):: FILEXT
         LOGICAL          :: GUGINIT
         REAL, POINTER    :: REFLC(:,:)  ! reflection coefficient
         INTEGER, POINTER :: REFLD(:,:)  ! reflection direction
@@ -656,6 +662,8 @@
 !/FLX3        INTEGER               :: NITTIN, CAP_ID
 !/FLX3        REAL                  :: CINXSI, CD_MAX
 !/FLX4        REAL                  :: FLX4A0
+!/FLX5        INTEGER               :: NITTIN
+!/FLX5        REAL                  :: CINXSI
 !/FLXX        REAL                  :: DUMMY
       END TYPE SFLP
 !
@@ -868,7 +876,7 @@
       LOGICAL, POINTER :: FLAGST(:)
 
       CHARACTER(LEN=30), POINTER :: GNAME
-      CHARACTER(LEN=10), POINTER :: FILEXT
+      CHARACTER(LEN=13), POINTER :: FILEXT
 
       TYPE(T_GSU), POINTER :: GSU ! Grid search utility object
 !/
@@ -907,6 +915,8 @@
 !/FLX3      INTEGER, POINTER        :: NITTIN, CAP_ID
 !/FLX3      REAL, POINTER           :: CINXSI, CD_MAX
 !/FLX4      REAL, POINTER           :: FLX4A0
+!/FLX5      INTEGER, POINTER        :: NITTIN
+!/FLX5      REAL, POINTER           :: CINXSI
 !/
 !/ Data aliasses for structure SLNP(S)
 !/
@@ -988,11 +998,12 @@
 !/                  | WAVEWATCH III           NOAA/NCEP |
 !/                  |           H. L. Tolman            |
 !/                  |                        FORTRAN 90 |
-!/                  | Last update :         18-Jul-2006 !
+!/                  | Last update :         10-Dec-2014 !
 !/                  +-----------------------------------+
 !/
 !/    24-Feb-2004 : Origination.                        ( version 3.06 )
 !/    18-Jul-2006 : Add input grids.                    ( version 3.10 )
+!/    10-Dec-2014 : Add checks for allocate status      ( version 5.04 )
 !/
 !  1. Purpose :
 !
@@ -1086,9 +1097,11 @@
 !
       NGRIDS = NUMBER
       NAUXGR = - NLOW
-      ALLOCATE ( GRIDS(NLOW:NUMBER) )
-      ALLOCATE ( SGRDS(NLOW:NUMBER) )
-      ALLOCATE ( MPARS(NLOW:NUMBER) )
+      ALLOCATE ( GRIDS(NLOW:NUMBER), &
+                 SGRDS(NLOW:NUMBER), &
+                 MPARS(NLOW:NUMBER), &
+                 STAT=ISTAT )
+      CHECK_ALLOC_STATUS ( ISTAT )
 !
 ! -------------------------------------------------------------------- /
 ! 2.  Initialize GINIT adn SINIT
@@ -1132,7 +1145,7 @@
 !/                  | WAVEWATCH III           NOAA/NCEP |
 !/                  |           H. L. Tolman            |
 !/                  |                        FORTRAN 90 |
-!/                  | Last update :         03-Sep-2012 |
+!/                  | Last update :         10-Dec-2014 |
 !/                  +-----------------------------------+
 !/
 !/    24-Jun-2005 : Origination.                        ( version 3.07 )
@@ -1145,6 +1158,7 @@
 !/                  (W. E. Rogers & T. J. Campbell, NRL)
 !/    30-Oct-2009 : Implement unstructured grids        ( version 3.14.1)
 !/    03-Sep-2012 : Clean up of UG grids                ( version 4.08 )
+!/    10-Dec-2014 : Add checks for allocate status      ( version 5.04 )
 !/
 !  1. Purpose :
 !
@@ -1253,32 +1267,36 @@
 ! NB: Some array start at 0 because MAPFS(IY,IX)=0 for missing points 
 !
       ALLOCATE ( GRIDS(IMOD)%MAPSTA(MY,MX),  &
-                   GRIDS(IMOD)%MAPST2(MY,MX),  &
-                   GRIDS(IMOD)%MAPFS(MY,MX),   &
-                   GRIDS(IMOD)%MAPSF(MSEA,3),  &
-                   GRIDS(IMOD)%FLAGST(MSEA),   &
-!/RTD                   GRIDS(IMOD)%AnglD(MSEA),    &
-                   GRIDS(IMOD)%ZB(MSEA),       &
-                   GRIDS(IMOD)%CLATS(0:MSEA),    &
-                   GRIDS(IMOD)%CLATIS(0:MSEA),   &
-                   GRIDS(IMOD)%CTHG0S(0:MSEA),   &
-                   GRIDS(IMOD)%TRNX(MY,MX),    &
-                   GRIDS(IMOD)%TRNY(MY,MX),    &
-                   GRIDS(IMOD)%XGRD(MY,MX),    &
-                   GRIDS(IMOD)%YGRD(MY,MX),    &
-                   GRIDS(IMOD)%DXDP(MY,MX),    &
-                   GRIDS(IMOD)%DXDQ(MY,MX),    &
-                   GRIDS(IMOD)%DYDP(MY,MX),    &
-                   GRIDS(IMOD)%DYDQ(MY,MX),    &
-                   GRIDS(IMOD)%DPDX(MY,MX),    &
-                   GRIDS(IMOD)%DPDY(MY,MX),    &
-                   GRIDS(IMOD)%DQDX(MY,MX),    &
-                   GRIDS(IMOD)%DQDY(MY,MX),    &
-                   GRIDS(IMOD)%GSQRT(MY,MX),   &
-                   GRIDS(IMOD)%HPFAC(MY,MX),   &
-                   GRIDS(IMOD)%HQFAC(MY,MX)    )
+                 GRIDS(IMOD)%MAPST2(MY,MX),  &
+                 GRIDS(IMOD)%MAPFS(MY,MX),   &
+                 GRIDS(IMOD)%MAPSF(MSEA,3),  &
+                 GRIDS(IMOD)%FLAGST(MSEA),   &
+!/RTD                 GRIDS(IMOD)%AnglD(MSEA),    &
+                 GRIDS(IMOD)%ZB(MSEA),       &
+                 GRIDS(IMOD)%CLATS(0:MSEA),  &
+                 GRIDS(IMOD)%CLATIS(0:MSEA), &
+                 GRIDS(IMOD)%CTHG0S(0:MSEA), &
+                 GRIDS(IMOD)%TRNX(MY,MX),    &
+                 GRIDS(IMOD)%TRNY(MY,MX),    &
+                 GRIDS(IMOD)%XGRD(MY,MX),    &
+                 GRIDS(IMOD)%YGRD(MY,MX),    &
+                 GRIDS(IMOD)%DXDP(MY,MX),    &
+                 GRIDS(IMOD)%DXDQ(MY,MX),    &
+                 GRIDS(IMOD)%DYDP(MY,MX),    &
+                 GRIDS(IMOD)%DYDQ(MY,MX),    &
+                 GRIDS(IMOD)%DPDX(MY,MX),    &
+                 GRIDS(IMOD)%DPDY(MY,MX),    &
+                 GRIDS(IMOD)%DQDX(MY,MX),    &
+                 GRIDS(IMOD)%DQDY(MY,MX),    &
+                 GRIDS(IMOD)%GSQRT(MY,MX),   &
+                 GRIDS(IMOD)%HPFAC(MY,MX),   &
+                 GRIDS(IMOD)%HQFAC(MY,MX),   &
+                 STAT=ISTAT                  )
+      CHECK_ALLOC_STATUS ( ISTAT )
 !/BT4    ALLOCATE ( GRIDS(IMOD)%SED_D50(0:MSEA), &
-!/BT4               GRIDS(IMOD)%SED_PSIC(0:MSEA) )
+!/BT4               GRIDS(IMOD)%SED_PSIC(0:MSEA),&
+!/BT4                 STAT=ISTAT                 )
+!/BT4      CHECK_ALLOC_STATUS ( ISTAT )
 !
 !/SMC      ALLOCATE ( GRIDS(IMOD)%NLvCel(0:MRLv),     &
 !/SMC                 GRIDS(IMOD)%NLvUFc(0:MRLv),     &
@@ -1288,29 +1306,41 @@
 !/SMC                 GRIDS(IMOD)%IJKVFc(8,MVFc),     &
 !/SMC                 GRIDS(IMOD)%CTRNX(-9:MCel),     &  
 !/SMC                 GRIDS(IMOD)%CTRNY(-9:MCel),     &
-!/SMC                 GRIDS(IMOD)%CLATF(MVFc) ) 
+!/SMC                 GRIDS(IMOD)%CLATF(MVFc),        &
+!/SMC                 STAT=ISTAT                      )
+!/SMC      CHECK_ALLOC_STATUS ( ISTAT )
 !
 !/ARC      ALLOCATE ( GRIDS(IMOD)%ICLBAC(MBAC),       &
 !/ARC                 GRIDS(IMOD)%ANGARC(MARC),       &
-!/ARC                 GRIDS(IMOD)%SPCBAC(MSPEC,MBAC) ) 
+!/ARC                 GRIDS(IMOD)%SPCBAC(MSPEC,MBAC), &
+!/ARC                 STAT=ISTAT                      )
+!/ARC      CHECK_ALLOC_STATUS ( ISTAT )
 !
       GRIDS(IMOD)%FLAGST = .TRUE.
       GRIDS(IMOD)%GINIT  = .TRUE.
       GRIDS(IMOD)%CLATS(0)=1.
       GRIDS(IMOD)%CLATIS(0)=1.
 !
-!/REF1      ALLOCATE ( GRIDS(IMOD)%RREF(4)  )
-!/REF1      ALLOCATE ( GRIDS(IMOD)%REFPARS(10) )
+!/REF1      ALLOCATE ( GRIDS(IMOD)%RREF(4),     &
+!/REF1      ALLOCATE ( GRIDS(IMOD)%REFPARS(10), &
+!/REF1                 STAT=ISTAT               )
+!/REF1      CHECK_ALLOC_STATUS ( ISTAT )
 !/REF1! Memory footprint can be reduced by defining REFLC and REFLD only over nodes 
 !/REF1! where reflection can occur. 
-!/REF1      ALLOCATE ( GRIDS(IMOD)%REFLC(4,0:NSEA))
-!/REF1      ALLOCATE ( GRIDS(IMOD)%REFLD(6,0:NSEA))
+!/REF1      ALLOCATE ( GRIDS(IMOD)%REFLC(4,0:NSEA), &
+!/REF1                 GRIDS(IMOD)%REFLD(6,0:NSEA), &
+!/REF1                 STAT=ISTAT                    )
+!/REF1      CHECK_ALLOC_STATUS ( ISTAT )
 !/REF1      GRIDS(IMOD)%REFLC(1:4,0:NSEA)=0.
 !/REF1      GRIDS(IMOD)%REFLD(:,:)=0
-!/IG1       ALLOCATE ( GRIDS(IMOD)%IGPARS(12) )
-!/IC2       ALLOCATE ( GRIDS(IMOD)%IC2PARS(7) )
-!/IC3       ALLOCATE ( GRIDS(IMOD)%IC2PARS(7) )
-!/IS2       ALLOCATE ( GRIDS(IMOD)%IS2PARS(6) )
+!/IG1       ALLOCATE ( GRIDS(IMOD)%IGPARS(12), STAT=ISTAT )
+!/IG1       CHECK_ALLOC_STATUS ( ISTAT )
+!/IC2       ALLOCATE ( GRIDS(IMOD)%IC2PARS(7), STAT=ISTAT )
+!/IC2       CHECK_ALLOC_STATUS ( ISTAT )
+!/IC3       ALLOCATE ( GRIDS(IMOD)%IC2PARS(7), STAT=ISTAT )
+!/IC3       CHECK_ALLOC_STATUS ( ISTAT )
+!/IS2       ALLOCATE ( GRIDS(IMOD)%IS2PARS(6), STAT=ISTAT )
+!/IS2       CHECK_ALLOC_STATUS ( ISTAT )
 !/T      WRITE (NDST,9001)
 !
 ! -------------------------------------------------------------------- /
@@ -1358,12 +1388,13 @@
 !/                  | WAVEWATCH III           NOAA/NCEP |
 !/                  |           H. L. Tolman            |
 !/                  |                        FORTRAN 90 |
-!/                  | Last update :         05-Oct-2006 !
+!/                  | Last update :         10-Dec-2014 !
 !/                  +-----------------------------------+
 !/
 !/    19-Feb-2004 : Origination.                        ( version 3.06 )
 !/    18-Jul-2006 : Add input grids.                    ( version 3.10 )
 !/    05-Oct-2006 : Add filter to array pointers.       ( version 3.10 )
+!/    10-Dec-2014 : Add checks for allocate status      ( version 5.04 )
 !/
 !  1. Purpose :
 !
@@ -1486,14 +1517,20 @@
                  SGRDS(IMOD)%DSIP(0:MK+1),                            &
                  SGRDS(IMOD)%DSII(MK),                                &
                  SGRDS(IMOD)%DDEN(MK),                                &
-                 SGRDS(IMOD)%DDEN2(MSPEC)  )
-!/ST4 ALLOCATE(MPARS(IMOD)%SRCPS%IKTAB(MK,NDTAB))
-!/ST4 ALLOCATE(MPARS(IMOD)%SRCPS%DCKI(NKHS,NKD))
-!/ST4 ALLOCATE(MPARS(IMOD)%SRCPS%QBI(NKHS,NKD))
-!/ST4  SDSNTH  = MTH/2-1 !MIN(NINT(SSDSDTH/(DTH*RADE)),MTH/2-1)
-!/ST4 ALLOCATE(MPARS(IMOD)%SRCPS%SATINDICES(2*SDSNTH+1,MTH))
-!/ST4 ALLOCATE(MPARS(IMOD)%SRCPS%SATWEIGHTS(2*SDSNTH+1,MTH))
-!/ST4 ALLOCATE(MPARS(IMOD)%SRCPS%CUMULW(MSPEC,MSPEC))
+                 SGRDS(IMOD)%DDEN2(MSPEC),                            &
+                 STAT=ISTAT                                           )
+      CHECK_ALLOC_STATUS ( ISTAT )
+!/ST4      ALLOCATE ( MPARS(IMOD)%SRCPS%IKTAB(MK,NDTAB), &
+!/ST4                 MPARS(IMOD)%SRCPS%DCKI(NKHS,NKD),  &
+!/ST4                 MPARS(IMOD)%SRCPS%QBI(NKHS,NKD),   &
+!/ST4                 STAT=ISTAT                         )
+!/ST4      CHECK_ALLOC_STATUS ( ISTAT )
+!/ST4      SDSNTH  = MTH/2-1 !MIN(NINT(SSDSDTH/(DTH*RADE)),MTH/2-1)
+!/ST4      ALLOCATE( MPARS(IMOD)%SRCPS%SATINDICES(2*SDSNTH+1,MTH), &
+!/ST4                MPARS(IMOD)%SRCPS%SATWEIGHTS(2*SDSNTH+1,MTH), &
+!/ST4                MPARS(IMOD)%SRCPS%CUMULW(MSPEC,MSPEC),        &
+!/ST4                 STAT=ISTAT                                   )
+!/ST4      CHECK_ALLOC_STATUS ( ISTAT )
 !
       SGRDS(IMOD)%SINIT  = .TRUE.
 !
@@ -1890,6 +1927,8 @@
 !/FLX3      CINXSI => MPARS(IMOD)%SFLPS%CINXSI
 !/FLX3      CD_MAX => MPARS(IMOD)%SFLPS%CD_MAX
 !/FLX4      FLX4A0 => MPARS(IMOD)%SFLPS%FLX4A0
+!/FLX5      NITTIN => MPARS(IMOD)%SFLPS%NITTIN
+!/FLX5      CINXSI => MPARS(IMOD)%SFLPS%CINXSI
 !
 !     Structure SLNPS
 !
@@ -2087,7 +2126,7 @@
 !/                  | WAVEWATCH-III           NOAA/NCEP |
 !/                  |           T. J. Campbell          |
 !/                  |                        FORTRAN 90 |
-!/                  | Last update :         23-Dec-2010 |
+!/                  | Last update :         20-Jul-2011 |
 !/                  +-----------------------------------+
 !/
 !/    30-Oct-2009 : Origination.                        ( version 3.13 )
@@ -2222,9 +2261,14 @@
 !
 !  Derivatives are computed with central differences for all non-boundary
 !  cells.  One-sided differences are used at boundary cells.  If the grid
-!  is a global grid, then the i-differences at the i=1 and i=nx boundary
+!  is a lat/lon grid, then the i-differences at the i=1 and i=nx boundary
 !  cells are computed with central differences using the wrapped cell
 !  x-coordinates.
+!
+!  Admittedly, in case of branch cut, we could use centered difference
+!  to get a more accurate derivative at the boundaries (IX=1 or NX), but
+!  we don't do this. Note that it would get more complicated for a 
+!  tripole grid (IY=NY) ....
 
 !
 !  Compute dx/dp & dy/dp & dm/dp
@@ -2419,7 +2463,6 @@
 !/
       END SUBROUTINE W3GNTX
 !/ ------------------------------------------------------------------- /   
-      
       SUBROUTINE W3DIMUG  ( IMOD, MTRI, MX, COUNTOTA, NNZ, NDSE, NDST )
 !/
 !/                  +-----------------------------------+
@@ -2536,7 +2579,7 @@
                  GRIDS(IMOD)%IEN(MTRI,6),                           &
                  GRIDS(IMOD)%LEN(MTRI,3),                           &
                  GRIDS(IMOD)%ANGLE(MTRI,3),                         &
-                 GRIDS(IMOD)%ANGLE0(MTRI,3),                         &
+                 GRIDS(IMOD)%ANGLE0(MTRI,3),                        &
                  GRIDS(IMOD)%CCON(MX),                              &
                  GRIDS(IMOD)%COUNTCON(MX),                          &
                  GRIDS(IMOD)%VNEIGH(MX,2*COUNTRI),                  &
@@ -2547,7 +2590,9 @@
                  GRIDS(IMOD)%JAA(NNZ),                              &
                  GRIDS(IMOD)%POSI(3,COUNTOTA),                      &
                  GRIDS(IMOD)%IOBP(MX),                              &
-                 GRIDS(IMOD)%IOBPD(NTH,MX) )
+                 GRIDS(IMOD)%IOBPD(NTH,MX),                         &
+                 STAT=ISTAT                                         )
+      CHECK_ALLOC_STATUS ( ISTAT )
 !
                  GRIDS(IMOD)%IOBP(:)=1
 !
@@ -2590,7 +2635,6 @@
 !/ End of W3DIMUG ----------------------------------------------------- /
 !/
       END SUBROUTINE W3DIMUG
-
 !/ ------------------------------------------------------------------- /
       SUBROUTINE W3SETREF
 !/

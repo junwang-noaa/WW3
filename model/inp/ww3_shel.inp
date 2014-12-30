@@ -6,8 +6,8 @@ $ as a homogeneous field (first three only); eight input lines.
 $
    F F     Water levels
    F F     Currents
-   T T     Winds
-   T       Ice concentrations
+   T F     Winds
+   F       Ice concentrations
    F       Assimilation data : Mean parameters
    F       Assimilation data : 1-D spectra
    F       Assimilation data : 2-D spectra.
@@ -16,8 +16,8 @@ $ Time frame of calculations ----------------------------------------- $
 $ - Starting time in yyyymmdd hhmmss format.
 $ - Ending time in yyyymmdd hhmmss format.
 $
-   19680606 000000
-   19680606 060000
+   20040913 133000
+   20040914 060000
 $
 $ Define output data ------------------------------------------------- $
 $
@@ -35,7 +35,7 @@ $             2 : Last process is reserved for all output, and does no
 $                 computing.
 $             3 : Multiple dedicated output processes.
 $
-   2
+   1
 $
 $ Five output types are available (see below). All output types share
 $ a similar format for the first input line:
@@ -54,7 +54,7 @@ $          the total number and order of the logical flags is fixed.
 $                               The raw data file is out_grd.ww3, 
 $                               see w3iogo.ftn for additional doc.
 $
-   19680606 000000   3600  19680608 000000
+   20040914 000000   3600  20040914 060000
 $----------------------------------------------------------------
 $ Output request flags identifying fields.
 $ 

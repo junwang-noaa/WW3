@@ -3,7 +3,7 @@ $ WAVEWATCH III Grid preprocessor input file                           $
 $ -------------------------------------------------------------------- $
 $ Grid name (C*30, in quotes)
 $
-  'TEST GRID (GULF OF NOWHERE)   '
+  'IVAN '
 $
 $ Frequency increment factor and first frequency (Hz) ---------------- $
 $ number of frequencies (wavenumbers) and directions, relative offset
@@ -12,7 +12,7 @@ $ In versions 1.18 and 2.22 of the model this value was by definiton 0,
 $ it is added to mitigate the GSE for a first order scheme. Note that
 $ this factor is IGNORED in the print plots in ww3_outp.
 $
-   1.1  0.04118  25  24  0.
+   1.1  0.0285  40  24  0.
 $
 $ Set model flags ---------------------------------------------------- $
 $  - FLDRY         Dry run (input/output only, no calculation).
@@ -27,7 +27,7 @@ $ - Time step information (this information is always read)
 $     maximum global time step, maximum CFL time step for x-y and
 $     k-theta, minimum source term time step (all in seconds).
 $
-    900. 950. 900. 300.
+    300. 300. 300. 100.
 $
 $ Start of namelist input section ------------------------------------ $
 $   Starting with WAVEWATCH III version 2.00, the tunable parameters
@@ -313,7 +313,7 @@ $
 $ In the 'Out of the box' test setup we run with sub-grid obstacles
 $ and with continuous ice treatment.
 $
-  &MISC CICE0 = 0.25, CICEN = 0.75, FLAGTR = 4 /
+  &MISC CICE0 = 0.25, CICEN = 0.75, FLAGTR = 0 /
   &FLX3 CDMAX = 3.5E-3 , CTYPE = 0 /
 $ &SDB1 BJGAM = 1.26, BJFLAG = .FALSE. /
 $
@@ -429,23 +429,23 @@ $ Example for rectilinear grid with spherical (lon/lat) coordinate system.
 $ Note that for Cartesian coordinates the unit is meters (NOT km).
 $
      'RECT'  T  'NONE'
-     12     12
-      1.     1.     4.
-     -1.    -1.     4.
-     -0.1 2.50  10  -10. 3 1 '(....)' 'NAME' 'bottom.inp'
+     181     181
+      1.     1.     12.
+     -95.    18.     1.
+     -1. 5.00  50  1. 1 1 '(181f8.0)' 'NAME' 'GLF1833.txt'
 $
-  6 6 6 6 6 6 6 6 6 6 6 6
-  6 6 6 5 4 2 0 2 4 5 6 6
-  6 6 6 5 4 2 0 2 4 5 6 6
-  6 6 6 5 4 2 0 2 4 5 6 6
-  6 6 6 5 4 2 0 0 4 5 6 6
-  6 6 6 5 4 4 2 2 4 5 6 6
-  6 6 6 6 5 5 4 4 5 6 6 6
-  6 6 6 6 6 6 5 5 6 6 6 6
-  6 6 6 6 6 6 6 6 6 6 6 6
-  6 6 6 6 6 6 6 6 6 6 6 6
-  6 6 6 6 6 6 6 6 6 6 6 6
-  6 6 6 6 6 6 6 6 6 6 6 6
+$  6 6 6 6 6 6 6 6 6 6 6 6
+$  6 6 6 5 4 2 0 2 4 5 6 6
+$  6 6 6 5 4 2 0 2 4 5 6 6
+$  6 6 6 5 4 2 0 2 4 5 6 6
+$  6 6 6 5 4 2 0 0 4 5 6 6
+$  6 6 6 5 4 4 2 2 4 5 6 6
+$  6 6 6 6 5 5 4 4 5 6 6 6
+$  6 6 6 6 6 6 5 5 6 6 6 6
+$  6 6 6 6 6 6 6 6 6 6 6 6
+$  6 6 6 6 6 6 6 6 6 6 6 6
+$  6 6 6 6 6 6 6 6 6 6 6 6
+$  6 6 6 6 6 6 6 6 6 6 6 6
 $
 $ ------------------------------------------------------------------------
 $ Example for curvilinear grid with spherical (lon/lat) coordinate system.
@@ -535,7 +535,7 @@ $  - Unit number of file (can be 10, and/or identical to bottem depth
 $    unit), scale factor for fractional obstruction, IDLA, IDFM,
 $    format for formatted read, FROM and filename
 $
-   10 0.2  3 1 '(....)' 'NAME' 'obstr.inp'
+$   10 0.2  3 1 '(....)' 'NAME' 'obstr.inp'
 $
 $ *** NOTE if this unit number is the same as the previous bottom
 $     depth unit number, it is assumed that this is the same file
@@ -545,31 +545,31 @@ $ If the above unit number equals 10, the bottom data is read from
 $ this file and follows below (no intermediate comment lines allowed,
 $ except between the two fields).
 $
-  0 0 0 0 0 0 0 0 0 0 0 0
-  0 0 0 0 0 0 0 0 0 0 0 0
-  0 0 0 0 0 0 0 0 0 0 0 0
-  0 0 0 0 0 0 0 0 0 0 0 0
-  0 0 0 0 0 0 0 0 0 0 0 0
-  0 0 0 0 0 0 5 0 0 0 0 0
-  0 0 0 0 0 0 5 0 0 0 0 0
-  0 0 0 0 0 0 4 0 0 0 0 0
-  0 0 0 0 0 0 4 0 0 0 0 0
-  0 0 0 0 0 0 5 0 0 0 0 0
-  0 0 0 0 0 0 5 0 0 0 0 0
-  0 0 0 0 0 0 0 0 0 0 0 0
+$  0 0 0 0 0 0 0 0 0 0 0 0
+$  0 0 0 0 0 0 0 0 0 0 0 0
+$  0 0 0 0 0 0 0 0 0 0 0 0
+$  0 0 0 0 0 0 0 0 0 0 0 0
+$  0 0 0 0 0 0 0 0 0 0 0 0
+$  0 0 0 0 0 0 5 0 0 0 0 0
+$  0 0 0 0 0 0 5 0 0 0 0 0
+$  0 0 0 0 0 0 4 0 0 0 0 0
+$  0 0 0 0 0 0 4 0 0 0 0 0
+$  0 0 0 0 0 0 5 0 0 0 0 0
+$  0 0 0 0 0 0 5 0 0 0 0 0
+$  0 0 0 0 0 0 0 0 0 0 0 0
 $
-  0 0 0 0 0 0 0 0 0 0 0 0
-  0 0 0 0 0 0 0 0 0 0 0 0
-  0 0 0 0 0 0 0 0 0 0 0 0
-  0 0 0 0 0 0 0 0 0 0 0 0
-  0 0 0 0 0 0 0 0 5 5 5 0
-  0 0 0 0 0 0 0 0 0 0 0 0
-  0 0 0 0 0 0 0 0 0 0 0 0
-  0 0 0 0 0 0 0 0 0 0 0 0
-  0 0 0 0 0 0 0 0 0 0 0 0
-  0 0 0 0 0 0 0 0 0 0 0 0
-  0 0 0 0 0 0 0 0 0 0 0 0
-  0 0 0 0 0 0 0 0 0 0 0 0
+$  0 0 0 0 0 0 0 0 0 0 0 0
+$  0 0 0 0 0 0 0 0 0 0 0 0
+$  0 0 0 0 0 0 0 0 0 0 0 0
+$  0 0 0 0 0 0 0 0 0 0 0 0
+$  0 0 0 0 0 0 0 0 5 5 5 0
+$  0 0 0 0 0 0 0 0 0 0 0 0
+$  0 0 0 0 0 0 0 0 0 0 0 0
+$  0 0 0 0 0 0 0 0 0 0 0 0
+$  0 0 0 0 0 0 0 0 0 0 0 0
+$  0 0 0 0 0 0 0 0 0 0 0 0
+$  0 0 0 0 0 0 0 0 0 0 0 0
+$  0 0 0 0 0 0 0 0 0 0 0 0
 $
 $ *** NOTE size of fields is always NX * NY                        ***
 $
@@ -579,7 +579,7 @@ $    IDLA and IDFM, format for formatted read, FROM and filename
 $    if FROM = 'PART', then segmented data is read from below, else
 $    the data is read from file as with the other inputs (as INTEGER)
 $
-   10 3 1 '(....)' 'PART' 'mapsta.inp'
+   10 1 1 '(....)' 'PART' 'mapsta.inp'
 $
 $ Read the status map from file ( FROM != PART ) --------------------- $
 $
@@ -613,8 +613,8 @@ $     connect flag. If this flag is true, and the present and previous
 $     point are on a grid line or diagonal, all intermediate points
 $     are also defined as boundary points.
 $
-      2   2   F
-      2  11   T
+$      2   2   F
+$      2  11   T
 $
 $  Close list by defining point (0,0) (mandatory)
 $
@@ -640,9 +640,9 @@ $ program. Example again for spherical grid in degrees. Note, these do
 $ not need to be defined for data transfer between grids in te multi
 $ grid driver.
 $
-     1.75  1.50  0.25 -0.10     3
-     2.25  1.50 -0.10  0.00    -6
-     0.10  0.10  0.10  0.00   -10
+$     1.75  1.50  0.25 -0.10     3
+$     2.25  1.50 -0.10  0.00    -6
+$     0.10  0.10  0.10  0.00   -10
 $
 $  Close list by defining line with 0 points (mandatory)
 $

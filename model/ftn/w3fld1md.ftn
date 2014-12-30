@@ -833,6 +833,7 @@
       ! 1a, get saturation level at KA1 (1.25xFPI)
       !-------------------------------------------
       BT(KA1) = 0
+      ANG = 0.0
       DO T=1, NTH
         BT(KA1)=BT(KA1)+INSPC(KA1,T)*WN2(KA1)**3.0*DTH
       ENDDO

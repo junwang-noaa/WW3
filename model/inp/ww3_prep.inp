@@ -23,23 +23,25 @@ $   Header flag  : If true, header is added to file.
 $                  (necessary for reading, FALSE is used only for
 $                   incremental generation of a data file.)
 $
-   'ICE' 'LL' F T
+$   'ICE' 'LL' F T
+    'WND' 'LL' T T
 $
 $ Additional time input ---------------------------------------------- $
 $ If time flag is .FALSE., give time of field in yyyymmdd hhmmss format.
 $
-   19680606 053000
+$   19680606 053000
 $
 $ Additional input format type 'LL' ---------------------------------- $
 $ Grid range (degr. or m) and number of points for axes, respectively.
 $ Example for longitude-latitude grid.
 $
-    -0.25 2.5  15  -0.25  2.5  4
+    -95. -80.  181  18.  33.  181
 $
 $ Additional input format type 'F1' or 'F2' -------------------------- $
 $ Three or four additional input lines, to define the file(s) with
 $ the grid information :
-$ 1) Discrete size of input grid (NXI,NYI).
+$ 1) Discrete size of input grid (NXI,NYI) and flag identifying closure
+$    in longitudes ("CLO").
 $ 2) Define type of file using the parameters FROM, IDLA, IDFM (see
 $    input for grid preprocessor), and a format
 $ 3) Unit number and (dummy) name of first file.
@@ -60,8 +62,8 @@ $ Define data files -------------------------------------------------- $
 $ The first input line identifies the file format with FROM, IDLA and
 $ IDFM, the second (third) lines give the file unit number and name.
 $
-  'UNIT' 3 1 '(..T..)' '(..F..)' 
-  10 'data_file.1'
+  'NAME' 1 1 '(20f6.1)' '(20f6.1)'
+  30 'wind.pre'
 $ 10 'data_file.2'
 $
 $ If the above unit numbers are 10, data is read from this file

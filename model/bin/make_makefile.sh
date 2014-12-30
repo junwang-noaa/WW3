@@ -11,9 +11,10 @@
 # error codes : all error output goes directly to screen in w3_make.          #
 #                                                                             #
 #                                                      Hendrik L. Tolman      #
-#                                                      November 2013          #
+#                                                      May 2009               #
+#                                                      March 2014             #
 #                                                                             #
-#    Copyright 2009-2013 National Weather Service (NWS),                      #
+#    Copyright 2009-2014 National Weather Service (NWS),                      #
 #       National Oceanic and Atmospheric Administration.  All rights          #
 #       reserved.  WAVEWATCH III is a trademark of the NWS.                   #
 #       No unauthorized use without permission.                               #
@@ -78,7 +79,6 @@
   echo '# -------------------------'             >> makefile
 
   rm -f filelist.tmp
-  nr_thr=0
 
 # 2.b Get info from switch file  - - - - - - - - - - - - - - - - - - - - - - -
 
@@ -95,7 +95,7 @@
 # NOTE: comment line with '#sort:key:" used by sort_switches, including ':'
 
   for type in mach nco grib mcp c90 nec lrecl netcdf scrip scripnc \
-              shared mpp mpiexp thr0 thr1 GSE prop \
+              shared mpp mpiexp thread GSE prop \
               stress s_ln source stab s_nl snls s_bot s_db miche s_tr s_bs \
                      s_ice s_is reflection s_xx \
               wind windx rwind curr currx mgwind mgprop mggse \
@@ -163,16 +163,11 @@
                ID='experimental MPI option'
                TS='MPIBDI'
                OK='MPIBDI' ;;
-#sort:thr0:
-      thr0   ) TY='upto1'
-               ID='directive controlled threading (subs)'
-               TS='OMP0'
-               OK='OMP0' ;;
-#sort:thr1:
-      thr1   ) TY='upto1'
-               ID='directive controlled threading (loop)'
-               TS='OMP1'
-               OK='OMP1' ;;
+#sort:thread:
+      thread ) TY='upto2'
+               ID='directive controlled threading'
+               TS='OMP'
+               OK='OMPG OMPX OMPH' ;;
 #sort:GSE:
       GSE    ) TY='one'
                ID='GSE aleviation'
@@ -350,7 +345,7 @@
       if [ "`grep $check $switch | wc -w | awk '{print $1}'`" -gt '1' ]
       then
         n_found=`expr $n_found + 1`
-        s_found="$check $s_found"
+        s_found="$s_found $check"
       fi
     done
 
@@ -359,7 +354,7 @@
       echo ' '
       echo "   *** No valid $ID switch found  ***"
       echo "       valid : $OK"
-      echo "       found : $s_found"
+      echo "       found :$s_found"
       echo ' ' ; exit 3
     fi
 
@@ -368,8 +363,17 @@
       echo ' '
       echo "   *** Too many $ID switches found (max 1) ***"
       echo "       valid : $OK"
-      echo "       found : $s_found"
+      echo "       found :$s_found"
       echo ' ' ; exit 4
+    fi
+
+    if [ "$n_found" -gt '2' ] && [ "$TY" = 'upto2' ]
+    then
+      echo ' '
+      echo "   *** Too many $ID switches found (max 2) ***"
+      echo "       valid : $OK"
+      echo "       found :$s_found"
+      echo ' ' ; exit 5
     fi
 
     if [ "$TY" = 'man' ]
@@ -400,12 +404,17 @@
       sw=
     fi
 
+    if [ "$type" = 'thread' ]
+    then
+      sw1="`echo $s_found | awk '{ print $1 }'`"
+      sw2="`echo $s_found | awk '{ print $2 }'`"
+    fi
+
     case $type in
       shared ) shared=$sw ;;
       mpp    ) mpp=$sw ;;
       mpiexp ) mpiexp=$sw ;;
-      thr0   ) nr_thr=`expr $nr_thr + $n_found` ;;
-      thr1   ) nr_thr=`expr $nr_thr + $n_found` ;;
+      thread ) thread1=$sw1 ; thread2=$sw2 ;;
       GSE    ) g_switch=$sw ;;
       prop   ) p_switch=$sw ;;
       s_ln   ) s_ln=$sw ;;
@@ -430,24 +439,46 @@
       netcdf ) netcdf=$sw;;
       tide   ) tide=$sw ;;
       arctic ) arctic=$sw ;;
+      mprf   ) mprf=$sw ;;
       ssdcd  ) ssdcd=$sw ;;
       mfbg   ) mfbg=$sw ;;
         *    ) ;;
     esac
   done
 
-  if [ "$nr_thr" != '0' ] && [ "$shared" != 'SHRD' ]
+  if [ -n "$thread1" ] && [ -z "$thread2" ]
   then
       echo ' '
-      echo "   *** !/OMPn has to be used in combination with !/SHRD"
-      echo ' ' ; exit 5
+      echo "   *** !/OMPX or !/OMPH has to be used in combination with !/OMPG"
+      echo ' ' ; exit 6
+  fi
+
+  if [ -n "$thread2" ] && [ "$thread1" != 'OMPG' ]
+  then
+      echo ' '
+      echo "   *** !/OMPX or !/OMPH has to be used in combination with !/OMPG"
+      echo ' ' ; exit 6
+  fi
+
+  if [ "$thread2" = 'OMPX' ] && [ "$shared" != 'SHRD' ]
+  then
+      echo ' '
+      echo "   *** !/OMPX has to be used in combination with !/SHRD"
+      echo ' ' ; exit 7
+  fi
+
+  if [ "$thread2" = 'OMPH' ] && [ "$mpp" != 'MPI' ]
+  then
+      echo ' '
+      echo "   *** !/OMPH has to be used in combination with !/MPI"
+      echo ' ' ; exit 8
   fi
 
   if [ "$arctic" = 'ARC' ] && [ "$p_switch" != 'SMC' ]
   then
       echo ' '
       echo "   *** !/ARC has to be used in combination with !/SMC"
-      echo ' ' ; exit 6
+      echo ' ' ; exit 9
   fi
 
   case $g_switch in
@@ -517,7 +548,7 @@
   then
       echo ' '
       echo "   *** !/STAB2 has to be used in combination with !/ST2"
-      echo ' ' ; exit 6
+      echo ' ' ; exit 10
   fi
 
   if [ "$stab" = 'STAB3' ] && [ "$s_inds" != 'ST3' ]
@@ -526,7 +557,7 @@
       then
         echo ' '
         echo "   *** !/STAB3 has to be used in combination with !/ST3 or !/ST4"
-        echo ' ' ; exit 6
+        echo ' ' ; exit 10
       fi
   fi
 
@@ -535,7 +566,7 @@
       echo ' '
       echo "   *** !/ST1 cannot be used in combination with !/$stress"
       echo "       Choose from FLX1, FLX2 ,FLX3, FLX4, or FLX5."
-      echo ' ' ; exit 7
+      echo ' ' ; exit 11
   fi
 
   if [ "$s_inds" = 'ST2' ] && [ "$str_st2" = 'no' ]
@@ -543,7 +574,7 @@
       echo ' '
       echo "   *** !/ST2 cannot be used in combination with !/$stress"
       echo "       Choose from FLX2, FLX3, or FLX5."
-      echo ' ' ; exit 7
+      echo ' ' ; exit 11
   fi
 
   if [ "$s_inds" = 'ST3' ] && [ "$str_st3" = 'no' ]
@@ -551,21 +582,21 @@
       echo ' '
       echo "   *** !/ST3 cannot be used in combination with !/$stress"
       echo "       Stresses embedded in source terms, use FLX0."
-      echo ' ' ; exit 7
+      echo ' ' ; exit 11
   fi
   if [ "$s_inds" = 'ST4' ] && [ "$str_st3" = 'no' ]
   then
       echo ' '
       echo "   *** !/ST4 cannot be used in combination with !/$stress"
       echo "       Stresses embedded in source terms, use FLX0."
-      echo ' ' ; exit 7
+      echo ' ' ; exit 11
   fi
   if [ "$s_inds" = 'ST6' ] && [ "$str_st6" = 'no' ]
   then
       echo ' '
       echo "   *** !/ST6 cannot be used in combination with !/$stress"
       echo "       Choose from FLX1, FLX2, FLX3, or FLX4."
-      echo ' ' ; exit 7
+      echo ' ' ; exit 11
   fi
 
   case $s_nl in
@@ -670,13 +701,13 @@
    esac
 
 
-  if [ "$nr_thr" != '0' ] && [ "$s_nl" = 'NL2' ]
+  if [ -n "$thread1" ] && [ "$s_nl" = 'NL2' ]
   then
       echo ' '
       echo "   *** The present version of the WRT interactions"
-      echo "       cannot be run under OpenMP (OMP0, OMP1). Use"
+      echo "       cannot be run under OpenMP (OMPG OMPX, OMPH). Use"
       echo "       SHRD or MPI options instead.                    ***"
-      echo ' ' ; exit 8
+      echo ' ' ; exit 12
   fi
 
   if [ "$mprf" = "MPRF" ]
@@ -910,24 +941,32 @@
 
   for file in `cat filelist`
   do
-    if [ -f $main_dir/ftn/$file.ftn ]
-    then
-      fext=ftn
-    else
-      if [ -f $main_dir/ftn/$file.c ]
+
+    suffixes="ftn f F f90 F90 c"
+    fexti=none
+    for s in $suffixes
+    do
+      if [ -f $main_dir/ftn/$file.$s ]
       then
-        fext=c
-      else
-        if [ -f $main_dir/ftn/$file.f90 ]
-        then
-          fext=f90
-        else
-          fext=f
-        fi
+        fexti=$s
+        break
       fi
+    done
+    if [ "$fexti" = 'none' ]
+    then
+      echo '      *** make_makefile.sh error ***'
+      echo "          Source file $main_dir/ftn/$file.* not found"
+      echo "          Source file suffixes checked: $suffixes"
+      exit 2
+    fi
+    if [ "$fexti" = 'ftn' ]
+    then
+      fexto=F90
+    else
+      fexto=$fexti
     fi
 
-    string1='$(aPo)/'$file'.o : '$file.$fext' '
+    string1='$(aPo)/'$file'.o : '$file.$fexti' 'w3macros.h' '
     string2='	@$(aPb)/ad3'" $file"
     string3="$NULL"
 
@@ -936,25 +975,18 @@
     if [ -n "`grep error ad3.out`" ]
     then
       cat ad3.out
-      exit 8
+      exit 20
     fi
     rm -f ad3.out
 
-    if [ -f $file.f90 ]
+    if [ "$fexto" = 'c' ]
     then
-      fext=f90
+      touch check_file
     else
-      if [ -f $file.c ]
-      then
-        fext=c
-      else
-        fext=f
-      fi
+      grep USE $file.$fexto  > check_file
+      grep use $file.$fexto >> check_file
     fi
-
-    grep USE $file.$fext  > check_file
-    grep use $file.$fext >> check_file
-    rm -f $file.$fext
+    rm -f $file.$fexto
 
     for mod in W3INITMD W3WAVEMD W3WDASMD W3UPDTMD W3FLDSMD W3CSPCMD \
                W3GDATMD W3WDATMD W3ADATMD W3ODATMD W3IDATMD \
@@ -1132,8 +1164,8 @@
     scrip_dir=$main_dir/ftn/SCRIP
     if [ ! -d $scrip_dir ]
     then
-      echo "*** SCRIPT directory $scrip_dir not found ***"
-      exit 2
+      echo "*** SCRIP directory $scrip_dir not found ***"
+      exit 21
     fi
 
     if  [ "$scripnc" = 'SCRIPNC' ]
@@ -1144,8 +1176,8 @@
     fi
     if [ ! -e $scrip_mk ]
     then
-      echo "*** SCRIPT makefile fragment $scrip_mk not found ***"
-      exit 2
+      echo "*** SCRIP makefile fragment $scrip_mk not found ***"
+      exit 22
     fi
 
     cat $scrip_mk >> makefile
