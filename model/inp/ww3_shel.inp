@@ -16,8 +16,8 @@ $ Time frame of calculations ----------------------------------------- $
 $ - Starting time in yyyymmdd hhmmss format.
 $ - Ending time in yyyymmdd hhmmss format.
 $
-   20040913 133000
-   20040914 060000
+   20040914 122500
+   20040914 124000
 $
 $ Define output data ------------------------------------------------- $
 $
@@ -54,7 +54,7 @@ $          the total number and order of the logical flags is fixed.
 $                               The raw data file is out_grd.ww3, 
 $                               see w3iogo.ftn for additional doc.
 $
-   20040914 000000   3600  20040914 060000
+   20040914 123000   300  20040914 123500
 $----------------------------------------------------------------
 $ Output request flags identifying fields.
 $ 
@@ -231,9 +231,9 @@ $ (9) Numerical diagnostics
 $ DTD FC  CFX CFD CFK
   T   T   T   T   T
 $ (10) User defined (NOEXTR flags needed)
-  F
+  T
 $  U1  U2
-$ T   T
+ T T F F F  F F F F F   F F F F 
 $
 $----------------------------------------------------------------
 $
@@ -275,7 +275,7 @@ $ Type 4 : Restart files (no additional data required).
 $                               The data file is restartN.ww3, see
 $                               w3iors.ftn for additional doc.
 $
-   19680606 030000  3600  19680607 030000
+   20040914 122500  86400  20040914 233000
 $
 $ Type 5 : Boundary data (no additional data required).
 $                               The data file is nestN.ww3, see

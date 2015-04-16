@@ -1,0 +1,56 @@
+!/ ------------------------------------------------------------------- /
+      MODULE W3CDATMD
+!/
+!/    Name: W3CDATMD
+!/                 
+!/    Author: Brandon Reichl (GSO-URI)
+!/
+!/    28-Aug-2013 : Origination.
+!
+!
+!  1. Purpose :
+!     
+!     This section of code stores all the coupling variables for 
+!     WW3 component of coupled system models.
+!
+!  2. Variables and types :
+!      Name      Type  Scope    Description
+!     ----------------------------------------------------------------
+!     ----------------------------------------------------------------
+!
+!  3. Subroutines and functions :
+!
+!      Name       Type  Scope    Description
+!     ----------------------------------------------------------------
+!     ----------------------------------------------------------------
+!
+!  4. Subroutines and functions used :
+!
+!      Name      Type  Module   Description
+!     ----------------------------------------------------------------
+!
+!     ----------------------------------------------------------------
+!  5. Remarks :
+!
+!  6. Switches :
+!
+!  7. Source code :
+!/
+!/ ------------------------------------------------------------------- /
+!/
+!     *****************************************
+!     ***    Declare saved variables here   ***
+!     ***  public or private as appropriate ***
+!     *****************************************
+!                                              
+      IMPLICIT NONE
+      PUBLIC
+      SAVE
+      REAL, ALLOCATABLE,DIMENSION(:,:) :: MX0, MY0, MX, MY
+      REAL, ALLOCATABLE,DIMENSION(:,:) :: MFXX, MFXY, MFYX, MFYY
+      REAL, ALLOCATABLE,DIMENSION(:,:) :: ENER, ENER0,DENER
+      REAL, ALLOCATABLE,DIMENSION(:,:) :: EFX, EFY, EFA
+      REAL, ALLOCATABLE,DIMENSION(:,:) :: TAU_CX,TAU_CY,TAU_DX,TAU_DY
+      REAL, ALLOCATABLE,DIMENSION(:)   :: ASIM_CD, ASIM_MA, ASIM_CHARN
+!/
+    END MODULE W3CDATMD

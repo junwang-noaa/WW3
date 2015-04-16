@@ -351,7 +351,6 @@
 !/FLX3      USE W3FLX3MD
 !/FLX4      USE W3FLX4MD
 !/FLX5      USE W3FLX5MD
-!/FLD1      USE W3FLD1MD, ONLY: W3FLD1
 !/LN1      USE W3SLN1MD
 !/LNX      USE W3SLNXMD
 !/ST0      USE W3SRC0MD
@@ -390,7 +389,6 @@
 !/BSX      USE W3SBSXMD
 !/IG1      USE W3GDATMD, ONLY : IGPARS
 !/XXX      USE W3SXXXMD
-!/MFB1     USE W3MFBGMD
 !/S      USE W3SERVMD, ONLY: STRACE
 !/NNT      USE W3SERVMD, ONLY: EXTCDE
 !/
@@ -472,10 +470,6 @@
       LOGICAL, SAVE           :: FIRST = .TRUE.
 
 !/NNT      CHARACTER(LEN=17), SAVE :: FNAME = 'test_data_nnn.ww3'
-!/FLD1     REAL                    :: USTAR2, USTDIR2
-!/FLD2     REAL                    :: USTAR2, USTDIR2
-      REAL                    :: TAUX,TAUY
-!/MFB1     REAL                    :: MX,MY,MFXX,MFYX,MFYY,MFXY
 !/
 !/ ------------------------------------------------------------------- /
 !/
@@ -1037,13 +1031,6 @@
 !/ST4        CALL W3SIN4 ( SPEC, CG1, WN2, U10ABS, USTAR, DRAT, AS,      &
 !/ST4                      U10DIR, Z0, CD, TAUWX, TAUWY, TAUWAX, TAUWAY, &
 !/ST4                      VSIN, VDIN, LLWS, IX, IY, BRLAMBDA )
-      TAUX=0
-      TAUY=0
-!/FLD1      CALL W3FLD1 (SPEC,min(FPI/TPI,2.0),U10ABS, &
-!/FLD1                    U10DIR,0.,0.,ZWIND,DEPTH,USTAR2,USTDIR2,COEF)
-!/FLD1      TAUX=(USTAR2*COS(USTDIR2))**2*DAIR
-!/FLD1      TAUY=(USTAR2*SIN(USTDIR2))**2*DAIR
-!/MFB1      CALL W3MFBG(SPEC,FP*TPIINV,MX,MY,MFXX,MFYX,MFYY,MFXY)
 !
 ! 7.  Check if integration complete ---------------------------------- *
 !

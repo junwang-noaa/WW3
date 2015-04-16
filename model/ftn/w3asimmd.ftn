@@ -1,0 +1,336 @@
+!/ ------------------------------------------------------------------- /
+      MODULE W3ASIMMD
+!/
+!/    Name: W3ASIMMD
+!/    Subroutines: W3ASIM
+!/                 IW3ASIM
+!/                 
+!/    Author: Brandon Reichl (GSO-URI)
+!/
+!/    28-Aug-2013 : Origination.
+!   Added SST and Surface currents (SCX0 and SCY0): Biju Thomas
+!
+!
+!  1. Purpose :
+!     
+!     This section of code computes all the coupling variables for 
+!     WW3 component of coupled system models.
+!
+!  2. Variables and types :
+!      Name      Type  Scope    Description
+!     ----------------------------------------------------------------
+!     ----------------------------------------------------------------
+!
+!  3. Subroutines and functions :
+!
+!      Name       Type  Scope    Description
+!     ----------------------------------------------------------------
+!     FLUXES      Subr. Public   Calls the flux calculations/
+!                                sets value of WW3 outputs.
+!     INITFLUXES  Subr. Public   Initial bulk fluxes to pass.
+!     INITOUTPUT  Subr. Public   Set value of WW3 outputs.
+!     ----------------------------------------------------------------
+!
+!  4. Subroutines and functions used :
+!
+!      Name      Type  Module   Description
+!     ----------------------------------------------------------------
+!
+!     ----------------------------------------------------------------
+!  5. Remarks :
+!
+!  6. Switches :
+!
+!  7. Source code :
+!/
+!/ ------------------------------------------------------------------- /
+!/
+!     *****************************************
+!     ***    Declare saved variables here   ***
+!     ***  public or private as appropriate ***
+!     *****************************************
+!                                              
+      IMPLICIT NONE
+      PUBLIC
+!/
+    CONTAINS
+!/ ------------------------------------------------------------------- /
+      SUBROUTINE W3ASIM
+!/
+!/ Air-Sea Interface Module.
+!/
+!/ ------------------------------------------------------------------- /
+        USE CONSTANTS, ONLY: PI,TPI, GRAV, DAIR, KAPPA
+        ! KAPPA - 0.40 - Von Karman's constant
+        ! TPI - 2 * pi
+        ! GRAV - 9.81 m/s2
+        USE W3CDATMD
+        USE W3WDATMD, ONLY: VA, FPIS, ASF, UST
+        ! VA - 1-D wave action spectrum
+        ! FPIS - Peak input frequency
+        ! ASF - Stability adjustment coefficent
+        USE W3ADATMD, ONLY: DW, ITIME
+!/MPI        USE W3ADATMD, ONLY: MPI_COMM_WAVE
+        ! DW - Depth
+        ! ITIME - Discrete time step counter
+        USE W3GDATMD, ONLY: NX, NY, NSEA, MAPSF, MAPSTA, FLAGST,  &
+             nseal, SX, SY, ZWIND
+        ! NX - number of x points
+        ! NY - number of y points
+        ! NSEA - number of sea points
+        ! MAPSF - 1D array of 2D locations
+        ! MAPSTA - Status (1 for sea)
+        ! FLAGST - Flag for source term computation (True if active)
+        ! nseal - number of sea points local to processor
+        USE W3ODATMD, ONLY: IAPROC, NAPROC, UNDEF
+        ! iaproc - processor number
+        ! naproc - locations per processor
+        ! undef - wavewatch undef flag value
+        USE W3IDATMD, ONLY: WXN, WYN
+        USE W3FLD1MD, ONLY: WND2Z0M
+!/FLD1        USE W3FLD1MD, ONLY: W3FLD1
+        ! c3fld1 - Stress calculation (Reichl et al. 2013)
+!/FLD2        USE W3FLD2MD, ONLY: W3FLD2
+        ! c3fld2 - Stress calculation (Donelan et al. 2012)
+!/MFB1        USE W3MFBGMD, ONLY: W3MFBG,WMBG
+        ! c3mfbg - wave momentum/radiation stress calculation
+        IMPLICIT NONE
+!/ ------------------------------------------------------------------- /
+!/ Counters
+!/ ------------------------------------------------------------------- /
+! Counters 
+       INTEGER :: JSEA, ISEA, IX, IY
+! Stress model limiters (SSD-Sea State Dependent)
+       REAL    :: SSD_WindLowBound = 12.5
+       REAL    :: Blk_WindLowBound = 10.0
+       REAL    :: SSD_DptLowBound  = 10.0
+       REAL    :: Blk_DptLowBound  = 5.0
+       REAL    :: SSD_CD, Blk_CD, DDPT, DWND, SSDFRAC, SSD_MA, &
+                  SSD_Charn, Blk_Charn, Blk_Z0
+       LOGICAL :: SSD, Blk
+! Input from Atmosphere (or from WW3 if stand-alone)
+        REAL    :: ATM_WIND_MAG, ATM_WIND_DIR, ATM_WIND_HT, ATM_RIB
+! Output from Stress model
+        REAL    :: SSD_USTAR_MAG, SSD_USTAR_DIR, SSD_Z0
+! For Stress model iteration pass previous viscous stress
+        REAL    :: SSD_TAU_NU_X, SSD_TAU_NU_Y
+! One way to avoid having two preprocessors control 1 line is
+!  an additional logical is needed to control 'if' statement
+        LOGICAL :: MFB_SWITCH
+        LOGICAL, SAVE :: FIRST = .true.
+!
+! -Set limiters (could be read from input)
+!
+        MFB_SWITCH = .FALSE.
+!/MFB1        MFB_SWITCH = .TRUE.
+!
+! - Allocation and initialization
+!
+        if (first) THEN
+           first = .false.
+           ALLOCATE(MX0(NY,NX),MY0(NY,NX),MFXX(NY,NX), MFXY(NY,NX),&
+                MFYX(NY,NX), MX(NY,NX),MY(NY,NX),MFYY(NY,NX),&
+                        ENER(NY,NX), ENER0(NY,NX),&
+                DENER(NY,NX),EFX(NY,NX), EFY(NY,NX), EFA(NY,NX),   &
+                TAU_CX(NY,NX),TAU_CY(NY,NX),TAU_DX(NY,NX),         &
+                TAU_DY(NY,NX),ASIM_CD(NSEA),ASIM_MA(NSEA),ASIM_CHARN(NSEA))
+           MX0=0.0
+           MY0=0.0
+           ENER0=0.0
+        endif
+        ASIM_CD=0.0
+        ASIM_MA=0.0
+        MX=0.0
+        MY=0.0
+        MFXX=0.0
+        MFXY=0.0
+        MFYX=0.0
+        MFYY=0.0
+        ENER=0.0
+        DENER=0.0
+        EFX=0.0
+        EFY=0.0
+        EFA=0.0
+        TAU_CX=0.0
+        TAU_CY=0.0
+        TAU_DX=0.0
+        TAU_DY=0.0
+        
+!/
+        !=====================================================|
+        ! Run through all locations local to current processor|
+        !=====================================================|
+        if (.not.first) then
+           DWND = SSD_WindLowBound-Blk_WindLowBound
+           DDPT = SSD_DptLowBound-Blk_DptLowBound
+           DO JSEA = 1 , NSEAL
+              ISEA = IAPROC + (JSEA-1) * NAPROC
+              IX = MAPSF( ISEA , 1 )
+              IY = MAPSF( ISEA , 2 )
+              !-----------------------------------------------
+              ! Get Wind speed and distance from domain center
+              !-----------------------------------------------
+              !> Change input winds here
+              ATM_wind_mag = SQRT( WXN(IX,IY)**2 + WYN(IX,IY)**2 )
+              ATM_wind_dir = ATAN2 (WYN(IX,IY),WXN(IX,IY))
+              ATM_wind_ht  = 10.
+              ATM_Rib      = 0.0
+              SSD = (ATM_wind_Mag .GT. Blk_WindLowBound  .AND. &
+                        DW(ISEA)     .GT. Blk_DptLowBound)
+              Blk = (ATM_Wind_Mag .LT. SSD_WindLowBound  .OR. &
+                        DW(ISEA)     .LT. SSD_DptLowBound)
+              !=======================================================|
+              ! If location is 'sea point' in WW3 calculate the fluxes|
+              !=======================================================|
+              IF ( MAPSTA(IY,IX) .EQ. 1 .AND. FLAGST(ISEA)) THEN
+                 IF( SSD ) THEN
+!/FLD1              CALL W3FLD1 (VA(:,JSEA), min(FPIS(ISEA)/TPI,2.0), &
+!/FLD1                         ATM_WIND_MAG*COS(ATM_WIND_DIR),        &
+!/FLD1                         ATM_WIND_MAG*SIN(ATM_WIND_DIR),        &
+!/FLD1                         ATM_WIND_HT, DW(ISEA), ATM_RIB,        &
+!/FLD1                         SSD_USTAR_MAG, SSD_USTAR_DIR, SSD_Z0,  &
+!/FLD1                         SSD_TAU_NU_X, SSD_TAU_NU_Y )
+!/FLD2              CALL W3FLD2 (VA(:,JSEA), min(FPIS(ISEA)/TPI,2.0), &
+!/FLD2                         ATM_WIND_MAG*COS(ATM_WIND_DIR),        &
+!/FLD2                         ATM_WIND_MAG*SIN(ATM_WIND_DIR),        &
+!/FLD2                         ATM_WIND_HT, DW(ISEA), ATM_RIB,        &
+!/FLD2                         SSD_USTAR_MAG, SSD_USTAR_DIR ,SSD_Z0,  &
+!/FLD2                         SSD_TAU_NU_X, SSD_TAU_NU_Y)
+                    IF (.not.BLK) then
+                       ASIM_CD(ISEA) = (SSD_USTAR_MAG/ATM_WIND_MAG)**2
+                       ASIM_MA(ISEA) = asin(sin(ATM_WIND_DIR-SSD_USTAR_DIR))
+                       ASIM_CHARN(ISEA) = GRAV * SSD_Z0 / SSD_USTAR_MAG**2
+                    ELSE
+                       SSD_CD = (SSD_USTAR_MAG/ATM_WIND_MAG)**2
+                       SSD_MA = asin(sin(ATM_WIND_DIR - SSD_USTAR_DIR))
+                       SSD_CHARN = GRAV * SSD_Z0/ SSD_USTAR_MAG**2
+                    ENDIF
+                 ENDIF
+                 IF (Blk) THEN
+                    CALL BULK_WND(ATM_WIND_MAG,ATM_WIND_HT,ATM_RIB,BLK_CD,BLK_Z0)
+                    IF (.not.SSD) then
+                       ASIM_CHARN(ISEA) = BLK_Z0*GRAV/(ATM_WIND_MAG**2*BLK_CD)
+                       ASIM_CD(ISEA) = BLK_CD
+                       ASIM_MA(ISEA) = 0.0
+                    ELSE
+                       BLK_CHARN = BLK_Z0*GRAV/(ATM_WIND_MAG**2*BLK_CD)
+                    ENDIF
+                 ENDIF
+                 IF (BLK .AND. SSD) then
+                    IF (ATM_Wind_Mag .LT. SSD_WindLowBound) then
+                       SSDFRAC = (ATM_WIND_MAG - Blk_WindLowBound)/DWND
+                       ASIM_CD(ISEA) = SSDFRAC * SSD_CD + &
+                            (1-SSDFRAC) * BLK_CD
+                       ASIM_CHARN(ISEA) = SSDFRAC * SSD_CHARN + &
+                                        (1-SSDFRAC) * BLK_CHARN
+                       ASIM_MA(ISEA) = SSDFRAC * SSD_MA
+                    ENDIF
+                    IF ( DW(ISEA) .LT. SSD_DPTLowBound) then
+                       SSDFRAC = (DW(ISEA) - Blk_DptLowBound)/DDPT
+                       ASIM_CD(ISEA) = SSDFRAC * SSD_CD + &
+                            (1-SSDFRAC) * BLK_CD
+                       ASIM_CHARN(ISEA) = SSDFRAC * SSD_CHARN + &
+                                        (1-SSDFRAC) * BLK_CHARN
+                       ASIM_MA(ISEA) = SSDFRAC * SSD_MA
+                    ENDIF
+                 ENDIF
+!/MFB1              CALL W3MFBG(VA(:,JSEA),min(FPIS(ISEA)/TPI,2.0),&
+!/MFB1                   WXN(IX,IY),WYN(IX,IY),UST(JSEA),MX(IY,IX),&
+!/MFB1                   MY(IY,IX),MFXX(IY,IX),MFXY(IY,IX),&
+!/MFB1                   MFYX(IY,IX),MFYY(IY,IX),EFX(IY,IX),&
+!/MFB1                   EFY(IY,IX),ENER(IY,IX),EFA(IY,IX))
+              ENDIF
+           ENDDO
+        if (MFB_SWITCH) then
+!/MPI        CALL MPPSUM( MY, NX,NY, MPI_COMM_WAVE )
+!/MPI        CALL MPPSUM( MX, NX,NY, MPI_COMM_WAVE )
+!/MPI        CALL MPPSUM( MFXX, NX,NY, MPI_COMM_WAVE )
+!/MPI        CALL MPPSUM( MFXY, NX,NY, MPI_COMM_WAVE )
+!/MPI        CALL MPPSUM( MFYY, NX,NY, MPI_COMM_WAVE )
+!/MPI        CALL MPPSUM( MFYX, NX,NY, MPI_COMM_WAVE )
+!/MPI        CALL MPPSUM( EFX, NX,NY, MPI_COMM_WAVE )
+!/MPI        CALL MPPSUM( EFY, NX,NY, MPI_COMM_WAVE )
+        endif
+!/MFB1        CALL WMBG
+        if (MFB_SWITCH) then
+!/MPI        CALL MPPSUM( TAU_CX, NX,NY, MPI_COMM_WAVE )
+!/MPI        CALL MPPSUM( TAU_CY, NX,NY, MPI_COMM_WAVE )
+!/MPI        CALL MPPSUM( TAU_DX, NX,NY, MPI_COMM_WAVE )
+!/MPI        CALL MPPSUM( TAU_DY, NX,NY, MPI_COMM_WAVE )
+        endif
+!/MFB1        MX0   = MX
+!/MFB1        MY0   = MY
+!/MFB1        ENER0 = ENER
+     ENDIF
+        RETURN
+      END SUBROUTINE W3ASIM
+!==================================================================
+!==================================================================
+!=================================================================
+      SUBROUTINE MPPSUM ( ARRAY, NX, NY, MPI_COMM )
+!    This subroutine creates global array by combining local arrays
+!    Author :   Biju Thomas
+!    GSO/University Of Rhode Island
+        IMPLICIT NONE
+!/MPI        INCLUDE 'mpif.h'
+        
+        INTEGER, INTENT(IN)                     :: NX, NY, MPI_COMM
+        REAL, DIMENSION(NY, NX),  INTENT(INOUT) :: ARRAY
+        REAL, ALLOCATABLE, DIMENSION(:,:)       :: ARSUM
+        INTEGER                                 :: IERR
+        
+        ALLOCATE( ARSUM(NY, NX) )
+        ARSUM = 0.0
+        
+!/MPI        CALL MPI_ALLREDUCE( ARRAY, ARSUM, NX * NY, MPI_REAL,  &
+!/MPI             MPI_SUM, MPI_COMM, IERR )
+        
+        ARRAY = ARSUM
+        
+        DEALLOCATE( ARSUM )
+        RETURN
+        
+      END SUBROUTINE MPPSUM
+
+      SUBROUTINE BULK_WND(WND,ZH,RIB,CD,Z0)
+        USE W3FLD1MD, ONLY: WND2Z0M,MFLUX
+        USE CONSTANTS, ONLY: KAPPA
+        IMPLICIT NONE
+        REAL, INTENT(IN) :: WND, ZH, RIB
+        REAL, INTENT(OUT) :: CD,z0
+        
+        REAL :: Z01, Z02, WNDb
+        Integer :: ITC
+        LOGICAL :: IT
+        IT=.true.
+
+        
+        if (abs(ZH-10.).lt.0.1) then
+           CALL WND2Z0M (WND,Z01)
+           !CD = (KAPPA / log(ZH/Z01))**2
+           CALL MFLUX(WND,ZH,Z01,RIB,CD)
+        else
+           CALL WND2Z0M (WND,Z01)
+           ITC = 0
+           DO while (IT)
+              ITC = ITC + 1
+              WNDb = WND/log(ZH/Z01)*log(10./z01)
+              CALL WND2Z0M (WNDb,Z02)
+              if (ABS(Z02-z01) .lt. 1.E-7) then
+                 IT = .false.
+                 CALL MFLUX(WND,ZH,Z01,RIB,CD)
+                 !CD = (KAPPA / log(ZH/Z01))**2
+              elseif (ITC.GT.10) then
+                 IT=.false.
+                 print*,'error bulkwnd'
+                 print*,wnd,wndb,z01,z02
+                 CD = 0.0015
+              else  
+                 z01 = z02
+              endif
+           enddo
+        endif
+        z0=z01
+       ! print*,wnd,CD
+      END SUBROUTINE BULK_WND
+    END MODULE W3ASIMMD
