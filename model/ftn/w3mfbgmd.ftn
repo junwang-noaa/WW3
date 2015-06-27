@@ -169,7 +169,7 @@
       DO K = 1, NKT
         SIG2(K) = FR1 * XFR**(K-1) * TPI
         WN(K) = SIG2(K)**2 / GRAV
-      ENDDO
+       ENDDO
 !
 ! 1b. Attach initial tail--------------------------------------------- *
 !
@@ -193,7 +193,7 @@
 !-----Wavenumber for end of (spectrum level) transition to tail------- *
       KTAILB = ( FPI * TPI * 3.00 )**2 / GRAV
 !-----Wavenumber for end of (spectrum direction) transition to tail--- *
-      KTAILC=KTAILB*2
+      KTAILC=KTAILB*2.0
       KA1 = 2     ! Do not modify 1st wavenumber bin
       DO WHILE ( ( KTAILA .GE. WN(KA1) ) .AND. (KA1 .LT. NKT-6) )
         KA1 = KA1 + 1
@@ -206,8 +206,8 @@
       DO WHILE ( ( KTAILC .GE. WN(KA3)) .AND. (KA3 .LT. NKT-2) )
         KA3 = KA3 + 1
       ENDDO
-      CALL APPENDTAIL(SPC,WN, NKT, KA1, KA2, KA3,&
-                        ATAN2(WNDY,WNDX),SAT)
+      !CALL APPENDTAIL(SPC,WN, NKT, KA1, KA2, KA3,&
+      !                  ATAN2(WNDY,WNDX),SAT)
 !
 ! 2a. Calculate peak momentum and momentum flux and MSS
 !
@@ -246,9 +246,9 @@
            / 2. * (WN(2)-WN(1))
       MX_1 = DWAT * G_fx(1) * (SIG2(1) + SIG2(2)) &
            / 2. * (WN(2)-WN(1))
-      EFX1 = DWAT * G_FX(1) * GRAV**2 / ( 2 * (SIG2(1) + SIG2(2))) &
+      EFX1 = DWAT * G_FX(1) * GRAV**2 / ( (SIG2(1) + SIG2(2))) &
            * (WN(2)-WN(1))
-      EFY1 = DWAT * G_FY(1) * GRAV**2 / ( 2 * (SIG2(1) + SIG2(2))) &
+      EFY1 = DWAT * G_FY(1) * GRAV**2 / ( (SIG2(1) + SIG2(2))) &
            * (WN(2)-WN(1))
       ENER1 = DWAT * G_F(1) * GRAV * ( WN(2) - WN(1) )
       DO I = 2, NKT-1
@@ -370,7 +370,7 @@
       USE CONSTANTS
       USE W3CDATMD, ONLY: MX, MY, MX0,MY0, MFXX, MFXY, MFYX, &
            MFYY, EFX, EFY, ENER, ENER0, TAU_CX, TAU_CY, TAU_DX,&
-           TAU_DY, DENER
+           TAU_DY, DENER,denerdiv
       IMPLICIT NONE
       REAL, PARAMETER :: OMEGA=7.2921E-5
       INTEGER :: IY,IX,JSEA,ISEA
@@ -383,12 +383,13 @@
 !-
 !-1. Set up output variables
 !-
-      DTMAX = 1800.
+      DTMAX = 900.
       TAU_DX=0.0
       TAU_DY=0.0
       TAU_CX=0.0
       TAU_CY=0.0
       DENER=0.0
+      denerdiv=0.0
 !-
 !-2. Calculate time derivative of momentum (backward difference approx)
 !-   We can calculate Coriolis-Stokes term at the same time
@@ -480,18 +481,18 @@
            ENDIF
            DX=DX0*STX*CLATS(IY)
            DY=DY0*STY
-           TAU_DX(IY,IX)=TAU_DX(IY,IX)+(MFXX(IYP,IX)-MFXX(IYM,IX))/DX + &
-                (MFXY(IY,IXP)-MFXY(IY,IXM))/DY
-           TAU_DY(IY,IX)=TAU_DY(IY,IX)+(MFYY(IY,IXP)-MFYY(IY,IXM))/DY + &
+           TAU_DX(IY,IX)=TAU_DX(IY,IX)+(MFXX(IY,IXP)-MFXX(IY,IXM))/DX + &
+                (MFXY(IYP,IX)-MFXY(IYM,IX))/DY
+           TAU_DY(IY,IX)=TAU_DY(IY,IX)+(MFYY(IYP,IX)-MFYY(IYM,IX))/DY + &
                (MFYX(IY,IXP)-MFYX(IY,IXM))/DX
-           DENER(IY,IX)=DENER(IY,IX)+(EFX(IYP,IX)-EFX(IYM,IX))/DX + &
-                (EFY(IY,IXP)-EFY(IY,IXM))/DY
+           DENER(IY,IX)=DENER(IY,IX)+(EFX(IY,IXP)-EFX(IY,IXM))/DX + &
+                (EFY(IYP,IX)-EFY(IYM,IX))/DY
            !/ Quality Control
            TAU_DX(IY,IX)=MAX(MIN(TAU_DX(IY,IX),2.5),-2.5)
            TAU_DY(IY,IX)=MAX(MIN(TAU_DY(IY,IX),2.5),-2.5)
            TAU_CX(IY,IX)=MAX(MIN(TAU_CX(IY,IX),2.5),-2.5)
            TAU_CY(IY,IX)=MAX(MIN(TAU_CY(IY,IX),2.5),-2.5)
-           DENER(IY,IX)=MAX(MIN(DENER(IY,IX),10.),-10.)
+           DENER(IY,IX)=MAX(MIN(DENER(IY,IX),150.),-150.)
            IF (.NOT.ABS(TAU_DX(IY,IX).LT.2.5)) THEN
               TAU_DX(IY,IX)=0.0
            ENDIF
@@ -504,7 +505,7 @@
            IF (.NOT.ABS(TAU_CY(IY,IX).LT.2.5)) THEN
               TAU_CY(IY,IX)=0.0
            ENDIF
-           IF (.NOT.ABS(DENER(IY,IX).LT.10.)) THEN
+           IF (.NOT.ABS(DENER(IY,IX).LE.150.)) THEN
               DENER(IY,IX)=0.0
            ENDIF
         ENDIF

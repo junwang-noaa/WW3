@@ -344,7 +344,7 @@
 !/REF1 USE W3GDATMD, ONLY: IOBP, IOBPD, GTYPE, UNGTYPE
       USE W3WDATMD, ONLY: TIME
       USE W3ODATMD, ONLY: NDSE, NDST, IAPROC
-      USE W3IDATMD, ONLY: FLAGS
+      USE W3IDATMD, ONLY: FLAGS, FLAGS4
 !/NNT      USE W3ODATMD, ONLY: IAPROC, SCREEN, FNMPRE
 !/FLX1      USE W3FLX1MD
 !/FLX2      USE W3FLX2MD
@@ -360,7 +360,7 @@
 !/ST3      USE W3SRC3MD
 !/ST3      USE W3GDATMD, ONLY : ZZWND, FFXFM, FFXPM
 !/ST4      USE W3SRC4MD
-!/ST4      USE W3GDATMD, ONLY : ZZWND, FFXFM, FFXPM
+!/ST4      USE W3GDATMD, ONLY : ZZWND, FFXFM, FFXPM, FFXFA, FFXFI, FFXFD
 !/ST6      USE W3SRC6MD
 !/ST6      USE W3SWLDMD, ONLY : W3SWL6
 !/ST6      USE W3GDATMD, ONLY : SWL6S6
@@ -418,16 +418,16 @@
 !/ Local parameters
 !/
       INTEGER                 :: IK, ITH, IS, IS0, NSTEPS,  NKH, NKH1,&
-                                 IKS1, IS1, NSPECH, IDT, IERR
+                                 IKS1, IS1, NSPECH, IDT, IERR, NKI, NKD
 !/S      INTEGER, SAVE           :: IENT = 0
 !/NNT      INTEGER, SAVE           :: NDSD = 89, NDSD2 = 88, J
       REAL                    :: DTTOT, FHIGH, DT, AFILT, DAMAX, AFAC,&
-                                 HDT, ZWND, FP, DEPTH, TAUSCX, TAUSCY
+                                 HDT, ZWND, FP, DEPTH, TAUSCX, TAUSCY, FHIGI 
       REAL                    :: EMEAN, FMEAN, WNMEAN, AMAX, CD, Z0
 !/ST1      REAL                    :: FH1, FH2
 !/ST2      REAL                    :: FHTRAN, DFH, FACDIA, FACPAR
 !/ST3      REAL                    :: FMEANS, FH1, FH2
-!/ST4      REAL                    :: FMEANS, FH1, FH2
+!/ST4      REAL                    :: FMEANS, FH1, FH2, FAGE
       REAL                    :: QCERR  = 0.     !/XNL2 and !/NNT
 !/SEED      REAL                    :: UC, SLEV
 !/MLIM      REAL                    :: HM, EM
@@ -631,7 +631,11 @@
 !/ST1      IF (FLTEST) WRITE (NDST,9004) FH1*TPIINV, FH2*TPIINV, FHIGH*TPIINV
 !/ST2      FHIGH  = XFC * FPI
 !/ST3      FHIGH  = MAX(FFXFM * MAX(FMEAN,FMEANWS),FFXPM / USTAR)
-!/ST4      FHIGH  = MAX(FFXFM * MAX(FMEAN1,FMEANWS),FFXPM / USTAR)
+!/ST4! Introduces a Long & Resio (JGR2007) type dependance on wave age  
+! !/ST4      FAGE   = FFXFA*TANH(0.3*U10ABS*FMEANWS*TPI/GRAV)
+!/ST4      FAGE   = 0.
+!/ST4      FHIGH  = MAX( (FFXFM + FAGE ) * MAX(FMEAN1,FMEANWS),FFXPM / USTAR)
+!/ST4      FHIGI  = FFXFA * FMEAN1
 !/ST6      FHIGH  = MAX (FXFM * FMEAN, FXPM / USTAR)
 !
 ! 1.f Prepare output file for !/NNT option
@@ -740,7 +744,7 @@
 !/IC3                CALL W3SIC3 ( SPEC,DEPTH, CG1,  WN1, IX, IY, VSIC, VDIC )
 
 !/IS1                CALL W3SIS1 ( SPEC, ICE, VSIR )
-!/IS2                CALL W3SIS2 ( SPEC, ICE, ICEH, ICEDAVE, VSIR, VDIR )
+!/IS2                CALL W3SIS2 ( SPEC, CG1, ICE, ICEH, ICEDAVE, VSIR, VDIR, IX, IY )
 !
 ! 2.f Dump training data if necessary
 !
@@ -784,7 +788,7 @@
 !     is reduce to a fraction of the cell size free from ice, and so is
 !     input and dissipation:
 !             SIN = (1-ICE)*SIN and SDS=(1-ICE)*SDS ------------------ *
-        IF ( FLAGS(4) ) THEN
+        IF ( FLAGS4 ) THEN
           VSIN(1:NSPECH) = MAX(0.,MIN(1.,1.-ICE)) * VSIN(1:NSPECH)
           VDIN(1:NSPECH) = MAX(0.,MIN(1.,1.-ICE)) * VDIN(1:NSPECH)
           VSDS(1:NSPECH) = MAX(0.,MIN(1.,1.-ICE)) * VSDS(1:NSPECH)
@@ -797,6 +801,8 @@
 !/IC3          VDIC(1:NSPECH) =                  ICE   * VDIC(1:NSPECH)
         END IF
 !
+!/ST4        NKI    = MAX ( 2 , MIN ( NKH1 ,                           &
+!/ST4                 INT ( FACTI2 + FACTI1*LOG(MAX(1.E-7,FFXFI* FMEAN1)) ) ) )
         DO IS=IS1, NSPECH
           VS(IS) = VSLN(IS) + VSIN(IS) + VSNL(IS)  &
                  + VSDS(IS) + VSBT(IS) 
@@ -973,7 +979,10 @@
 !/ST3        IF ( FLTEST ) WRITE (NDST,9062)                           &
 !/ST3                      FH1*TPIINV, FH2*TPIINV, FHIGH*TPIINV, NKH
 !
-!/ST4        FH1    = FFXFM * FMEAN1
+!/ST4! Introduces a Long & Resio (JGR2007) type dependance on wave age  
+!/ST4        FAGE   = FFXFA*TANH(0.3*U10ABS*FMEANWS*TPI/GRAV)
+!/ST4        FH1    = (FFXFM+FAGE) * FMEAN1
+
 !/ST4        FH2    = FFXPM / USTAR
 !/ST4        FHIGH  = MIN ( SIG(NK) , MAX ( FH1 , FH2 ) )
 !/ST4        NKH    = MAX ( 2 , MIN ( NKH1 ,                           &

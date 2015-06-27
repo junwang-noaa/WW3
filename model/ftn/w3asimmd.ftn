@@ -69,7 +69,7 @@
         ! VA - 1-D wave action spectrum
         ! FPIS - Peak input frequency
         ! ASF - Stability adjustment coefficent
-        USE W3ADATMD, ONLY: DW, ITIME
+        USE W3ADATMD, ONLY: DW, ITIME, WLM, HS
 !/MPI        USE W3ADATMD, ONLY: MPI_COMM_WAVE
         ! DW - Depth
         ! ITIME - Discrete time step counter
@@ -131,15 +131,30 @@
            ALLOCATE(MX0(NY,NX),MY0(NY,NX),MFXX(NY,NX), MFXY(NY,NX),&
                 MFYX(NY,NX), MX(NY,NX),MY(NY,NX),MFYY(NY,NX),&
                         ENER(NY,NX), ENER0(NY,NX),&
-                DENER(NY,NX),EFX(NY,NX), EFY(NY,NX), EFA(NY,NX),   &
+                DENER(NY,NX),DENERDIV(NY,NX),EFX(NY,NX), EFY(NY,NX), EFA(NY,NX),   &
                 TAU_CX(NY,NX),TAU_CY(NY,NX),TAU_DX(NY,NX),         &
-                TAU_DY(NY,NX),ASIM_CD(NSEA),ASIM_MA(NSEA),ASIM_CHARN(NSEA))
+                TAU_DY(NY,NX),ASIM_CD(NY,NX),ASIM_MA(NY,NX),ASIM_CHARN(NY,NX),&
+                ASIM_WL(NY,NX),ASIM_HS(NY,NX),ASIM_TDX(NY,NX),ASIM_TDY(NY,NX),&
+                ASIM_RIB(NY,NX), ASIM_ZBL(NY,NX), ASIM_CXD(NY,NX), ASIM_CYD(NY,NX),&
+                ASIM_WNDX(NY,NX), ASIM_WNDY(NY,NX))
            MX0=0.0
            MY0=0.0
            ENER0=0.0
+           ASIM_WL=0.0
+           ASIM_HS=0.0
+           ASIM_RIB=0.0 
+           ASIM_ZBL=0.0
+           ASIM_CXD=0.0
+           ASIM_CYD=0.0
+           ASIM_WNDX=0.0
+           ASIM_WNDY=0.0
         endif
+
         ASIM_CD=0.0
         ASIM_MA=0.0
+        ASIM_CHARN=0.0
+        ASIM_TDX=0.0
+        ASIM_TDY=0.0
         MX=0.0
         MY=0.0
         MFXX=0.0
@@ -148,6 +163,7 @@
         MFYY=0.0
         ENER=0.0
         DENER=0.0
+        DENERDIV=0.0
         EFX=0.0
         EFY=0.0
         EFA=0.0
@@ -171,14 +187,16 @@
               ! Get Wind speed and distance from domain center
               !-----------------------------------------------
               !> Change input winds here
-              ATM_wind_mag = SQRT( WXN(IX,IY)**2 + WYN(IX,IY)**2 )
+              ATM_wind_mag = max(0.1,SQRT( WXN(IX,IY)**2 + WYN(IX,IY)**2 ))
               ATM_wind_dir = ATAN2 (WYN(IX,IY),WXN(IX,IY))
               ATM_wind_ht  = 10.
               ATM_Rib      = 0.0
               SSD = (ATM_wind_Mag .GT. Blk_WindLowBound  .AND. &
-                        DW(ISEA)     .GT. Blk_DptLowBound)
-              Blk = (ATM_Wind_Mag .LT. SSD_WindLowBound  .OR. &
-                        DW(ISEA)     .LT. SSD_DptLowBound)
+                        DW(ISEA)     .GT. Blk_DptLowBound .AND. &
+                        HS(JSEA).gt.500.0)
+              Blk = (ATM_Wind_Mag .LE. SSD_WindLowBound  .OR. &
+                        DW(ISEA)     .LE. SSD_DptLowBound .OR. &
+                        HS(JSEA) .LE. 500.0 )
               !=======================================================|
               ! If location is 'sea point' in WW3 calculate the fluxes|
               !=======================================================|
@@ -197,9 +215,9 @@
 !/FLD2                         SSD_USTAR_MAG, SSD_USTAR_DIR ,SSD_Z0,  &
 !/FLD2                         SSD_TAU_NU_X, SSD_TAU_NU_Y)
                     IF (.not.BLK) then
-                       ASIM_CD(ISEA) = (SSD_USTAR_MAG/ATM_WIND_MAG)**2
-                       ASIM_MA(ISEA) = asin(sin(ATM_WIND_DIR-SSD_USTAR_DIR))
-                       ASIM_CHARN(ISEA) = GRAV * SSD_Z0 / SSD_USTAR_MAG**2
+                       ASIM_CD(IY,IX) = (SSD_USTAR_MAG/ATM_WIND_MAG)**2
+                       ASIM_MA(IY,IX) = asin(sin(ATM_WIND_DIR-SSD_USTAR_DIR))
+                       ASIM_CHARN(IY,IX) = GRAV * SSD_Z0 / SSD_USTAR_MAG**2
                     ELSE
                        SSD_CD = (SSD_USTAR_MAG/ATM_WIND_MAG)**2
                        SSD_MA = asin(sin(ATM_WIND_DIR - SSD_USTAR_DIR))
@@ -209,9 +227,9 @@
                  IF (Blk) THEN
                     CALL BULK_WND(ATM_WIND_MAG,ATM_WIND_HT,ATM_RIB,BLK_CD,BLK_Z0)
                     IF (.not.SSD) then
-                       ASIM_CHARN(ISEA) = BLK_Z0*GRAV/(ATM_WIND_MAG**2*BLK_CD)
-                       ASIM_CD(ISEA) = BLK_CD
-                       ASIM_MA(ISEA) = 0.0
+                       ASIM_CHARN(IY,IX) = BLK_Z0*GRAV/(ATM_WIND_MAG**2*BLK_CD)
+                       ASIM_CD(IY,IX) = BLK_CD
+                       ASIM_MA(IY,IX) = 0.0
                     ELSE
                        BLK_CHARN = BLK_Z0*GRAV/(ATM_WIND_MAG**2*BLK_CD)
                     ENDIF
@@ -219,23 +237,23 @@
                  IF (BLK .AND. SSD) then
                     IF (ATM_Wind_Mag .LT. SSD_WindLowBound) then
                        SSDFRAC = (ATM_WIND_MAG - Blk_WindLowBound)/DWND
-                       ASIM_CD(ISEA) = SSDFRAC * SSD_CD + &
+                       ASIM_CD(IY,IX) = SSDFRAC * SSD_CD + &
                             (1-SSDFRAC) * BLK_CD
-                       ASIM_CHARN(ISEA) = SSDFRAC * SSD_CHARN + &
+                       ASIM_CHARN(IY,IX) = SSDFRAC * SSD_CHARN + &
                                         (1-SSDFRAC) * BLK_CHARN
-                       ASIM_MA(ISEA) = SSDFRAC * SSD_MA
+                       ASIM_MA(IY,IX) = SSDFRAC * SSD_MA
                     ENDIF
                     IF ( DW(ISEA) .LT. SSD_DPTLowBound) then
                        SSDFRAC = (DW(ISEA) - Blk_DptLowBound)/DDPT
-                       ASIM_CD(ISEA) = SSDFRAC * SSD_CD + &
+                       ASIM_CD(IY,IX) = SSDFRAC * SSD_CD + &
                             (1-SSDFRAC) * BLK_CD
-                       ASIM_CHARN(ISEA) = SSDFRAC * SSD_CHARN + &
+                       ASIM_CHARN(IY,IX) = SSDFRAC * SSD_CHARN + &
                                         (1-SSDFRAC) * BLK_CHARN
-                       ASIM_MA(ISEA) = SSDFRAC * SSD_MA
+                       ASIM_MA(IY,IX) = SSDFRAC * SSD_MA
                     ENDIF
                  ENDIF
 !/MFB1              CALL W3MFBG(VA(:,JSEA),min(FPIS(ISEA)/TPI,2.0),&
-!/MFB1                   WXN(IX,IY),WYN(IX,IY),UST(JSEA),MX(IY,IX),&
+!/MFB1                   WXN(IX,IY),WYN(IX,IY),UST(ISEA),MX(IY,IX),&
 !/MFB1                   MY(IY,IX),MFXX(IY,IX),MFXY(IY,IX),&
 !/MFB1                   MFYX(IY,IX),MFYY(IY,IX),EFX(IY,IX),&
 !/MFB1                   EFY(IY,IX),ENER(IY,IX),EFA(IY,IX))
@@ -257,7 +275,20 @@
 !/MPI        CALL MPPSUM( TAU_CY, NX,NY, MPI_COMM_WAVE )
 !/MPI        CALL MPPSUM( TAU_DX, NX,NY, MPI_COMM_WAVE )
 !/MPI        CALL MPPSUM( TAU_DY, NX,NY, MPI_COMM_WAVE )
+           ASIM_TDX=TAU_DX+TAU_CX
+           ASIM_TDY=TAU_DY+TAU_CY
+!/MPI        CALL MPPSUM( DENER, NX,NY, MPI_COMM_WAVE )
+!/MPI        CALL MPPSUM( DENERDIV, NX,NY, MPI_COMM_WAVE )
+!/MPI        CALL MPPSUM( EFA, NX,NY, MPI_COMM_WAVE )
         endif
+        ASIM_WL=0.0
+        DO JSEA=1, NSEAL
+           ISEA   = IAPROC + (JSEA-1)*NAPROC
+           IX     = MAPSF(ISEA,1)
+           IY     = MAPSF(ISEA,2)
+           ASIM_WL(IY,IX)=WLM(JSEA)
+        ENDDO
+!/MPI        CALL MPPSUM( ASIM_WL, NX, NY, MPI_COMM_WAVE)
 !/MFB1        MX0   = MX
 !/MFB1        MY0   = MY
 !/MFB1        ENER0 = ENER

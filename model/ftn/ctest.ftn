@@ -36,7 +36,7 @@
 !
 ! Activate this line to generate an error
 !
-!     IENT == 0
+     IENT == 0
 !
       RETURN
 !/

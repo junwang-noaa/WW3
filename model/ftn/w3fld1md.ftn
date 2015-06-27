@@ -325,8 +325,9 @@
         KA3 = KA3 + 1
       ENDDO
       !v. Call subroutine to perform actually tail truncation
+      ! only if there is some energy in spectrum
       CALL APPENDTAIL(SPC2, WN, NKT, KA1, KA2, KA3,&
-                      wnd_in_dir, SAT)
+           wnd_in_dir, SAT)
       ! Spectrum is now set for stress integration
 !
 ! 2.  Prepare for iterative calculation of wave-form stress----------- *

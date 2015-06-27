@@ -504,7 +504,7 @@
                                  IDX, IXO, IDY, IYO, IBA, NBA, ILOOP, &
                                  IFL, NBOTOT, NPO, IP, IX1, IX2, IY1, &
                                  IY2, J, JJ, IXR(4), IYR(4), ISEAI(4),&
-                                 IST, NKI, NTHI,NRIC,                 &
+                                 IST, NKI, NTHI, NRIC, NRIS,          &
                                  IDFT, NSTAT, NBT, NLAND, NOSW
 !/PALM     INTEGER            :: IPALM, JPALM
 !/NL2      INTEGER            :: IDEPTH
@@ -572,7 +572,8 @@
 !/BT4                            BOTROUGHMIN, BOTROUGHFAC
       LOGICAL                 :: FLLIN, FLINDS, FLNL, FLBT, FLDB,     &
                                  FLTR, FLBS, FLXX, FLPROP, FLREF,     &
-                                 FIRST, CONNCT, FLNEW, INGRID,FLIC
+                                 FIRST, CONNCT, FLNEW, INGRID,FLIC,   &
+                                 FLIS
       LOGICAL                 :: FLTC96 = .FALSE.
       LOGICAL                 :: FLNMLO = .FALSE.
       LOGICAL                 :: FLSTB2 = .FALSE.
@@ -602,7 +603,7 @@
 
 !/IC3  REAL                    :: IC2TURB, IC2ROUGH, IC2REYNOLDS,      &
 !/IC3                             IC2SMOOTH, IC2VISC, IC2TURBS,        &
-!/IC3                             IC3MAXTHK
+!/IC3                             IC3MAXTHK, IC3MAXCNC
 
       CHARACTER               :: COMSTR*1, PNAME*30, RFORM*16,        &
                                  FROM*4, FNAME*60, TNAME*60, LINE*80, &
@@ -636,7 +637,8 @@
 !/ST4                                 SWELLF2,SWELLF3,SWELLF4, SWELLF5,    &
 !/ST4                                 SWELLF6, SWELLF7, FXPM3, FXFM3,      &
 !/ST4                                 WNMEANPTAIL, WNMEANP, STXFTF,        &
-!/ST4                                 STXFTWN, SINBR
+!/ST4                                 STXFTWN, SINBR, FXFMAGE, FXINCUT,    &
+!/ST4                                 FXDSCUT
 !/ST4      REAL                    :: STXFTFTAIL, SDSC1, SDSC2, SDSCUM,    &
 !/ST4                                 SDSC4, SDSC5, SDSC6, WHITECAPWIDTH,  &
 !/ST4                                 SDSSTRAIN, SDSBR, SDSP,              &
@@ -673,7 +675,7 @@
 !/IC2      NAMELIST /IC2/  IC2DISPER, IC2TURB, IC2ROUGH, IC2REYNOLDS,      &
 !/IC2                      IC2SMOOTH, IC2VISC, IC2TURBS
 !/IC3      NAMELIST /IC3/  IC3MAXTHK, IC2TURB, IC2ROUGH, IC2REYNOLDS,      &
-!/IC3                      IC2SMOOTH, IC2VISC, IC2TURBS
+!/IC3                      IC2SMOOTH, IC2VISC, IC2TURBS, IC3MAXCNC
 !/IG1      NAMELIST /IG1/  IGMETHOD, IGADDOUTP, IGSOURCE, IGBCOVERWRITE,   &
 !/IG1                      IGMAXFREQ, IGSTERMS, IGSWELLMAX,                &
 !/IG1                      IGSOURCEATBP, IGKDMIN, IGFIXEDDEPTH, IGEMPIRICAL 
@@ -695,14 +697,15 @@
 !/NLS      NAMELIST /SNLS/ A34, FHFC, DNM, FC1, FC2, FC3
 !/ST1      NAMELIST /SDS1/ CDIS, APM
 !/ST2      NAMELIST /SDS2/ SDSA0, SDSA1, SDSA2, SDSB0, SDSB1, PHIMIN
-!/ST3      NAMELIST /SDS3/ SDSC1, WNMEANP, FXPM3, FXFM3, SDSDELTA1,   &
+!/ST3      NAMELIST /SDS3/ SDSC1, WNMEANP, FXPM3, FXFM3, SDSDELTA1,        &
 !/ST3                      SDSDELTA2
-!/ST4      NAMELIST /SDS4/ SDSC1, WNMEANP, FXPM3, FXFM3,    &
-!/ST4                      SDSC2, SDSCUM, SDSSTRAIN, SDSC4,  &
+!/ST4      NAMELIST /SDS4/ SDSC1, WNMEANP, WNMEANPTAIL, FXPM3, FXFM3,      &
+!/ST4                      FXFMAGE, SDSC2, SDSCUM, SDSSTRAIN, SDSC4,       &
 !/ST4                      SDSC5, SDSC6, SDSBR, SDSBR2, SDSP, SDSISO,      &
 !/ST4                      SDSBCK, SDSABK, SDSPBK, SDSBINT, SDSHCK,        &
 !/ST4                      SDSDTH, SDSCOS, SDSBRF1, SDSBRFDF,              &
-!/ST4                      SDSBM0, SDSBM1, SDSBM2, SDSBM3, SDSBM4, WHITECAPWIDTH
+!/ST4                      SDSBM0, SDSBM1, SDSBM2, SDSBM3, SDSBM4,         &
+!/ST4                      SDSHFGEN, SDSLFGEN, WHITECAPWIDTH, FXINCUT, FXDSCUT
 !/ST6      NAMELIST /SIN6/ SINA0
 !/ST6      NAMELIST /SDS6/ SDSET, SDSA1, SDSA2, SDSP1, SDSP2
 !/ST6      NAMELIST /SWL6/ SWLB1, CSTB1
@@ -931,6 +934,7 @@
       NRNL   = 0
       NRBT   = 0
       NRIC   = 0
+      NRIS   = 0
       NRDB   = 0
       NRTR   = 0
       NRBS   = 0
@@ -987,10 +991,10 @@
 !/IC3      NRIC   = NRIC + 1
 !/IC3      FLIC   = .TRUE.
 !
-!/IS1      NRIC   = NRIC + 1
-!/IS1      FLIC   = .TRUE.
-!/IS2      NRIC   = NRIC + 1
-!/IS2      FLIC   = .TRUE.
+!/IS1      NRIS   = NRIS + 1
+!/IS1      FLIS   = .TRUE.
+!/IS2      NRIS   = NRIS + 1
+!/IS2      FLIS   = .TRUE.
 !
 !/DB0      NRDB   = NRDB + 1
 !/DB0      FLDB   = .FALSE.
@@ -1070,6 +1074,11 @@
       IF ( NRIC .GT. 1 ) THEN
           WRITE (NDSE,1034) NRIC
           CALL EXTCDE ( 19 )
+        END IF
+!
+      IF ( NRIS .GT. 1 ) THEN
+          WRITE (NDSE,1036) NRIS
+          CALL EXTCDE ( 26 )
         END IF
 !
 ! 6.c Pre-process namelists into scratch file
@@ -1438,6 +1447,9 @@
 !/ST4      SDSC1  = 0.0     ! not used in ST4, should be cleaned up                                                             
 !/ST4      WNMEANP = 0.5    ! taken from Bidlot et al. 2005
 !/ST4      FXFM3 = 9.9 
+!/ST4      FXFMAGE = 0. 
+!/ST4      FXINCUT = 0. 
+!/ST4      FXDSCUT = 0. 
 !/ST4      FXPM3 = 4.
 !/ST4      WNMEANPTAIL = -0.5 
 !/ST4      SDSC2     = -2.2E-5
@@ -1549,6 +1561,9 @@
 !/ST4      SSDSDTH  = SDSDTH
 !/ST4      WWNMEANP   = WNMEANP
 !/ST4      FFXFM = FXFM3 * TPI
+!/ST4      FFXFA = FXFMAGE * TPI
+!/ST4      FFXFI = FXINCUT * TPI
+!/ST4      FFXFD = FXDSCUT * TPI
 !/ST4      FFXPM = FXPM3 * GRAV / 28.
 !/ST4      WWNMEANPTAIL   = WNMEANPTAIL
 !/ST4      SSDSBCK   = SDSBCK
@@ -1874,28 +1889,29 @@
 !
 !/IG1       IGMETHOD = 2
 !/IG1       IGADDOUTP= 0 
-!/IG1       IGSOURCE = 1
+!/IG1       IGSOURCE = 2
 !/IG1       IGSTERMS = 0
-!/IG1       IGMAXFREQ=0.035
+!/IG1       IGMAXFREQ=0.03
 !/IG1       IGSOURCEATBP = 0
 !/IG1       IGBCOVERWRITE = 1
-!/IG1       IGSWELLMAX = .FALSE.
+!/IG1       IGSWELLMAX = .TRUE.
 !/IG1       IGKDMIN = 1.1
 !/IG1       IGFIXEDDEPTH = 0.
-!/IG1       IGEMPIRICAL = 0.0008
+!/IG1       IGEMPIRICAL = 0.00125
 !
 !/IG1      CALL READNL ( NDSS, 'IG1 ', STATUS )
 !/IG1      WRITE (NDSO,970) STATUS
 !
 !/IC2       IC2DISPER = .TRUE. 
-!/IC2       IC2TURB = 0.
+!/IC2       IC2TURB = 1.
 !/IC2       IC2TURBS = 0.
-!/IC2       IC2ROUGH = 0.1  ! value from current BL (Shaw et al. JGR 2008) 
+!/IC2       IC2ROUGH = 0.0001 
 !/IC2       IC2REYNOLDS = 1.5E5
 !/IC2       IC2SMOOTH = 7E4
-!/IC2       IC2VISC = 2.
+!/IC2       IC2VISC = 1.
 
 !/IC3       IC3MAXTHK = 0.1 
+!/IC3       IC3MAXCNC = 1.0
 !/IC3       IC2TURB = 2.0 ! from run_test example by F.A.
 !/IC3       IC2TURBS = 0.
 !/IC3       IC2ROUGH = 0.02  !  from run_test example by F.A. (alt:0.1)
@@ -2062,7 +2078,7 @@
 !/ST3          WRITE (NDSO,2924) SDSC1, WNMEANP, FXPM3, FXFM3, SDSDELTA1,  &
 !/ST3                            SDSDELTA2
 !/ST4          WRITE (NDSO,2924) SDSC1, SDSC2, SDSCUM, SDSSTRAIN, SDSC4, SDSC5, SDSC6, &
-!/ST4                    WNMEANP, FXPM3, FXFM3,                            &
+!/ST4                    WNMEANP, FXPM3, FXFM3, FXFMAGE, FXINCUT, FXDSCUT, &
 !/ST4                    SDSBINT, SDSBCK, SDSABK, SDSPBK, SDSHCK,          &
 !/ST4                    SDSBR, SDSSTRAIN, SDSBR2, SDSP, SDSISO, SDSCOS,   &
 !/ST4                    SDSDTH, SDSBRF1, SDSBRFDF,                        &
@@ -2107,8 +2123,9 @@
 !
 !/IC2         WRITE(NDSO,2978) IC2DISPER, IC2TURB, IC2ROUGH,          &
 !/IC2                          IC2REYNOLDS,  IC2SMOOTH, IC2VISC, IC2TURBS
-!/IC3         WRITE(NDSO,2979) IC3MAXTHK, IC2TURB, IC2ROUGH,          &
-!/IC3                          IC2REYNOLDS,  IC2SMOOTH, IC2VISC, IC2TURBS
+!/IC3         WRITE(NDSO,2979) IC3MAXTHK, IC3MAXCNC, IC2TURB,         &
+!/IC3                          IC2ROUGH,  IC2REYNOLDS,  IC2SMOOTH,    &
+!/IC3                          IC2VISC, IC2TURBS
 !
         IF ( FLCOMB ) THEN
           WRITE (NDSO,2966) CICE0, CICEN, LICE, PMOVE, XSEED, FLAGTR, &
@@ -3586,6 +3603,7 @@
 !/IC3       IC2PARS(5)=IC2SMOOTH
 !/IC3       IC2PARS(6)=IC2VISC
 !/IC3       IC2PARS(7)=IC2TURBS
+!/IC3       IC2PARS(8)=IC3MAXCNC
 !
 !/IS2      IS2PARS(1) = ISC1
 !/IS2      IS2PARS(2) = ISC2
@@ -3678,14 +3696,14 @@
 !
 !/REF1          NMAPB  = 1 + (NX-1)/NCOL
 !/REF1          WRITE (NDSO,1105) NMAPB
-!/REF1          WRITE(NDSO,*) 'Maximum slope for reflection:',MAXVAL(REFS*REFMAP)
+!/T               WRITE(NDSO,*) 'Maximum slope for reflection:',MAXVAL(REFS*REFMAP)
 !
 !/REF1          DO IMAPB=1, NMAPB
 !/REF1            IX0    = 1 + (IMAPB-1)*NCOL
 !/REF1            IXN    = MIN ( NX , IMAPB*NCOL )
-!/REF1            DO IY=NY,1,-1
-!/REF1              WRITE (NDSO,1101) (NINT(100.*REFS(IX,IY)*REFMAP),IX=IX0,IXN)
-!/REF1              END DO
+!/T            DO IY=NY,1,-1
+!/T              WRITE (NDSO,1101) (NINT(100.*REFS(IX,IY)*REFMAP),IX=IX0,IXN)
+!/T              END DO
 !/REF1            WRITE (NDSO,*) ' '
 !/REF1            END DO
 !/REF1          WRITE (NDSO,1106)
@@ -4299,7 +4317,8 @@
 !/ST4               '        SDSC4 =',F6.2,', SDSC5 =',E12.4,         &
 !/ST4               ', SDSC6 =',E12.4,','/                            &
 !/ST4               '        WNMEANP =',F4.2,', FXPM3 =', F4.2,       &
-!/ST4               ',FXFM3 =',F4.2,','/                              &
+!/ST4               ', FXFM3 =',F4.2,', FXFMAGE =',F6.3,              &
+!/ST4               ', FXINCUT =',F6.3,', FXDSCUT =',F6.3,', '/       &
 !/ST4               '        SDSBINT =',E12.4,', SDSBCK =',E12.4,     &
 !/ST4               ', SDSABK =',F6.3,', SDSPBK =',F6.3,', '/         &
 !/ST4               '        SDSHCK =',F5.2,', SDSBR = ',E12.4,       &
@@ -4496,11 +4515,12 @@
                '        IGFIXEDDEPTH = ',F6.2', IGEMPIRICAL = ',F8.6,' /')
 !
  2978 FORMAT ( '  &IC2  IC2DISPER =',L3,', IC2TURB =',F8.2,           &
-               ', IC2ROUGH  =',F10.3,','/                             &
+               ', IC2ROUGH  =',F10.6,','/                             &
                '        IC2REYNOLDS = ',F10.1,', IC2SMOOTH = ',F10.1, & 
                ', IC2VISC =',F10.3,', IC2TURBS =',F8.2,' /')
 !
- 2979 FORMAT ( '  &IC3  IC3MAKTHK =',F8.2,', IC2TURB =',F8.2,         &
+ 2979 FORMAT ( '  &IC3  IC3MAXTHK =',F8.2, ', IC3MAXCNC =',F8.4,      &
+               ', IC2TURB =',F8.2,                                    &
                ', IC2ROUGH  =',F10.3,','/                             &
                '        IC2REYNOLDS = ',F10.1,', IC2SMOOTH = ',F10.1, & 
                ', IC2VISC =',F10.3,', IC2TURBS =',F8.2,' /')
@@ -4768,6 +4788,8 @@
                '     ILLEGAL NUMBER OF !/ICn SWITCHES :',I3)
  1035 FORMAT (/' *** WAVEWATCH III WARNING IN W3GRID :'/              &
                '     ONLY FIRST PROPAGATION SCHEME WILL BE USED: ')
+ 1036 FORMAT (/' *** WAVEWATCH III ERROR IN W3GRID :'/                &
+               '     ILLEGAL NUMBER OF !/ISn SWITCHES :',I3)
 !
  1100 FORMAT (/'  Status map, printed in',I3,' part(s) '/             &
                ' -----------------------------------'/)
