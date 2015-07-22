@@ -100,7 +100,7 @@
                      s_ice s_is reflection s_xx \
               wind windx rwind curr currx mgwind mgprop mggse \
               subsec tdyn dss0 pdif tide refrx ig rotag arctic nnt mprf \
-              coupl agcm ogcm ssdcd mfbg
+              coupl agcm ogcm coupler ssdcd mfbg
   do
     case $type in
 #sort:mach:
@@ -330,13 +330,18 @@
                ID='multi-grid model profiling'
                TS='MPRF'
                OK='MPRF' ;;
+#sort:coupler:
+      coupler ) TY='upto1'
+	        ID='Coupler calculations'
+                OK='URIC' ;;
+#sort:ssdcd
       ssdcd  ) TY='upto1'
                ID='coupler stress calculation'
                OK='FLD1 FLD2' ;;
+#sort:mfbg
       mfbg   ) TY='upto1'
-               IS='momentum budget calculation'
+               ID='momentum budget calculation'
                OK='MFB1' ;;
-    esac
 #sort:agcm:
       agcm   ) TY='upto1'
                ID='atmospheric circulation model'
@@ -353,8 +358,6 @@
                TS='OASIS'
                OK='OASIS' ;;
    esac
->>>>>>> .merge-right.r58233
-
     n_found='0'
     s_found=
     for check in $OK
@@ -469,6 +472,7 @@
       tide   ) tide=$sw ;;
       arctic ) arctic=$sw ;;
       mprf   ) mprf=$sw ;;
+      coupler ) coupler=$sw;;
       ssdcd  ) ssdcd=$sw ;;
       mfbg   ) mfbg=$sw ;;
       coupl  ) coupl=$sw ;;
@@ -719,7 +723,9 @@
    esac
 
   case $ssdcd in
-   FLD1) fld='w3fld1md'
+   FLD1) fld='w3fld1md' 
+         fldx=$NULL ;;
+   FLD2) fld='w3fld1md w3fld2md' 
          fldx=$NULL ;;
    esac
 
@@ -749,8 +755,35 @@
 
   cplcode=$NULL
   case $mcp in 
-   NCC) cplcode='cmp.comm ww.comm'
+   NCC) cplcode='cmp.comm ww.comm mpi_more'
   esac
+
+  cpl=$NULL
+  case $coupler in
+   URIC) cpl='w3asimmd'
+	 cplx=$NULL ;;
+  esac
+
+  if [ "$ssdcd" = 'FLD1' ] && [ "$coupler" != 'URIC' ]
+  then
+      echo ' '
+      echo "   *** !/FLD1 cannot be used without URIC ***"
+      echo ' ' ; exit 11
+  fi
+
+  if [ "$ssdcd" = 'FLD2' ] && [ "$coupler" != 'URIC' ]
+  then
+      echo ' '
+      echo "   *** !/FLD2 cannot be used without URIC ***"
+      echo ' ' ; exit 11
+  fi
+
+  if [ "$mfbg" = 'MFB1' ] && [ "$coupler" != 'URIC' ]
+  then
+      echo ' '
+      echo "   *** !/MFB1 cannot be used without URIC ***"
+      echo ' ' ; exit 11
+  fi
 
   if [ -n "$thread1" ] && [ "$s_nl" = 'NL2' ]
   then
@@ -829,18 +862,18 @@
                 aux="constants w3servmd w3timemd w3arrymd w3dispmd w3gsrumd $tidecode" ;;
      ww3_shel) IDstring='Generic shell'
                core='w3fldsmd w3initmd w3wavemd w3wdasmd w3updtmd'
-               data='w3gdatmd w3wdatmd w3adatmd w3idatmd w3odatmd'
+               data='w3gdatmd w3wdatmd w3adatmd w3idatmd w3odatmd w3cdatmd'
                prop="$pr"
-             source="w3triamd w3srcemd $flx $ln $st $nl $bt $ic $is $db $tr $bs $xx $refcode $igcode"
+             source="w3triamd w3srcemd $flx $cpl $fld $mfb $ln $st $nl $bt $ic $is $db $tr $bs $xx $refcode $igcode"
                  IO="w3iogrmd w3iogomd w3iopomd w3iotrmd w3iorsmd w3iobcmd $couplmd $agcmmd $ogcmmd"
                  IO="$IO w3iosfmd w3partmd"
                 aux="constants w3servmd w3timemd $tidecode w3arrymd w3dispmd w3cspcmd w3gsrumd $cplcode" ;;
     ww3_multi) IDstring='Multi-grid shell'
                core='wminitmd wmwavemd wmfinlmd wmgridmd wmupdtmd wminiomd'
                core="$core w3fldsmd w3initmd w3wavemd w3wdasmd w3updtmd"
-               data='wmmdatmd w3gdatmd w3wdatmd w3adatmd w3idatmd w3odatmd'
+               data='wmmdatmd w3gdatmd w3wdatmd w3adatmd w3idatmd w3odatmd w3cdatmd'
                prop="$pr"
-             source="w3triamd w3srcemd $flx $ln $st $nl $bt $ic $is $db $tr $bs $xx $refcode $igcode"
+             source="w3triamd w3srcemd $flx $cpl $fld $mfb $ln $st $nl $bt $ic $is $db $tr $bs $xx $refcode $igcode"
                  IO='w3iogrmd w3iogomd w3iopomd wmiopomd'
                  IO="$IO w3iotrmd w3iorsmd w3iobcmd w3iosfmd w3partmd $couplmd $agcmmd $ogcmmd"
                 aux="constants $tidecode w3servmd w3timemd w3arrymd w3dispmd w3cspcmd w3gsrumd $mprfaux"
@@ -858,9 +891,9 @@
    ww3_sbs1) IDstring='Multi-grid shell sbs version' 
                core='wminitmd wmwavemd wmfinlmd wmgridmd wmupdtmd wminiomd' 
                core="$core w3fldsmd w3initmd w3wavemd w3wdasmd w3updtmd" 
-               data='wmmdatmd w3gdatmd w3wdatmd w3adatmd w3idatmd w3odatmd' 
+               data='wmmdatmd w3gdatmd w3wdatmd w3adatmd w3idatmd w3odatmd w3cdatmd' 
                prop="$pr" 
-               source="w3triamd w3srcemd $flx $ln $st $nl $bt $db $tr $bs $xx $refcode $igcode $is $ic" 
+               source="w3triamd w3srcemd $flx $ln $st $nl $bt $db $tr $bs $xx $refcode $igcode $is $ic $cpl $fld $mfb" 
                  IO='w3iogrmd w3iogomd w3iopomd wmiopomd' 
                  IO="$IO w3iotrmd w3iorsmd w3iobcmd w3iosfmd w3partmd $couplmd $agcmmd $ogcmmd" 
                 aux="constants w3servmd w3timemd w3arrymd w3dispmd w3cspcmd w3gsrumd $mprfaux $tidecode" 
@@ -877,16 +910,16 @@
                 fi ;;
      ww3_outf) IDstring='Gridded output'
                core=
-               data='w3gdatmd w3wdatmd w3adatmd w3idatmd w3odatmd'
+               data='w3gdatmd w3wdatmd w3adatmd w3idatmd w3odatmd w3cdatmd'
                prop=
-             source="$stx $nlx $btx $is"
+             source="$stx $nlx $btx $is $cpl $mfb $fld"
                  IO='w3iogrmd w3iogomd'
                 aux='constants w3servmd w3timemd w3arrymd w3dispmd w3gsrumd' ;;
      ww3_ounf) IDstring='Gridded NetCDF output'
                core='w3initmd'
-               data='w3gdatmd w3wdatmd w3adatmd w3idatmd w3odatmd'
+               data='w3gdatmd w3wdatmd w3adatmd w3idatmd w3odatmd w3cdatmd'
                prop=
-             source="w3triamd $stx $nlx $btx  $is"
+             source="w3triamd $stx $nlx $btx  $is $cpl $mfb $fld"
                  IO='w3iogrmd w3iogomd w3iorsmd w3iopomd'
                 aux='constants w3servmd w3timemd w3arrymd w3dispmd w3gsrumd' ;;
      ww3_outp) IDstring='Point output'
@@ -912,9 +945,9 @@
                 aux="constants w3servmd w3timemd w3gsrumd" ;;
      ww3_grib) IDstring='Gridded output (GRIB)'
                core=
-               data='w3triamd w3gdatmd w3wdatmd w3adatmd w3idatmd w3odatmd'
+               data='w3triamd w3gdatmd w3wdatmd w3adatmd w3idatmd w3odatmd w3cdatmd'
                prop=
-             source="$stx $nlx $btx $is"
+             source="$stx $nlx $btx $is $cpl $mfb $fld"
                  IO='w3iogrmd w3iogomd'
                 aux='constants w3servmd w3timemd w3arrymd w3dispmd w3gsrumd' ;;
      ww3_gspl) IDstring='Grid splitting'
@@ -1045,7 +1078,7 @@
     rm -f $file.$fexto
 
     for mod in W3INITMD W3WAVEMD W3WDASMD W3UPDTMD W3FLDSMD W3CSPCMD \
-               W3GDATMD W3WDATMD W3ADATMD W3ODATMD W3IDATMD \
+               W3GDATMD W3WDATMD W3ADATMD W3ODATMD W3IDATMD W3CDATMD \
                W3IOGRMD W3IOGOMD W3IOPOMD W3IOTRMD W3IORSMD W3IOBCMD \
                         W3IOSFMD W3PARTMD W3BULLMD \
                W3TIDEMD W3CANOMD W3GIG1MD W3STRKMD \
@@ -1068,7 +1101,8 @@
               CONSTANTS W3SERVMD W3TIMEMD W3ARRYMD W3DISPMD W3GSRUMD W3TRIAMD \
                WMINITMD WMWAVEMD WMFINLMD WMMDATMD WMGRIDMD WMUPDTMD \
                WMUNITMD WMINIOMD WMIOPOMD WMSCRPMD \
-               w3getmem WW_cc CMP_COMM W3OACPMD W3AGCMMD W3OGCMMD W3FLD1MD W3MFBGMD
+               w3getmem WW_cc CMP_COMM W3OACPMD W3AGCMMD W3OGCMMD W3FLD1MD \
+	       W3MFBGMD W3FLD2MD W3ASIMMD
       do
       case $mod in
          'W3INITMD'     ) modtest=w3initmd.o ;;
@@ -1082,6 +1116,7 @@
          'W3ADATMD'     ) modtest=w3adatmd.o ;;
          'W3ODATMD'     ) modtest=w3odatmd.o ;;
          'W3IDATMD'     ) modtest=w3idatmd.o ;;
+         'W3CDATMD'     ) modtest=w3cdatmd.o ;;
          'W3IOGRMD'     ) modtest=w3iogrmd.o ;;
          'W3IOGOMD'     ) modtest=w3iogomd.o ;;
          'W3IOPOMD'     ) modtest=w3iopomd.o ;;
@@ -1153,7 +1188,9 @@
          'W3ARRYMD'     ) modtest=w3arrymd.o ;;
          'W3DISPMD'     ) modtest=w3dispmd.o ;;
          'W3GSRUMD'     ) modtest=w3gsrumd.o ;;
+         'W3ASIMMD'     ) modtest=w3asimmd.o ;;
          'W3FLD1MD'     ) modtest=w3fld1md.o ;;
+         'W3FLD2MD'     ) modtest=w3fld2md.o ;;
          'W3MFBGMD'     ) modtest=w3mfbgmd.o ;;
          'W3TRIAMD'     ) modtest=w3triamd.o ;;
          'WMINITMD'     ) modtest=wminitmd.o ;;

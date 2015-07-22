@@ -770,7 +770,6 @@
                           USSX, USSY, MSSX, MSSY, MSCX, MSCY, CHARN,  &
                           BHD, CGE, P2SMS, US3D, EF, TH1M, STH1M,     &
                           TH2M, STH2M, HSIG
-!/URIC      USE W3ASIMMD, ONLY: W3ASIM
       USE W3ODATMD, ONLY: NDST, UNDEF, IAPROC, NAPROC, NAPFLD,        &
                           ICPRT, DTPRT, WSCUT, NOSWLL, FLOGRD, FLOGR2,&
                           NOGRP, NGRPP
@@ -1089,7 +1088,6 @@
 !/OMPG/!$OMP PARALLEL DO PRIVATE(JSEA,ISEA,IX,IY)
 !
 !/
-!/URIC        CALL W3ASIM
       DO JSEA=1, NSEAL
 !/DIST        ISEA   = IAPROC + (JSEA-1)*NAPROC
 !/SHRD        ISEA   = JSEA
