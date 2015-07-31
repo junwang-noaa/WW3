@@ -22,6 +22,8 @@ endif
 
 cd build/
 
+if ( ! -d bin ) then
+
 # Link install script and run install 
 ln -sf svn/model/bin/install_ww3_svn .
 
@@ -34,6 +36,8 @@ n
 y
 n
 EOF
+
+endif
 
 cd bin
 
