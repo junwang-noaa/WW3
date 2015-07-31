@@ -1,9 +1,20 @@
 #!/bin/csh -f
 
+if ($#argv > 1) then
+  echo "Usage: $0 [f77compiler]"
+  echo "If f77compiler is given, use ifort"
+  echo "Example: $0 ifort"
+  exit 1
+else if ($#argv == 1) then
+  set F77=$1
+else
+  set F77=ifort
+endif
+
 # Make a build dir and go to the actual build dir 
 mkdir -p build
 cd build
-
+rm -f svn
 ln -sf .. svn
 
 set PATH=".:$PATH"
@@ -13,7 +24,7 @@ set WW3_DIR=`pwd`
 #Preapare wwatch3.env
 cat > wwatch3.env << EOF 
 WWATCH3_LPR      printer
-WWATCH3_F77      ifort
+WWATCH3_F77      ${F77} 
 WWATCH3_CC       cc
 WWATCH3_DIR      ${WW3_DIR}
 WWATCH3_TMP      ${WW3_DIR}/tmp
@@ -21,17 +32,3 @@ WWATCH3_SOURCE   yes
 WWATCH3_LIST     yes
 EOF
 
-# Link install script and run install 
-ln -sf svn/model/bin/install_ww3_svn .
-
-# Install WW3 into the build directory
-./install_ww3_svn << EOF
-y
-L
-y
-n
-y
-n
-EOF
-
-echo 'WW3 install done'

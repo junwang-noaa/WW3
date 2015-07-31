@@ -2,9 +2,38 @@
 
 set PATH=".:$PATH"
 
-set MACHINE = jet
+if ($#argv == 1) then
+  set MACHINE=$1
+else if ($#argv == 0) then
+  echo "Warning: assuming on jet machine"
+  set MACHINE=jet
+else
+  echo "Usage: $0 machine"
+  echo "Install compile WW3 on this machine"
+  echo "Example: $0 jet"
+  exit 1
+endif
+
+if ( ! -d build ) then
+  echo "Warning: Need to run ./configure first"
+  echo "Exiting: do nothing"
+  exit 1
+endif
 
 cd build/
+
+# Link install script and run install 
+ln -sf svn/model/bin/install_ww3_svn .
+
+# Install WW3 into the build directory
+./install_ww3_svn << EOF
+y
+L
+y
+n
+y
+n
+EOF
 
 cd bin
 

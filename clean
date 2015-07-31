@@ -2,12 +2,15 @@
 
 set PATH=".:$PATH"
 
-cd build
+if ( ! -d build ) then
+  echo "Already cleaned, do Nothing"
+  exit
+endif
 
-set WW3_DIR=`pwd`
-
-cd bin
-
-#./w3_clean
-./w3_new all
-
+if ( "$1" == '-a' ) then
+  rm -r build
+else
+  cd build/bin
+  #./w3_clean
+  ./w3_new all
+endif
