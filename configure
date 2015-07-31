@@ -1,0 +1,37 @@
+#!/bin/csh -f
+
+# Make a build dir and go to the actual build dir 
+mkdir -p build
+cd build
+
+ln -sf .. svn
+
+set PATH=".:$PATH"
+
+set WW3_DIR=`pwd`
+
+#Preapare wwatch3.env
+cat > wwatch3.env << EOF 
+WWATCH3_LPR      printer
+WWATCH3_F77      ifort
+WWATCH3_CC       cc
+WWATCH3_DIR      ${WW3_DIR}
+WWATCH3_TMP      ${WW3_DIR}/tmp
+WWATCH3_SOURCE   yes
+WWATCH3_LIST     yes
+EOF
+
+# Link install script and run install 
+ln -sf svn/model/bin/install_ww3_svn .
+
+# Install WW3 into the build directory
+./install_ww3_svn << EOF
+y
+L
+y
+n
+y
+n
+EOF
+
+echo 'WW3 install done'

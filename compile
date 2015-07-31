@@ -1,0 +1,22 @@
+#!/bin/csh -f
+
+set PATH=".:$PATH"
+
+set MACHINE = jet
+
+cd build/
+
+cd bin
+
+# choose correct comp and link files
+# can be done in the configure step
+cp comp.Intel_$MACHINE comp
+cp link.Intel_$MACHINE link
+
+# use proper switch file
+cp switch_NCEP_st4 switch
+#cp switch_NCEP_st2 switch
+
+# compile WW3 
+./make_MPI
+
