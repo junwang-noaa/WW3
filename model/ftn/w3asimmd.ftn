@@ -136,7 +136,7 @@
                 TAU_DY(NY,NX),ASIM_CD(NY,NX),ASIM_MA(NY,NX),ASIM_CHARN(NY,NX),&
                 ASIM_WL(NY,NX),ASIM_HS(NY,NX),ASIM_TDX(NY,NX),ASIM_TDY(NY,NX),&
                 ASIM_RIB(NY,NX), ASIM_ZBL(NY,NX), ASIM_CXD(NY,NX), ASIM_CYD(NY,NX),&
-                ASIM_WNDX(NY,NX), ASIM_WNDY(NY,NX))
+                ASIM_WNDX(NY,NX), ASIM_WNDY(NY,NX),ASIM_WBCD(NY,NX))
            MX0=0.0
            MY0=0.0
            ENER0=0.0
@@ -148,6 +148,7 @@
            ASIM_CYD=0.0
            ASIM_WNDX=0.0
            ASIM_WNDY=0.0
+           ASIM_WBCD=0.111 !! Need to remove only for debugging !!!! BT
         endif
 
         ASIM_CD=0.0
@@ -193,10 +194,10 @@
               ATM_Rib      = 0.0
               SSD = (ATM_wind_Mag .GT. Blk_WindLowBound  .AND. &
                         DW(ISEA)     .GT. Blk_DptLowBound .AND. &
-                        HS(JSEA).gt.500.0)
+                        HS(JSEA).gt.0.2)
               Blk = (ATM_Wind_Mag .LE. SSD_WindLowBound  .OR. &
                         DW(ISEA)     .LE. SSD_DptLowBound .OR. &
-                        HS(JSEA) .LE. 500.0 )
+                        HS(JSEA) .LE. 0.1 )
               !=======================================================|
               ! If location is 'sea point' in WW3 calculate the fluxes|
               !=======================================================|
@@ -275,8 +276,8 @@
 !/MPI        CALL MPPSUM( TAU_CY, NX,NY, MPI_COMM_WAVE )
 !/MPI        CALL MPPSUM( TAU_DX, NX,NY, MPI_COMM_WAVE )
 !/MPI        CALL MPPSUM( TAU_DY, NX,NY, MPI_COMM_WAVE )
-           ASIM_TDX=TAU_DX+TAU_CX
-           ASIM_TDY=TAU_DY+TAU_CY
+           ASIM_TDX=TAU_CX-TAU_DX
+           ASIM_TDY=TAU_CY-TAU_DY
 !/MPI        CALL MPPSUM( DENER, NX,NY, MPI_COMM_WAVE )
 !/MPI        CALL MPPSUM( DENERDIV, NX,NY, MPI_COMM_WAVE )
 !/MPI        CALL MPPSUM( EFA, NX,NY, MPI_COMM_WAVE )

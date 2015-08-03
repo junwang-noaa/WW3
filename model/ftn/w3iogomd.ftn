@@ -773,6 +773,10 @@
       USE W3ODATMD, ONLY: NDST, UNDEF, IAPROC, NAPROC, NAPFLD,        &
                           ICPRT, DTPRT, WSCUT, NOSWLL, FLOGRD, FLOGR2,&
                           NOGRP, NGRPP
+!/URIC      USE W3CDATMD, ONLY: ASIM_CD, ASIM_MA, ASIM_CHARN
+!/URIC      USE W3CDATMD, ONLY: TAU_CX, TAU_CY,TAU_DX,TAU_DY,DENER
+!/URIC      USE W3CDATMD, ONLY: ASIM_WL, ASIM_TDX, ASIM_TDY, ASIM_HS
+!/URIC      USE W3ASIMMD, ONLY: W3ASIM
 !/S      USE W3SERVMD, ONLY: STRACE
 !
       IMPLICIT NONE
@@ -1140,11 +1144,13 @@
               T02(JSEA) = TPI / SIG(NK)
               T01(JSEA)= T02(JSEA)     
               ENDIF
+           ENDIF
 !
 !  Add here USERO(JSEA,1) ... 
 !
-          END IF
-        END DO
+        ENDDO
+!/URIC        CALL W3ASIM
+
 !
 !/OMPG/!$OMP END PARALLEL DO
 !

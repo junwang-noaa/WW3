@@ -239,7 +239,7 @@
       USE W3IOPOMD
       USE W3SERVMD, ONLY : NEXTLN, EXTCDE
       USE W3TIMEMD
-!/URIC      USE W3ASIMMD, ONLY: W3ASIM
+!/NCC      USE W3ASIMMD, ONLY: W3ASIM
 !/NCC      USE WW_cc, ONLY: MPI_COMM_WW
 !/OASIS USE W3OACPMD, ONLY: cpl_oasis_init,cpl_oasis_grid,            &
 !/OASIS                     cpl_oasis_define, cpl_oasis_finalize
@@ -1037,7 +1037,7 @@
 !
       IF ( IAPROC .EQ. NAPOUT ) WRITE (NDSO,970)
 !
-!/URIC      CALL W3ASIM
+!/NCC      CALL W3ASIM
 !/NCC      CFLAG = .FALSE. 
 !/NCC      CALL WW_INIT(1,GRIDS(1)%NX,GRIDS(1)%NY,            &
 !/NCC      GRIDS(1)%X0,GRIDS(1)%Y0,GRIDS(1)%SX,GRIDS(1)%SY)
@@ -1059,10 +1059,8 @@
 !
 !/NCC      IF ( IAPROC .EQ. NAPOUT .AND. DEBUG_NCC ) WRITE(9753) TIME0
 !/NCC      CALL WW_TSTEP_INIT(TIME0)
-!/NCC      print*,'SENDWST in'
-!/NCC      CALL WW_SENDWST(ASIM_TDX,ASIM_TDY,ASIM_CHARN,ASIM_MA,ASIM_WL)
-!/NCC      print*,'SENDTx: ', MAXVAL(ASIM_TDX), MINVAL(ASIM_TDX)
-!/NCC      print*,'SENDTy: ', MAXVAL(ASIM_TDY), MINVAL(ASIM_TDY)
+!/NCC      CALL WW_SENDWST(ASIM_TDX,ASIM_TDY,ASIM_CHARN,ASIM_MA, &
+!/NCC                      ASIM_WL, ASIM_WBCD )
 !/NCC      CALL WW_RECV_SBC(ASIM_RIB, ASIM_ZBL)
 !/NCC      CALL WW_RECV_CUR(ASIM_CXD, ASIM_CYD)
 !/NCC      CALL WW_RECV_PSEUDOICE
@@ -1269,12 +1267,6 @@
 !/NCC                          END IF
 !/NCC                      CALL WW_CDETECT(CFLAG(J))
 !/NCC                      CALL WW_UPDATE_CUR(TC0,TCN,CX0,CY0,CXN,CYN)
-!/NCC                      print*,'GETCurx: ', MAXVAL(cx0), MINVAL(cx0)
-!/NCC                      print*,'GETCury: ', MAXVAL(cy0), MINVAL(cy0)
-!/NCC                      cx0 = 0.0
-!/NCC                      cy0 = 0.0
-!/NCC                      cxn = 0.0
-!/NCC                      cyn = 0.0
                    END IF
                 ELSE IF ( J .EQ. 3 ) THEN
                    IF ( FLH(J) ) THEN
@@ -1301,7 +1293,7 @@
 !/NCC                        IF ( IAPROC .EQ. NAPOUT .AND. DEBUG_NCC )     &
 !/NCC                             WRITE(9751) TW0, TWN, WX0, WY0, WXN, WYN
                       END IF
-!/URIC      CALL W3ASIM
+!/NCC                      CALL W3ASIM
                   ELSE IF ( J .EQ. 4 ) THEN
 !/NCC                    IF (.NOT.CFLAG(J)) THEN
                    CALL W3FLDG ('READ', IDSTR(J), NDSF(J),            &
