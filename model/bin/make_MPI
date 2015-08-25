@@ -116,8 +116,8 @@
 # 5. Clean up                                                                 #
 # --------------------------------------------------------------------------- #
 
-  rm -f switch.hold switch.shrd switch.MPI
-  w3_clean
+# rm -f switch.hold switch.shrd switch.MPI
+# w3_clean
 
   echo ' '
   echo ' '

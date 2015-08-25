@@ -123,6 +123,11 @@
     opt="$opt -openmp"
   fi
 
+  case $prog in
+    'ww3_grib'  ) libs="-L $main_dir/../../hwrf-utilities/libs -lw3_i4r4 -lbacio" ;;
+       *        ) libs= ;;
+  esac
+
   if [ "$netcdf_compile" = 'yes' ]
   then
     case $WWATCH3_NETCDF in

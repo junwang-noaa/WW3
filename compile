@@ -1,6 +1,4 @@
-#!/bin/csh -f
-
-set PATH=".:$PATH"
+#!/bin/csh
 
 if ($#argv == 1) then
   set MACHINE=$1
@@ -19,6 +17,21 @@ if ( ! -d build ) then
   echo "Exiting: do nothing"
   exit 1
 endif
+
+# check NETCDF environment variables
+if ( $?NETCDF4 ) then
+  setenv WWATCH3_NETCDF NC4
+  setenv NETCDF_CONFIG ${NETCDF4}/bin/nc-config
+else if ( $?NETCDF ) then
+  setenv WWATCH3_NETCDF NC3
+  setenv NETCDF_LIBDIR = ${NETCDF}/lib
+  setenv NETCDF_INCDIR = ${NETCDF}/include
+else
+  echo "WARNING: WWATCH3_NETCDF not defined"
+endif
+
+# add "." into PATH for compiling WW3
+set PATH=".:$PATH"
 
 cd build/
 
@@ -52,4 +65,13 @@ cp switch_NCEP_st4 switch
 
 # compile WW3 
 ./make_MPI
+
+cd ../
+# clean exec dir 
+rm -r exec
+# copy to exec dir
+mkdir -p exec
+cp -r exe/* exec/
+
+echo 'Compile WW3 done'
 

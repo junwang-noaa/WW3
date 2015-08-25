@@ -1,4 +1,4 @@
-#!/bin/csh -f
+#!/bin/csh
 
 if ($#argv > 1) then
   echo "Usage: $0 [f77compiler]"
