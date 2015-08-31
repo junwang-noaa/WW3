@@ -60,7 +60,8 @@ cp comp.Intel_$MACHINE comp
 cp link.Intel_$MACHINE link
 
 # use proper switch file
-cp switch_NCEP_st4 switch
+cp switch_CPL_HWRF switch
+#cp switch_NCEP_st4 switch
 #cp switch_NCEP_st2 switch
 
 # compile WW3 
