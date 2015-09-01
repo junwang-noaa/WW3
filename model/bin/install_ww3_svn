@@ -956,8 +956,9 @@ sleep 2
 
     linkfiles=`ls link*`
     locfiles="${linkfiles} ad3 ad3_test all_switches find_switch list ln3 \
-              make_makefile.sh make_MPI make_OMP sort_all_switches sort_switch \
+              make_makefile.sh make_MPI make_CPL make_OMP sort_all_switches sort_switch \
               w3_clean w3_make w3_new w3_source w3_setup ww3_gspl.sh"
+#              make_makefile.sh make_MPI make_OMP sort_all_switches sort_switch \
     for lfile in ${locfiles}
     do
 # Remove file to avoid unwanted changed in svn area

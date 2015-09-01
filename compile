@@ -65,14 +65,7 @@ cp switch_CPL_HWRF switch
 #cp switch_NCEP_st2 switch
 
 # compile WW3 
-./make_MPI
-
-cd ../
-# clean exec dir 
-rm -r exec
-# copy to exec dir
-mkdir -p exec
-cp -r exe/* exec/
+./make_CPL
 
 echo 'Compile WW3 done'
 
