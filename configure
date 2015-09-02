@@ -17,8 +17,6 @@ cd build
 rm -f svn
 ln -sf .. svn
 
-set PATH=".:$PATH"
-
 set WW3_DIR=`pwd`
 
 #Preapare wwatch3.env

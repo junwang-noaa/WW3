@@ -24,14 +24,11 @@ if ( $?NETCDF4 ) then
   setenv NETCDF_CONFIG ${NETCDF4}/bin/nc-config
 else if ( $?NETCDF ) then
   setenv WWATCH3_NETCDF NC3
-  setenv NETCDF_LIBDIR = ${NETCDF}/lib
-  setenv NETCDF_INCDIR = ${NETCDF}/include
+  setenv NETCDF_LIBDIR  ${NETCDF}/lib
+  setenv NETCDF_INCDIR  ${NETCDF}/include
 else
   echo "WARNING: WWATCH3_NETCDF not defined"
 endif
-
-# add "." into PATH for compiling WW3
-set PATH=".:$PATH"
 
 cd build/
 
