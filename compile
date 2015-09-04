@@ -19,15 +19,20 @@ if ( ! -d build ) then
 endif
 
 # check NETCDF environment variables
-if ( $?NETCDF4 ) then
-  setenv WWATCH3_NETCDF NC4
-  setenv NETCDF_CONFIG ${NETCDF4}/bin/nc-config
-else if ( $?NETCDF ) then
-  setenv WWATCH3_NETCDF NC3
-  setenv NETCDF_LIBDIR  ${NETCDF}/lib
-  setenv NETCDF_INCDIR  ${NETCDF}/include
-else
-  echo "WARNING: WWATCH3_NETCDF not defined"
+if ( $MACHINE == jet ) then
+  if ( $?NETCDF4 ) then
+    setenv WWATCH3_NETCDF NC4
+    setenv NETCDF_CONFIG ${NETCDF4}/bin/nc-config
+  else if ( $?NETCDF ) then
+    setenv WWATCH3_NETCDF NC3
+    setenv NETCDF_LIBDIR  ${NETCDF}/lib
+    setenv NETCDF_INCDIR  ${NETCDF}/include
+  else
+    echo "WARNING: WWATCH3_NETCDF not defined"
+  endif
+else if ( $MACHINE == wcoss ) then
+    setenv WWATCH3_NETCDF NC4
+    setenv NETCDF_CONFIG ${NETCDF}/bin/nc-config
 endif
 
 cd build/
