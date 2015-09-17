@@ -33,6 +33,12 @@ if ( $MACHINE == jet ) then
 else if ( $MACHINE == wcoss ) then
     setenv WWATCH3_NETCDF NC4
     setenv NETCDF_CONFIG ${NETCDF}/bin/nc-config
+else if ( $MACHINE == theia ) then
+    setenv WWATCH3_NETCDF NC4
+    setenv NETCDF_CONFIG ${NETCDF}/bin/nc-config
+else
+    echo "WARNING: Unkown machine"
+    echo "WARNING: WWATCH3_NETCDF not defined"
 endif
 
 cd build/
