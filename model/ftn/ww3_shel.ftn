@@ -288,6 +288,10 @@
       LOGICAL             :: FLLST_ALL(-7:8)
       LOGICAL             :: DEBUG_NCC = .FALSE.
 !/NCC      LOGICAL             :: CFLAG(10) 
+!/NCC      REAL                :: DTTSTg, DTTSTg0, DTTST0g, DTTSTgn, DTTSTng
+!/NCC      INTEGER             :: TW0g(2), TWNg(2)
+!/NCC      REAL , ALLOCATABLE  :: WX0g(:,:), WY0g(:,:), DT0g(:,:),        &
+!/NCC                             WXNg(:,:), WYNg(:,:), DTNg(:,:)
 !/OASIS LOGICAL                 :: L_MASTER    
 
       CHARACTER(LEN=1)    :: COMSTR,FLAGTFC
@@ -1037,6 +1041,18 @@
 !
       IF ( IAPROC .EQ. NAPOUT ) WRITE (NDSO,970)
 !
+
+!/NCC      ALLOCATE ( WX0g(NX,NY) )
+!/NCC      ALLOCATE ( WY0g(NX,NY) )
+!/NCC      ALLOCATE ( DT0g(NX,NY) )
+!/NCC      ALLOCATE ( WXNg(NX,NY) )
+!/NCC      ALLOCATE ( WYNg(NX,NY) )
+!/NCC      ALLOCATE ( DTNg(NX,NY) )
+!/NCC      TW0g(1)=-1; TWNg(1)=-1
+!/NCC      TW0g(2)=0; TWNg(2)=0
+!/NCC      WX0g=0.; WY0g=0.; DT0g=0.
+!/NCC      WXNg=0.; WYNg=0.; DTNg=0.
+
 !/NCC      CALL W3ASIM
 !/NCC      CFLAG = .FALSE. 
 !/NCC      CALL WW_INIT(1,GRIDS(1)%NX,GRIDS(1)%NY,            &
@@ -1285,13 +1301,61 @@
                            IERR                                       &
 !/OASIS                    , COUPL_TIME, COUPL_COMM                   &
                            )
+!/NCC                 TW0g=TW0;WX0g=WX0;WY0g=WY0;DT0g=DT0     
+!/NCC                 TWNg=TWN;WXNg=WXN;WYNg=WYN;DTNg=DTN     
+!/NCC                        ELSE 
+!/NCC                 DTTSTg  = DSEC21 ( TIME0, TWNg )
+!/NCC                 IF ( DTTSTg .LT. 0 ) THEN
+!/NCC                     CALL W3FLDG ('READ', IDSTR(J), NDSF(J),         &
+!/NCC                          NDST, NDSEN, NX, NY, NX, NY, TIME0, TIMEN, &
+!/NCC                     TW0g, WX0g, WY0g, DT0g, TWNg, WXNg, WYNg, DTNg, &
+!/NCC                          IERR                                       &
+!/NCC                          )
+!/NCC                 END IF
 !/NCC                        END IF
 !/NCC                        CALL WW_CDETECT(CFLAG(J))
 !/NCC                        IF ( IAPROC .EQ. NAPOUT .AND. DEBUG_NCC )     &
 !/NCC                             WRITE(9753) TW0, TWN
 !/NCC                        CALL WW_UPDATE_WIND(TW0,TWN,WX0,WY0,WXN,WYN)
+!/NCC!                       For all zero fields from the coupler at time 0, use readin fields at TW0g
+!/NCC                        IF (SUM(ABS(WX0)) .LT. 1.E-6) WX0=WX0g 
+!/NCC                        IF (SUM(ABS(WY0)) .LT. 1.E-6) WY0=WY0g 
+!/NCC                        IF (SUM(ABS(WXN)) .LT. 1.E-6) WXN=WX0g 
+!/NCC                        IF (SUM(ABS(WYN)) .LT. 1.E-6) WYN=WY0g 
+!/NCC                        DTTSTg0  = DSEC21 ( TW0g, TW0 )
+!/NCC                        DTTST0g  = DSEC21 ( TW0, TWNg )
+!/NCC                        DTTSTgn  = DSEC21 ( TW0g, TWN )
+!/NCC                        DTTSTng  = DSEC21 ( TWN, TWNg )
+!/NCC                        WHERE(WX0 .LT. -1.E20)
+!/NCC                            WX0=DTTST0g/(DTTST0g+DTTSTg0) * WX0g +  &
+!/NCC                                DTTSTg0/(DTTST0g+DTTSTg0) * WXNg
+!/NCC                        ENDWHERE
+!/NCC                        WHERE(WY0 .LT. -1.E20)
+!/NCC                            WY0=DTTST0g/(DTTST0g+DTTSTg0) * WY0g +  &
+!/NCC                                DTTSTg0/(DTTST0g+DTTSTg0) * WYNg
+!/NCC                        ENDWHERE
+!/NCC                        WHERE(WXN .LT. -1.E20)
+!/NCC                            WXN=DTTSTng/(DTTSTng+DTTSTgn) * WX0g +  &
+!/NCC                                DTTSTgn/(DTTSTng+DTTSTgn) * WXNg
+!/NCC                        ENDWHERE
+!/NCC                        WHERE(WYN .LT. -1.E20)
+!/NCC                            WYN=DTTSTng/(DTTSTng+DTTSTgn) * WY0g +  &
+!/NCC                                DTTSTgn/(DTTSTng+DTTSTgn) * WYNg
+!/NCC                        ENDWHERE
 !/NCC                        IF ( IAPROC .EQ. NAPOUT .AND. DEBUG_NCC )     &
 !/NCC                             WRITE(9751) TW0, TWN, WX0, WY0, WXN, WYN
+!/NCC                        IF ( IAPROC .EQ. NAPOUT .AND. DEBUG_NCC )     &
+!/NCC                             WRITE(*,*) 'WX0N, WY0N at (1,1)=',  &
+!/NCC                             WX0(1,1), WY0(1,1), WXN(1,1), WYN(1,1)
+!/NCC                        IF ( IAPROC .EQ. NAPOUT .AND. DEBUG_NCC )     &
+!/NCC                             WRITE(*,*) 'WX0N, WY0N at (NX/2,NY/2)=',  &
+!/NCC                             WX0(NX/2,NY/2), WY0(NX/2,NY/2), WXN(NX/2,NY/2), WYN(NX/2,NY/2) 
+!/NCC                        IF ( IAPROC .EQ. NAPOUT .AND. DEBUG_NCC )     &
+!/NCC                             WRITE(*,*) 'WX0Ng, WY0Ng at (1,1)=', &
+!/NCC                             WX0g(1,1), WY0g(1,1), WXNg(1,1), WYNg(1,1)
+!/NCC                        IF ( IAPROC .EQ. NAPOUT .AND. DEBUG_NCC )     &
+!/NCC                             WRITE(*,*) 'WX0Ng, WY0Ng at (NX/2,NY/2)=',  &
+!/NCC                             WX0g(NX/2,NY/2), WY0g(NX/2,NY/2), WXNg(NX/2,NY/2), WYNg(NX/2,NY/2) 
                       END IF
 !/NCC                      CALL W3ASIM
                   ELSE IF ( J .EQ. 4 ) THEN
@@ -1462,6 +1526,13 @@
 !
       DTTST  = DSEC21 ( TIME0 , TIMEN )
       IF ( DTTST .GT. 0. ) GOTO 700
+
+!/NCC    DEALLOCATE ( WX0g )
+!/NCC    DEALLOCATE ( WY0g )
+!/NCC    DEALLOCATE ( DT0g )
+!/NCC    DEALLOCATE ( WXNg )
+!/NCC    DEALLOCATE ( WYNg )
+!/NCC    DEALLOCATE ( DTNg )
 !
 !--- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 !     End of shell
