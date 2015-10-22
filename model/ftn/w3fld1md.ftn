@@ -682,7 +682,9 @@
          !Fail safe to bulk
          write(*,*)'Attn: W3FLD1 failed, using bulk...'
          !write(*,*)'      Wind/Cd that failed: ',wnd_in_mag,CD
-         UST = wnd_in_mag*SQRT(0.0015)
+         CALL wnd2z0m(wnd_in_mag,z0)
+         CALL MFLUX(WND_IN_MAG,ZWND,Z0,RIB,CDM)
+         UST = wnd_in_mag*sqrt(CDM)
          USTD = wnd_in_dir
       ENDIF
       DEALLOCATE(WN, DWN, CP,SIG2, SPC2, TLTN, TLTE, TAUD, &

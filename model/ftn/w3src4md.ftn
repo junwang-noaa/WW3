@@ -645,7 +645,7 @@
 !/T0          END DO
 !/T0        END DO
 !
-!/T0      CALL PRT2DS (NDST, NK, NK, NTH, DOUT, SIG(1), '  ', 1.,         &
+!/T0      CALL PRT2DS (NDST, NK, NK, NTH, DOUT, SIG, '  ', 1.,         &
 !/T0                         0.0, 0.001, 'Diag Sin', ' ', 'NONAME')
 !
 !/T1      CALL OUTMAT (NDST, D, NTH, NTH, NK, 'diag Sin')
@@ -1332,6 +1332,7 @@
       REAL                    :: Y,YC,DELY
       INTEGER                 :: I, J, K, L
       REAL                    :: X0, INAALPHA, INBBETA, INZZALP, INKAPPA, INGRAV
+      REAL                    :: INSIGMAX
       INTEGER                 :: INIUSTAR, INIALPHA, INILEVTAIL, IERR
       CHARACTER(160)          :: FNAMETAB
       LOGICAL                 :: NOFILE
@@ -1346,10 +1347,10 @@
       NOFILE=.TRUE.
       OPEN (993,FILE=FNAMETAB,FORM='UNFORMATTED',IOSTAT=IERR,STATUS='OLD')
       IF (IERR.EQ.0) THEN 
-        READ(993,IOSTAT=IERR) IDTST, VERTST, INAALPHA, INBBETA, INIUSTAR,               &
+        READ(993,IOSTAT=IERR) IDTST, VERTST, INSIGMAX, INAALPHA, INBBETA, INIUSTAR,  &
                               INIALPHA, INILEVTAIL, INZZALP, INKAPPA, INGRAV
         IF (VERTST.EQ.VERGRD.AND.IDTST.EQ.IDSTR.AND.IERR.EQ.0             &
-            .AND.INAALPHA.EQ.AALPHA.AND.INBBETA.EQ.BBETA) THEN 
+            .AND.INSIGMAX.EQ.SIGMAX.AND.INAALPHA.EQ.AALPHA.AND.INBBETA.EQ.BBETA) THEN 
           IF (INIUSTAR.EQ.IUSTAR.AND.INIALPHA.EQ.IALPHA.AND.INILEVTAIL.EQ.ILEVTAIL.AND. &
               INZZALP.EQ.ZZALP.AND.INGRAV.EQ.GRAV.AND.INKAPPA.EQ.KAPPA) THEN 
             NOFILE=.FALSE.
@@ -1368,8 +1369,6 @@
 800   CONTINUE
       IF ( NOFILE ) THEN      
         WRITE(NDSE,*) 'Filling 3D look-up table for SIN4. please wait'
-        WRITE(NDSE,*)  IDTST, VERTST, INAALPHA, INBBETA, INIUSTAR,            &
-                              INIALPHA, INILEVTAIL, INZZALP, INKAPPA, INGRAV
         WRITE(NDSE,*)  IDSTR, VERGRD, SIGMAX, AALPHA, BBETA, IUSTAR, IALPHA,  &
                        ILEVTAIL, ZZALP, KAPPA, GRAV
 !   

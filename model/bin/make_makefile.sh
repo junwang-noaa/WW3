@@ -959,14 +959,14 @@
                 aux="constants w3servmd w3timemd w3arrymd w3dispmd w3gsrumd $tidecode" ;;
      ww3_gint) IDstring='Grid Interpolation'
                core=
-               data='w3gdatmd w3wdatmd w3adatmd w3idatmd w3odatmd'
+               data='w3gdatmd w3wdatmd w3adatmd w3idatmd w3odatmd w3cdatmd'
                  IO='w3iogrmd w3iogomd'
                prop=
              source="$st $nl $is"
                aux='constants w3triamd w3servmd  w3arrymd w3dispmd w3timemd w3gsrumd' ;;
       gx_outf) IDstring='GrADS input file generation (gridded fields)'
                core=
-               data='w3gdatmd w3wdatmd w3adatmd w3idatmd w3odatmd'
+               data='w3gdatmd w3wdatmd w3adatmd w3idatmd w3odatmd w3cdatmd'
                prop=
              source="w3triamd $stx $nlx $btx $db $tr $bs $xx $is"
                  IO='w3iogrmd w3iogomd'
@@ -996,10 +996,6 @@
     echo ' '                                     >> makefile
     for file in $files
     do
-      if [ "$prog" = 'ww3_shel' ]
-      then
-      echo "working with $file"
-      fi
       echo "$d_string$file.o"                    >> makefile
       if [ -z "`echo $file | grep scrip 2>/dev/null`" ]
       then

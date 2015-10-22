@@ -370,7 +370,7 @@
       USE CONSTANTS
       USE W3CDATMD, ONLY: MX, MY, MX0,MY0, MFXX, MFXY, MFYX, &
            MFYY, EFX, EFY, ENER, ENER0, TAU_CX, TAU_CY, TAU_DX,&
-           TAU_DY, DENER,denerdiv
+           TAU_DY, DENER,denerdiv, ASIM_WBCD
       IMPLICIT NONE
       REAL, PARAMETER :: OMEGA=7.2921E-5
       INTEGER :: IY,IX,JSEA,ISEA
@@ -390,6 +390,7 @@
       TAU_CY=0.0
       DENER=0.0
       denerdiv=0.0
+      ASIM_WBCD=0.0
 !-
 !-2. Calculate time derivative of momentum (backward difference approx)
 !-   We can calculate Coriolis-Stokes term at the same time
@@ -400,7 +401,7 @@
          IX     = MAPSF(ISEA,1)
          IY     = MAPSF(ISEA,2)
          IF (MAPSTA(IY,IX).NE.0) THEN
-              FCOR=2*OMEGA*SIN(22.5*PI/180.)!(SQRT(1-CLATS()**2))
+              FCOR=2*OMEGA*(SQRT(1.-CLATS(IY)**2))
               IF (MAPSTA(IY,IX+1).EQ.0) THEN
                  IXP = IX
               ELSE
@@ -487,6 +488,8 @@
                (MFYX(IY,IXP)-MFYX(IY,IXM))/DX
            DENER(IY,IX)=DENER(IY,IX)+(EFX(IY,IXP)-EFX(IY,IXM))/DX + &
                 (EFY(IYP,IX)-EFY(IYM,IX))/DY
+           ASIM_WBCD(IY,IX) = (MX(IY,IXP)-MX(IY,IXM))/DX + &
+                 (MY(IYP,IX)-MY(IYM,IX))/DY
            !/ Quality Control
            TAU_DX(IY,IX)=MAX(MIN(TAU_DX(IY,IX),2.5),-2.5)
            TAU_DY(IY,IX)=MAX(MIN(TAU_DY(IY,IX),2.5),-2.5)

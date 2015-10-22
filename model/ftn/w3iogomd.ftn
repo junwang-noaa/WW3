@@ -776,7 +776,8 @@
 !/URIC      USE W3CDATMD, ONLY: ASIM_CD, ASIM_MA, ASIM_CHARN
 !/URIC      USE W3CDATMD, ONLY: TAU_CX, TAU_CY,TAU_DX,TAU_DY,DENER
 !/URIC      USE W3CDATMD, ONLY: ASIM_WL, ASIM_TDX, ASIM_TDY, ASIM_HS
-!/URIC      USE W3ASIMMD, ONLY: W3ASIM
+!/URIC      USE W3CDATMD, ONLY: ASIM_ZBL, ASIM_RIB
+! !/URIC      USE W3ASIMMD, ONLY: W3ASIM
 !/S      USE W3SERVMD, ONLY: STRACE
 !
       IMPLICIT NONE
@@ -1145,12 +1146,45 @@
               T01(JSEA)= T02(JSEA)     
               ENDIF
            ENDIF
+        ENDDO
 !
 !  Add here USERO(JSEA,1) ... 
 !
-        ENDDO
-!/URIC        CALL W3ASIM
-
+! !/URIC        CALL W3ASIM
+        DO JSEA=1, NSEAL
+!/DIST        ISEA   = IAPROC + (JSEA-1)*NAPROC
+!/SHRD        ISEA   = JSEA
+           IX     = MAPSF(ISEA,1)
+           IY     = MAPSF(ISEA,2)
+           IF ( MAPSTA(IY,IX) .GT. 0 ) THEN
+              USERO(JSEA,1) = 0.0
+              USERO(JSEA,2) = 0.0
+              USERO(JSEA,3) = 0.0
+              USERO(JSEA,4) = 0.0
+              USERO(JSEA,5) = 0.0
+              USERO(JSEA,6) = 0.0
+              USERO(JSEA,7) = 0.0
+              USERO(JSEA,8) = 0.0
+              USERO(JSEA,9) = 0.0
+              USERO(JSEA,10) = 0.0
+              USERO(JSEA,11) = 0.0
+              USERO(JSEA,12) = 0.0
+              USERO(JSEA,13) = 0.0
+!/URIC            USERO(JSEA,1) = ASIM_CD(IY,IX)
+!/URIC            USERO(JSEA,2) = ASIM_MA(IY,IX)
+!/URIC            USERO(JSEA,3) = ASIM_CHARN(IY,IX)
+!/URIC            USERO(JSEA,4) = TAU_CX(IY,IX)
+!/URIC            USERO(JSEA,5) = TAU_CY(IY,IX)
+!/URIC            USERO(JSEA,6) = TAU_DX(IY,IX)
+!/URIC            USERO(JSEA,7) = TAU_DY(IY,IX)
+!/URIC            USERO(JSEA,8) = DENER(IY,IX)
+!/URIC            USERO(JSEA,9) = ASIM_WL(IY,IX)
+!/URIC            USERO(JSEA,10) = ASIM_TDX(IY,IX)
+!/URIC            USERO(JSEA,11) = ASIM_TDY(IY,IX)
+!/URIC            USERO(JSEA,12) = ASIM_RIB(IY,IX)
+!/URIC            USERO(JSEA,13) = ASIM_ZBL(IY,IX)
+          END IF
+        END DO
 !
 !/OMPG/!$OMP END PARALLEL DO
 !
