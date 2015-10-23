@@ -912,14 +912,14 @@
                core=
                data='w3gdatmd w3wdatmd w3adatmd w3idatmd w3odatmd w3cdatmd'
                prop=
-             source="$stx $nlx $btx $is $cpl $mfb $fld"
+             source="$stx $nlx $btx $is"
                  IO='w3iogrmd w3iogomd'
                 aux='constants w3servmd w3timemd w3arrymd w3dispmd w3gsrumd' ;;
      ww3_ounf) IDstring='Gridded NetCDF output'
                core='w3initmd'
                data='w3gdatmd w3wdatmd w3adatmd w3idatmd w3odatmd w3cdatmd'
                prop=
-             source="w3triamd $stx $nlx $btx  $is $cpl $mfb $fld"
+             source="w3triamd $stx $nlx $btx  $is"
                  IO='w3iogrmd w3iogomd w3iorsmd w3iopomd'
                 aux='constants w3servmd w3timemd w3arrymd w3dispmd w3gsrumd' ;;
      ww3_outp) IDstring='Point output'
@@ -947,7 +947,7 @@
                core=
                data='w3triamd w3gdatmd w3wdatmd w3adatmd w3idatmd w3odatmd w3cdatmd'
                prop=
-             source="$stx $nlx $btx $is $cpl $mfb $fld"
+             source="$stx $nlx $btx $is"
                  IO='w3iogrmd w3iogomd'
                 aux='constants w3servmd w3timemd w3arrymd w3dispmd w3gsrumd' ;;
      ww3_gspl) IDstring='Grid splitting'
