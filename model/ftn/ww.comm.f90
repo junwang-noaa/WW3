@@ -331,6 +331,8 @@
       SUBROUTINE WW_SENDWST(dtau_x,dtau_y,chrnk,msang,mwlen,bcondw)
       USE WW_cc
       USE supl_vars_def
+      IMPLICIT NONE
+      INTEGER :: i, j
       REAL(KIND=kind_wst) dtau_x(ny,nx), dtau_y(ny,nx), &
           chrnk(ny,nx), msang(ny,nx), mwlen(ny,nx), bcondw(ny,nx)
 
@@ -355,7 +357,7 @@
 
       call WW_ANNOUNCE('Delta(Tau) sent',1)
 
-      return
+      RETURN
       END 
 !CBT.
 !
@@ -452,7 +454,8 @@
 
       implicit none
       REAL(kind=kind_SBC), DIMENSION(ny,nx)   :: RIB, ZBL
-      
+      REAL, PARAMETER :: RIB_L = 5.0_kind_SBC, z1_ll = 5.0_kind_SBC, &
+                                               z1_ul = 50.0_kind_SBC
 
       integer i, j, n
 !
@@ -474,26 +477,29 @@
       if (Coupler_id.lt.0) RETURN     !   <- standalone mode
 
       if (getSBC) then
+!CBT
+        call CMP_gnr_RECV(RIBN(:,:),NGP,MPI_kind_SBC)
+        call CMP_gnr_RECV(ZLML(:,:),NGP,MPI_kind_SBC)
+!CBT
         do n=1,num_SBC
           call CMP_gnr_RECV(SBC(:,:,n),NGP,MPI_kind_SBC)
         end do
 !CBT
-        !BT!call CMP_gnr_RECV(RIBN(:,:),NGP,MPI_kind_SBC)
-        !BT!call CMP_gnr_RECV(ZLML(:,:),NGP,MPI_kind_SBC)
-!CBT
         call MPI_BCAST(SBC,NGP*num_SBC,MPI_kind_SBC,    &
         component_master_rank_local,MPI_COMM_WW,rc)
 !CBT
-        !BT!call MPI_BCAST(RIBN,NGP,MPI_kind_SBC,    &
-        !BT!component_master_rank_local,MPI_COMM_WW,rc)
-        !BT!call MPI_BCAST(ZLML,NGP,MPI_kind_SBC,    &
-        !BT!component_master_rank_local,MPI_COMM_WW,rc)
-        DO i = 1, nx
+        call MPI_BCAST(RIBN,NGP,MPI_kind_SBC,    &
+        component_master_rank_local,MPI_COMM_WW,rc)
+        call MPI_BCAST(ZLML,NGP,MPI_kind_SBC,    &
+        component_master_rank_local,MPI_COMM_WW,rc)
         DO j = 1, ny
-          !BT!RIB(j,i) = RIBN(j,i)
-          !BT!ZBL(j,i) = ZLML(j,i)
-            RIB(j,i) = 0.0
-            ZBL(j,i) = 25.0
+        DO i = 1, nx
+          IF ( ABS(RIBN(i,j)) .LT. RIB_L ) THEN
+             RIB(j,i) = RIBN(i,j)
+          ELSE
+             RIB(j,i) = 0.0_kind_SBC
+          ENDIF         
+          ZBL(j,i) = MIN(z1_ul, MAX(z1_ll, ZLML(i,j)))
         ENDDO
         ENDDO 
 !CBT
@@ -543,13 +549,21 @@
        DO i = 1, nx
        DO j = 1, ny
          IF ( ABS(SFCURX(i,j)) .GT. sfcurmax ) THEN
-            SFCURX(i,j) = 0.0
+            SFCURX(i,j) = 0.0_kind_CURR
          ENDIF
          IF ( ABS(SFCURY(i,j)) .GT. sfcurmax ) THEN
-            SFCURY(i,j) = 0.0
-         ENDIF 
-         cdx(j,i) = dpcurx(i,j)
-         cdy(j,i) = dpcury(i,j)
+            SFCURY(i,j) = 0.0_kind_CURR
+         ENDIF
+         IF ( ABS(dpcurx(i,j)) .GT. sfcurmax ) THEN
+            cdx(j,i) = 0.0_kind_CURR
+         ELSE
+            cdx(j,i) = dpcurx(i,j)
+         ENDIF
+         IF ( ABS(dpcury(i,j)) .GT. sfcurmax ) THEN
+            cdy(j,i) = 0.0_kind_CURR
+         ELSE
+            cdy(j,i) = dpcury(i,j)
+         ENDIF
        ENDDO
        ENDDO
 

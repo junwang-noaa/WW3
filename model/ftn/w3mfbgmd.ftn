@@ -132,6 +132,7 @@
       REAL, INTENT(IN)        :: SPEC(NK*NTH),FPI,WNDX,WNDY,UST
       REAL, INTENT(OUT)       :: MX_1, MY_1, MFXX1, MFXY1, MFYX1, MFYY1,&
                                  EFX1, EFY1, ENER1, EFA1
+      REAL :: HS1, WL1
 !/
 !/ ------------------------------------------------------------------- /
 !/ Local parameters
@@ -211,6 +212,8 @@
 !
 ! 2a. Calculate peak momentum and momentum flux and MSS
 !
+      HS1=0.0
+      WL1=0.0
       DO J=1, NKT
          FXX=0.0
          FYX=0.0
@@ -251,6 +254,8 @@
       EFY1 = DWAT * G_FY(1) * GRAV**2 / ( (SIG2(1) + SIG2(2))) &
            * (WN(2)-WN(1))
       ENER1 = DWAT * G_F(1) * GRAV * ( WN(2) - WN(1) )
+      HS1 = G_F(1)*( WN(2) - WN(1) ) / 2.0
+      WL1 = G_F(1)*( WN(2) - WN(1) ) / 2.0 / WN(1)
       DO I = 2, NKT-1
          MFXX1 = MFXX1 + DWAT * G_FXX(i) * GRAV / 2.0 * &
               (WN(I+1)-WN(I-1)) / 2.0
@@ -270,7 +275,15 @@
               ( 2 * (SIG2(I)) ) * ( WN(I+1) - WN(I-1) ) / 2.0
          ENER1 = ENER1 + DWAT * G_F(I) * GRAV * &
               ( WN(I+1) - WN(I-1) ) / 2.0
+         HS1 = HS1 + G_F(I)*( WN(I+1) - WN(I-1) ) / 2.0
+         WL1 = WL1 + G_F(I)*( WN(I+1) - WN(I-1) ) / 2.0 / WN(I)
       ENDDO
+      IF (HS1.gt.1.e-5) then
+         WL1 = WL1 / HS1 * TPI
+      else
+         WL1 = 0.0
+      endif
+      HS1 = 4.*SQRT(HS1)
       !/ADD CALCULATION OF EFA FOR CALCULATING C_EFFECTIVE (from Flux2d.f)
 !Define EFA,NWD,UOFC,BETAX,BETAY,wdir,U10DG,NUMWD,MODWD,TH4
 ! WE MAY NEED TO UPDATE SOME OF THIS, FOR THE TIME BEING I HAVE COPIED IT.

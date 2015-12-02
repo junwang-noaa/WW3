@@ -150,7 +150,7 @@
            ASIM_WNDY=0.0
            ASIM_WBCD=0.0
         endif
-
+        
         ASIM_CD=0.0
         ASIM_MA=0.0
         ASIM_CHARN=0.0
@@ -172,7 +172,8 @@
         TAU_CY=0.0
         TAU_DX=0.0
         TAU_DY=0.0
-        
+!        ASIM_WL=0.0
+!        ASIM_HS=0.0
 !/
         !=====================================================|
         ! Run through all locations local to current processor|
@@ -184,6 +185,12 @@
               ISEA = IAPROC + (JSEA-1) * NAPROC
               IX = MAPSF( ISEA , 1 )
               IY = MAPSF( ISEA , 2 )
+              !CALL W3MFBG(VA(:,JSEA),min(FPIS(ISEA)/TPI,2.0),&
+              !     WXN(IX,IY),WYN(IX,IY),UST(ISEA),MX(IY,IX),&
+              !     MY(IY,IX),MFXX(IY,IX),MFXY(IY,IX),&
+              !     MFYX(IY,IX),MFYY(IY,IX),EFX(IY,IX),&
+              !     EFY(IY,IX),ENER(IY,IX),EFA(IY,IX),&
+              !     ASIM_HS(IY,IX),ASIM_WL(IY,IX))
               !-----------------------------------------------
               ! Get Wind speed and distance from domain center
               !-----------------------------------------------

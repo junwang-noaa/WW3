@@ -774,7 +774,7 @@
                           ICPRT, DTPRT, WSCUT, NOSWLL, FLOGRD, FLOGR2,&
                           NOGRP, NGRPP
 !/URIC      USE W3CDATMD, ONLY: ASIM_CD, ASIM_MA, ASIM_CHARN
-!/URIC      USE W3CDATMD, ONLY: TAU_CX, TAU_CY,TAU_DX,TAU_DY,DENER
+!/URIC      USE W3CDATMD, ONLY: TAU_CX, TAU_CY,TAU_DX,TAU_DY,ASIM_WBCD
 !/URIC      USE W3CDATMD, ONLY: ASIM_WL, ASIM_TDX, ASIM_TDY, ASIM_HS
 !/URIC      USE W3CDATMD, ONLY: ASIM_ZBL, ASIM_RIB
 
@@ -1101,11 +1101,13 @@
         IF ( MAPSTA(IY,IX) .GT. 0 ) THEN
 !/O9            IF ( ET(JSEA) .GE. 0. ) THEN
             HS (JSEA) = 4. * SQRT ( ET(JSEA) )
+!/URIC           ASIM_HS(IY,IX) = HS(JSEA)
 !/O9              ELSE
 !/O9                HS (JSEA) = - 4. * SQRT ( -ET(JSEA) )
 !/O9              END IF
             IF ( ET(JSEA) .GT. 1.E-7 ) THEN
                 WLM(JSEA) = EWN(JSEA) / ET(JSEA) * TPI
+!/URIC           ASIM_WL(IY,IX) = WLM(JSEA)
                 T0M1(JSEA) = ETR(JSEA) / ET(JSEA) * TPI
                 THS(JSEA) = RADE * SQRT ( MAX ( 0. , 2. * ( 1. - SQRT ( &
                 MAX(0.,(ETX(JSEA)**2+ETY(JSEA)**2)/ET(JSEA)**2) ) ) ) )
@@ -1177,7 +1179,7 @@
 !/URIC            USERO(JSEA,5) = TAU_CY(IY,IX)
 !/URIC            USERO(JSEA,6) = TAU_DX(IY,IX)
 !/URIC            USERO(JSEA,7) = TAU_DY(IY,IX)
-!/URIC            USERO(JSEA,8) = DENER(IY,IX)
+!/URIC            USERO(JSEA,8) = ASIM_WBCD(IY,IX)
 !/URIC            USERO(JSEA,9) = ASIM_WL(IY,IX)
 !/URIC            USERO(JSEA,10) = ASIM_TDX(IY,IX)
 !/URIC            USERO(JSEA,11) = ASIM_TDY(IY,IX)
