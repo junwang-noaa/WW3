@@ -1329,24 +1329,24 @@
 !/NCC                        WHERE(WX0 .LT. -1.E20)
 !/NCC                            WX0=DTTST0g/(DTTST0g+DTTSTg0) * WX0g +  &
 !/NCC                                DTTSTg0/(DTTST0g+DTTSTg0) * WXNg
-!/NCC                            ASIM_ZBL=10.
-!/NCC                            ASIM_RIB=0.
 !/NCC                        ENDWHERE
 !/NCC                        WHERE(WY0 .LT. -1.E20)
 !/NCC                            WY0=DTTST0g/(DTTST0g+DTTSTg0) * WY0g +  &
 !/NCC                                DTTSTg0/(DTTST0g+DTTSTg0) * WYNg
-!/NCC                            ASIM_ZBL=10.
-!/NCC                            ASIM_RIB=0.
 !/NCC                        ENDWHERE
 !/NCC                        WHERE(WXN .LT. -1.E20)
 !/NCC                            WXN=DTTSTng/(DTTSTng+DTTSTgn) * WX0g +  &
 !/NCC                                DTTSTgn/(DTTSTng+DTTSTgn) * WXNg
-!/NCC                            ASIM_ZBL=10.
-!/NCC                            ASIM_RIB=0.
 !/NCC                        ENDWHERE
 !/NCC                        WHERE(WYN .LT. -1.E20)
 !/NCC                            WYN=DTTSTng/(DTTSTng+DTTSTgn) * WY0g +  &
 !/NCC                                DTTSTgn/(DTTSTng+DTTSTgn) * WYNg
+!/NCC                        ENDWHERE
+!/NCC!                       Note: WXY0N(NX,NY) vs ASIM_ZBL/RIB(NY,NX)
+!/NCC                        WHERE(transpose(WX0) .LT. -1.E20 .OR.       &
+!/NCC                              transpose(WY0) .LT. -1.E20 .OR.       & 
+!/NCC                              transpose(WXN) .LT. -1.E20 .OR.       &
+!/NCC                              transpose(WYN) .LT. -1.E20 )
 !/NCC                            ASIM_ZBL=10.
 !/NCC                            ASIM_RIB=0.
 !/NCC                        ENDWHERE
