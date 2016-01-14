@@ -48,13 +48,61 @@
       SAVE
       REAL, ALLOCATABLE,DIMENSION(:,:) :: MX0, MY0, MX, MY
       REAL, ALLOCATABLE,DIMENSION(:,:) :: MFXX, MFXY, MFYX, MFYY
-      REAL, ALLOCATABLE,DIMENSION(:,:) :: ENER, ENER0,DENER,DENERDIV
+      REAL, ALLOCATABLE,DIMENSION(:,:) :: ENER, ENER0, DENER
       REAL, ALLOCATABLE,DIMENSION(:,:) :: EFX, EFY, EFA
       REAL, ALLOCATABLE,DIMENSION(:,:) :: TAU_CX,TAU_CY,TAU_DX,TAU_DY
       REAL, ALLOCATABLE,DIMENSION(:,:) :: ASIM_CD, ASIM_MA, ASIM_CHARN
       REAL, ALLOCATABLE,DIMENSION(:,:) :: ASIM_WL, ASIM_TDX, ASIM_TDY
       REAL, ALLOCATABLE,DIMENSION(:,:) :: ASIM_HS, ASIM_RIB, ASIM_ZBL
       REAL, ALLOCATABLE,DIMENSION(:,:) :: ASIM_CXD, ASIM_CYD, ASIM_WBCD
+      REAL, ALLOCATABLE,DIMENSION(:,:) :: SL_STK_X,SL_STK_Y,KPPH
       REAL, ALLOCATABLE,DIMENSION(:,:) :: ASIM_WNDX, ASIM_WNDY
 !/
+
+    CONTAINS
+
+      SUBROUTINE INITCDAT(NX,NY)
+!/
+           INTEGER, INTENT(IN) :: NX, NY
+!/
+! Allocate and initialize all coupling variables
+!/
+           ALLOCATE( MX0(NY,NX) )       ; MX0  = 0.0
+           ALLOCATE( MY0(NY,NX) )       ; MY0  = 0.0
+           ALLOCATE( MX(NY,NX) )        ; MX   = 0.0
+           ALLOCATE( MY(NY,NX) )        ; MY   = 0.0
+           ALLOCATE( MFXX(NY,NX) )      ; MFXX = 0.0
+           ALLOCATE( MFXY(NY,NX) )      ; MFXY = 0.0
+           ALLOCATE( MFYX(NY,NX) )      ; MFYX = 0.0
+           ALLOCATE( MFYY(NY,NX) )      ; MFYY = 0.0
+           ALLOCATE( ENER(NY,NX) )      ; ENER = 0.0
+           ALLOCATE( ENER0(NY,NX) )     ; ENER0 = 0.0
+           ALLOCATE( DENER(NY,NX) )     ; DENER = 0.0
+           ALLOCATE( EFX(NY,NX) )       ; EFX = 0.0
+           ALLOCATE( EFY(NY,NX) )       ; EFY = 0.0
+           ALLOCATE( EFA(NY,NX) )       ; EFA = 0.0
+           ALLOCATE( TAU_CX(NY,NX) )    ; TAU_CX = 0.0
+           ALLOCATE( TAU_CY(NY,NX) )    ; TAU_CY = 0.0
+           ALLOCATE( TAU_DX(NY,NX) )    ; TAU_DX = 0.0
+           ALLOCATE( TAU_DY(NY,NX) )    ; TAU_DY = 0.0
+           ALLOCATE( ASIM_TDX(NY,NX) )  ; ASIM_TDX = 0.0
+           ALLOCATE( ASIM_TDY(NY,NX) )  ; ASIM_TDY = 0.0
+           ALLOCATE( ASIM_CD(NY,NX) )   ; ASIM_CD = 0.0
+           ALLOCATE( ASIM_MA(NY,NX) )   ; ASIM_MA = 0.0
+           ALLOCATE( ASIM_CHARN(NY,NX) ); ASIM_CHARN = 1.0;
+           ALLOCATE( ASIM_WBCD(NY,NX) ) ; ASIM_WBCD=0.0
+           ALLOCATE( ASIM_WL(NY,NX) )   ; ASIM_WL = 0.0
+           ALLOCATE( ASIM_HS(NY,NX) )   ; ASIM_HS = 0.0
+           ALLOCATE( ASIM_RIB(NY,NX) )  ; ASIM_RIB = 0.0
+           ALLOCATE( ASIM_ZBL(NY,NX) )  ; ASIM_ZBL = 20.0
+           ALLOCATE( ASIM_CXD(NY,NX) )  ; ASIM_CXD = 0.0
+           ALLOCATE( ASIM_CYD(NY,NX) )  ; ASIM_CYD = 0.0
+           ALLOCATE( SL_STK_X(NY,NX) )  ; SL_STK_X = 0.0
+           ALLOCATE( SL_STK_Y(NY,NX) )  ; SL_STK_Y = 0.0
+           ALLOCATE( KPPH(NY,NX) )      ; KPPH = 0.0
+           ALLOCATE( ASIM_WNDX(NY,NX) ) ; ASIM_WNDX = 0.0
+           ALLOCATE( ASIM_WNDY(NY,NX) ) ; ASIM_WNDY = 0.0
+           RETURN
+         END SUBROUTINE INITCDAT
+
     END MODULE W3CDATMD

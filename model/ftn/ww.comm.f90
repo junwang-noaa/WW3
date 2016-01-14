@@ -28,6 +28,8 @@
       integer MPI_kind_CURR
       integer,parameter:: kind_wst=kind_R
       integer MPI_kind_wst
+      integer,parameter:: kind_kpph=kind_R
+      integer MPI_kind_kpph
 !CBT.
 
       integer NX,NY
@@ -39,7 +41,7 @@
       real(kind=kind_R) time_s
 
       integer NGP,rc
-      logical getPSEUDOICE,getSBC,getCUR
+      logical getPSEUDOICE,getSBC,getCUR,getKPPH
       integer itime(2)
 
       character*100 ch
@@ -81,16 +83,17 @@
 !CBT
       MODULE supl_vars_def
 
-      USE WW_cc, ONLY: kind_CURR, kind_wst
+      USE WW_cc, ONLY: kind_CURR, kind_wst, kind_KPPH
 
       IMPLICIT NONE
 
       real(kind=kind_CURR),dimension(:,:),target,allocatable:: SFCURX, &
       SFCURY, DPCURX, DPCURY 
+      real(kind=kind_CURR),dimension(:,:),target,allocatable:: KPPML
       real(kind=kind_wst),dimension(:,:),allocatable::dtaux, dtauy
       real(kind=kind_wst),dimension(:,:),allocatable::alpha, gamma,  &
                                                       lamda, wbcond
-
+      real(kind=kind_wst),dimension(:,:),allocatable::stkdfx, stkdfy
       SAVE
 
       END MODULE supl_vars_def
@@ -150,6 +153,11 @@
       else
         MPI_kind_wst = MPI_kind_alt_REAL
       endif
+      if (kind_kpph .eq. kind_REAL) THEN
+        MPI_kind_kpph = MPI_kind_REAL
+      else
+        MPI_kind_kpph = MPI_kind_alt_REAL
+      endif
 !CBT.
 
       call WW_ANNOUNCE('WW_CMP_START: returning',2)
@@ -208,6 +216,8 @@
       allocate(DTAUX(NX,NY),DTAUY(NX,NY))
       allocate(ALPHA(NX,NY),GAMMA(NX,NY),LAMDA(NX,NY))
       allocate(WBCOND(NX,NY))
+      allocate(KPPML(NX,NY))
+      allocate(STKDFX(NX,NY),STKDFY(NX,NY))
 !CBT.
 
       write (s,'(i4,2i5,1p,4e15.7)') imod,nx_,ny_,x0_,y0_,sx_,sy_
@@ -328,13 +338,15 @@
 !***********************************************************************
 !
 !CBT
-      SUBROUTINE WW_SENDWST(dtau_x,dtau_y,chrnk,msang,mwlen,bcondw)
+      SUBROUTINE WW_SENDWST(dtau_x,dtau_y,chrnk,msang,mwlen,     &
+                            bcondw,stk_x,stk_y)
       USE WW_cc
       USE supl_vars_def
       IMPLICIT NONE
       INTEGER :: i, j
       REAL(KIND=kind_wst) dtau_x(ny,nx), dtau_y(ny,nx), &
-          chrnk(ny,nx), msang(ny,nx), mwlen(ny,nx), bcondw(ny,nx)
+          chrnk(ny,nx), msang(ny,nx), mwlen(ny,nx),     &
+          bcondw(ny,nx), stk_x(ny,nx),stk_y(ny,nx)
 
       if (Coupler_id.lt.0) RETURN    !   <- standalone mode
       
@@ -346,10 +358,14 @@
          gamma(i,j) = msang(j,i)
          lamda(i,j) = mwlen(j,i)
          wbcond(i,j) = bcondw(j,i) 
+         stkdfx(i,j) = stk_x(j,i)
+         stkdfy(i,j) = stk_y(j,i)
       ENDDO
       ENDDO
       call CMP_gnr_SEND(dtaux,NGP,MPI_kind_wst)
       call CMP_gnr_SEND(dtauy,NGP,MPI_kind_wst)
+      call CMP_gnr_SEND(stkdfx,NGP,MPI_kind_wst)
+      call CMP_gnr_SEND(stkdfy,NGP,MPI_kind_wst)
       call CMP_gnr_SEND(alpha,NGP,MPI_kind_wst)
       call CMP_gnr_SEND(gamma,NGP,MPI_kind_wst) 
       call CMP_gnr_SEND(wbcond,NGP,MPI_kind_wst)
@@ -411,6 +427,7 @@
       getPSEUDOICE=time_s-ntime_dtc*dtc.lt.0.1
       getSBC=getPSEUDOICE
       getCUR=getPSEUDOICE
+      getKPPH=getPSEUDOICE
 
 !zz      write(ch,'(i2," n_ts=",i6," time_s=",f10.1," ntime_dtc=",i6,   &
 !zz      " itime: ",2i8," getPSEUDOICE=",L1," getSBC=",L1)')   &
@@ -571,6 +588,44 @@
 
       return
       END 
+!CBT.
+
+!
+!***********************************************************************
+!
+!CBT
+
+       SUBROUTINE WW_RECV_KPP(kpph)
+       USE WW_cc
+       USE supl_vars_def
+
+       IMPLICIT NONE
+       INTEGER :: i, j
+       REAL(kind=kind_KPPH), DIMENSION(ny,nx) :: kpph
+       REAL, PARAMETER :: kpphmax = 300._kind_KPPH,   &
+                          kpphmin = 6._kind_KPPH
+
+       call WW_ANNOUNCE('WW_RECV_CUR entered '//trim(ch),3)
+
+       if (.not. getKPPH) RETURN
+
+       if (Coupler_id.lt.0) RETURN     !   <- standalone mode
+
+       if (getKPPH) then
+       call CMP_gnr_RECV(KPPML,NGP,MPI_kind_KPPH)
+       call MPI_BCAST(KPPML,NGP,MPI_kind_KPPH,    &
+       component_master_rank_local,MPI_COMM_WW,rc)
+       DO i = 1, nx
+       DO j = 1, ny
+        kpph(j,i) = max(min(kppml(i,j),kpphmax),kpphmin)
+       ENDDO
+       ENDDO
+
+      end if
+
+      return
+      END
+
 !CBT.
 
 !

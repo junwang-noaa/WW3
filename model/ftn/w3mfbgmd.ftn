@@ -56,7 +56,7 @@
 !/
       CONTAINS
       SUBROUTINE W3MFBG(SPEC,FPI,WNDX,WNDY,UST,MX_1,MY_1,MFXX1,MFXY1,&
-           MFYX1,MFYY1,EFX1,EFY1,ENER1,EFA1)
+           MFYX1,MFYY1,EFX1,EFY1,ENER1,EFA1,HS1,WL1,hml,lastkx,lastky)
 !/
 !/                  +-----------------------------------+
 !/                  | WAVEWATCH III           NOAA/NCEP |
@@ -120,19 +120,19 @@
 ! 10. Source code :
 !
 !/ ------------------------------------------------------------------- /
-     USE CONSTANTS
+      USE CONSTANTS
       USE W3GDATMD, ONLY: NK, NTH, SIG, TH, FR1, XFR, DTH
-      USE W3FLD1MD, ONLY: APPENDTAIL
+      USE W3FLD1MD, ONLY: APPENDTAIL, SIG2WN
 !/
       IMPLICIT NONE 
 !/
 !/ ------------------------------------------------------------------- /
 !/ Parameter list
 !/
-      REAL, INTENT(IN)        :: SPEC(NK*NTH),FPI,WNDX,WNDY,UST
+      REAL, INTENT(IN)        :: SPEC(NK*NTH),FPI,WNDX,WNDY,UST,HML
       REAL, INTENT(OUT)       :: MX_1, MY_1, MFXX1, MFXY1, MFYX1, MFYY1,&
-                                 EFX1, EFY1, ENER1, EFA1
-      REAL :: HS1, WL1
+                                 EFX1, EFY1, ENER1, EFA1, HS1, WL1,     &
+                                 LaStkX,LaStkY
 !/
 !/ ------------------------------------------------------------------- /
 !/ Local parameters
@@ -146,9 +146,11 @@
       REAL                    :: U10DG, U10D,UOC,TH4(NTH),EFAI
       REAL                    :: BETAX, BETAY
       INTEGER                 :: NUMWD,MODWD
-      REAL                    :: SAT,wnd
+      REAL                    :: SAT,wnd,FAC
+      REAL                    :: SURFDPTH,SPCDTH,COSSPCDTH,SINSPCDTH
       REAL, ALLOCATABLE, DIMENSION(:) :: WN, SIG2,G_FXX,G_FYX,G_F,&
-                                         G_FYY,G_FXY,G_FY,G_FX,SPCK
+                                         G_FYY,G_FXY,G_FY,G_FX,SPCK,&
+                                         DWNFAC
       REAL, ALLOCATABLE, DIMENSION(:,:) :: SPC
 ! 1.  Attach Tail ---------------------------------------------------- *
 !
@@ -163,7 +165,7 @@
       ENDDO
       ALLOCATE( WN(NKT),SIG2(NKT),SPC(NKT,NTH),G_FXX(NKT),G_FYX(NKT),&
                 G_FYY(NKT),G_FXY(NKT),G_FY(NKT),G_FX(NKT),SPCK(NKT),&
-                G_F(NKT))
+                G_F(NKT),DWNFAC(NKT))
 !
 ! 1a. Build Discrete Wavenumbers for defining extended spectrum on---- *
 !
@@ -214,6 +216,12 @@
 !
       HS1=0.0
       WL1=0.0
+      LASTKX=0.0
+      LASTKY=0.0
+      DO J=1,NKT
+         DWNFAC(J) = (XFR**2-1./XFR**2)*0.5 &
+              * SQRT(GRAV)*WN(J)**(3./2.)
+      ENDDO
       DO J=1, NKT
          FXX=0.0
          FYX=0.0
@@ -222,16 +230,24 @@
          FX=0.0
          FY=0.0
          F=0.0
-         SPCK(J) =0.0
+         SURFDPTH = max(1.0,HML*0.2)
          DO I=1, NTH
-            F = F + SPC(J,I) * DTH
-            FYY=FYY+SPC(J,I)*SIN(TH(I))*SIN(TH(I)) * DTH
-            FXY=FXY+SPC(J,I)*COS(TH(I))*SIN(TH(I)) * DTH
-            FXX=FXX+SPC(J,I)*COS(TH(I))*COS(TH(I)) * DTH
-            FYX=FYX+SPC(J,I)*COS(TH(I))*SIN(TH(I)) * DTH
-            FY=FY+SPC(J,I)*SIN(TH(I)) * DTH
-            FX=FX+SPC(J,I)*COS(TH(I)) * DTH
-            SPCK(J) = SPCK(J) + SPC(J,I) * DTH
+            SPCDTH = SPC(J,I) * DTH
+            COSSPCDTH = COS(TH(I)) * SPCDTH
+            SINSPCDTH = SIN(TH(I)) * SPCDTH
+            F = F + SPCDTH
+            FYY=FYY+SIN(TH(I))*SINSPCDTH
+            FXY=FXY+COS(TH(I))*SINSPCDTH
+            FXX=FXX+COS(TH(I))*COSSPCDTH
+            FYX=FYX+SIN(TH(I))*COSSPCDTH
+            FY=FY+SINSPCDTH
+            FX=FX+COSSPCDTH
+            SPCK(J) = SPCK(J) + SPCDTH
+            if (2.*3.1415/WN(J) .gt. 1.0) then
+               FAC = (1.0 - EXP(2.*WN(J) * -SURFDPTH)) * DWNFAC(J)
+               LASTKX = LASTKX + COSSPCDTH*FAC
+               LASTKY = LASTKY + SINSPCDTH*FAC
+            endif
          ENDDO
          G_F(J) = F
          G_FYY(J) = FYY
@@ -241,6 +257,8 @@
          G_FX(J) = FX
          G_FY(J) = FY
       ENDDO
+      LASTKX = LASTKX / SURFDPTH
+      LASTKY = LASTKY / SURFDPTH
       MFXX1 = DWAT * G_FXX(1) * GRAV / 2.0 * (WN(2)-WN(1))
       MFYX1 = DWAT * G_FYX(1) * GRAV / 2.0 * (WN(2)-WN(1))
       MFYY1 = DWAT * G_FYY(1) * GRAV / 2.0 * (WN(2)-WN(1))
@@ -378,12 +396,13 @@
 !     TAU_CX - Coriolis-Stokes term based on wave momentum (x-dir)
 !     TAU_CY - idem (y-dir)
 !-----------------------------------------------------------------------
-      USE W3GDATMD, ONLY: NX,NY,SX,SY,MAPSTA,NSEAL,MAPSF,CLATS!,DTMAX
+      USE W3GDATMD, ONLY: NX,NY,SX,SY,MAPSTA,NSEAL,MAPSF,CLATS,DTMAX
+      USE W3ADATMD, ONLY: ITIME
       USE W3ODATMD, ONLY: IAPROC, NAPROC
       USE CONSTANTS
       USE W3CDATMD, ONLY: MX, MY, MX0,MY0, MFXX, MFXY, MFYX, &
            MFYY, EFX, EFY, ENER, ENER0, TAU_CX, TAU_CY, TAU_DX,&
-           TAU_DY, DENER,denerdiv, ASIM_WBCD
+           TAU_DY, DENER,ASIM_WBCD
       IMPLICIT NONE
       REAL, PARAMETER :: OMEGA=7.2921E-5
       INTEGER :: IY,IX,JSEA,ISEA
@@ -391,18 +410,19 @@
       REAL    :: FCOR, DX0, DY0, STX, STY, DX, DY
       REAL    :: aMX, aMX0, aMY, aMY0
       INTEGER :: IXP,IXM,IYP,IYM,IXb,IYb,K
-      REAL    :: RAD, DTMAX
+      REAL    :: RAD
       LOGICAL :: R1, R2
+      INTEGER,SAVE :: ITIME0=0
 !-
 !-1. Set up output variables
 !-
-      DTMAX = 900.
+!      DTMAX = 900.
+!      print*,'ITIME/ITIME0:',ITIME,ITIME0,DTMAX
       TAU_DX=0.0
       TAU_DY=0.0
       TAU_CX=0.0
       TAU_CY=0.0
       DENER=0.0
-      denerdiv=0.0
       ASIM_WBCD=0.0
 !-
 !-2. Calculate time derivative of momentum (backward difference approx)
@@ -449,11 +469,14 @@
                     aMY0=aMY0+(MY0(IYb,IXb))
                  ENDDO
               ENDDO
-              TAU_DX(IY,IX)=(aMX/REAL(K)-aMX0/REAL(K))/DTMAX
-              TAU_DY(IY,IX)=(aMY/REAL(K)-aMY0/REAL(K))/DTMAX
+              TAU_DX(IY,IX)=(aMX/REAL(K)-aMX0/REAL(K))/&
+                   (DTMAX*max(1.,REAL(ITIME-ITIME0)))
+              TAU_DY(IY,IX)=(aMY/REAL(K)-aMY0/REAL(K))/&
+                   (DTMAX*max(1.,REAL(ITIME-ITIME0)))
               TAU_CX(IY,IX)=FCOR*MY(IY,IX)
               TAU_CY(IY,IX)=-FCOR*MX(IY,IX)
-              DENER(IY,IX)=(ENER(IY,IX)-ENER0(IY,IX))/DTMAX
+              DENER(IY,IX)=(ENER(IY,IX)-ENER0(IY,IX))/&
+                   (DTMAX*max(1.,REAL(ITIME-ITIME0)))
            ENDIF
         ENDDO
 !-
@@ -526,6 +549,7 @@
            ENDIF
         ENDIF
      ENDDO
+     ITIME0=ITIME
    END SUBROUTINE WMBG
  END MODULE W3MFBGMD
 

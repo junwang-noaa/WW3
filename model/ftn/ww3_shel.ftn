@@ -222,7 +222,7 @@
       USE W3WDATMD, ONLY: TIME, W3NDAT, W3DIMW, W3SETW
 !/OASIS      USE W3WDATMD, ONLY: TIME00, TIMEEND
       USE W3ADATMD, ONLY: W3NAUX, W3DIMA, W3SETA
-!/NCC        USE W3CDATMD
+!/URIC        USE W3CDATMD
       USE W3IDATMD
 !/OASIS      USE W3ODATMD, ONLY: DTOUT
       USE W3ODATMD, ONLY: W3NOUT, W3SETO
@@ -239,7 +239,7 @@
       USE W3IOPOMD
       USE W3SERVMD, ONLY : NEXTLN, EXTCDE
       USE W3TIMEMD
-!/NCC      USE W3ASIMMD, ONLY: W3ASIM
+!/URIC      USE W3ASIMMD, ONLY: W3ASIM
 !/NCC      USE WW_cc, ONLY: MPI_COMM_WW
 !/OASIS USE W3OACPMD, ONLY: cpl_oasis_init,cpl_oasis_grid,            &
 !/OASIS                     cpl_oasis_define, cpl_oasis_finalize
@@ -1053,7 +1053,7 @@
 !/NCC      WX0g=0.; WY0g=0.; DT0g=0.
 !/NCC      WXNg=0.; WYNg=0.; DTNg=0.
 
-!/NCC      CALL W3ASIM
+!/URIC      CALL W3ASIM
 !/NCC      CFLAG = .FALSE. 
 !/NCC      CALL WW_INIT(1,GRIDS(1)%NX,GRIDS(1)%NY,            &
 !/NCC      GRIDS(1)%X0,GRIDS(1)%Y0,GRIDS(1)%SX,GRIDS(1)%SY)
@@ -1079,6 +1079,7 @@
 !/NCC                      ASIM_WL, ASIM_WBCD )
 !/NCC      CALL WW_RECV_SBC(ASIM_RIB, ASIM_ZBL)
 !/NCC      CALL WW_RECV_CUR(ASIM_CXD, ASIM_CYD)
+!/NCC      CALL WW_RECV_KPP(KPPH)
 !/NCC      CALL WW_RECV_PSEUDOICE
 !
 ! 7.a Determine next time interval and input fields
@@ -1364,8 +1365,8 @@
 !/NCC                        IF ( IAPROC .EQ. NAPOUT .AND. DEBUG_NCC )     &
 !/NCC                             WRITE(*,*) 'WX0Ng, WY0Ng at (NX/2,NY/2)=',  &
 !/NCC                             WX0g(NX/2,NY/2), WY0g(NX/2,NY/2), WXNg(NX/2,NY/2), WYNg(NX/2,NY/2) 
-                      END IF
-!/NCC                      CALL W3ASIM
+                   END IF
+!/URIC                      CALL W3ASIM
                   ELSE IF ( J .EQ. 4 ) THEN
 !/NCC                    IF (.NOT.CFLAG(J)) THEN
                    CALL W3FLDG ('READ', IDSTR(J), NDSF(J),            &
