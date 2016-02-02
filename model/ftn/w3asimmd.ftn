@@ -74,7 +74,7 @@
         ! DW - Depth
         ! ITIME - Discrete time step counter
         USE W3GDATMD, ONLY: NX, NY, NSEA, MAPSF, MAPSTA, FLAGST,  &
-             nseal, SX, SY, ZWIND
+             nseal, SX, SY
         ! NX - number of x points
         ! NY - number of y points
         ! NSEA - number of sea points
