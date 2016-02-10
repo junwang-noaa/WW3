@@ -124,7 +124,8 @@
   fi
 
   case $prog in
-    'ww3_grib'  ) libs="-L $main_dir/../../hwrf-utilities/libs -lg2 -lw3_i4r4 -lbacio -ljasper -lpng -lz" ;;
+    #'ww3_grib'  ) libs="-L $main_dir/../../hwrf-utilities/libs -lg2 -lw3_i4r4 -lbacio -ljasper -lpng -lz" ;;
+    'ww3_grib'  ) libs="${G2_LIB4} ${W3NCO_LIB4} ${BACIO_LIB4} ${JASPER_LIB} ${PNG_LIB} ${Z_LIB}" ;;
        *        ) libs= ;;
   esac
 
