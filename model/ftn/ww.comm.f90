@@ -52,6 +52,11 @@
      logical dummy_C_mode /.true./
      logical dummy_dummy_C_mode /.true./
       integer nunit_announce /6/, VerbLev /3/
+! To control awo couplings
+      integer ia2w /1/, &
+              iw2a /0/, &
+              io2w /1/, &
+              iw2o /0/
 
       SAVE
 
@@ -130,6 +135,34 @@
 
       write(s,'(i2)') VerbLev
       call WW_ANNOUNCE('back from CMP_INTRO, VerbLev='//s,2)
+
+      call CMP_gnr_RECV(ia2w,1,MPI_INTEGER)
+      write(s,'(i4)') ia2w
+      call WW_ANNOUNCE('back from CMP_INTEGER_RECV, ia2w is '//s,2)
+      call MPI_BCAST(ia2w,1,MPI_INTEGER, &
+      component_master_rank_local,MPI_COMM_WW,rc)
+      call WW_ANNOUNCE('WW_CMP_START: ia2w broadcast',2)
+
+      call CMP_gnr_RECV(iw2a,1,MPI_INTEGER)
+      write(s,'(i4)') iw2a
+      call WW_ANNOUNCE('back from CMP_INTEGER_RECV, iw2a is '//s,2)
+      call MPI_BCAST(iw2a,1,MPI_INTEGER, &
+      component_master_rank_local,MPI_COMM_WW,rc)
+      call WW_ANNOUNCE('WW_CMP_START: iw2a broadcast',2)
+
+      call CMP_gnr_RECV(io2w,1,MPI_INTEGER)
+      write(s,'(i4)') io2w
+      call WW_ANNOUNCE('back from CMP_INTEGER_RECV, io2w is '//s,2)
+      call MPI_BCAST(io2w,1,MPI_INTEGER, &
+      component_master_rank_local,MPI_COMM_WW,rc)
+      call WW_ANNOUNCE('WW_CMP_START: io2w broadcast',2)
+
+      call CMP_gnr_RECV(iw2o,1,MPI_INTEGER)
+      write(s,'(i4)') iw2o
+      call WW_ANNOUNCE('back from CMP_INTEGER_RECV, iw2o is '//s,2)
+      call MPI_BCAST(iw2o,1,MPI_INTEGER, &
+      component_master_rank_local,MPI_COMM_WW,rc)
+      call WW_ANNOUNCE('WW_CMP_START: iw2o broadcast',2)
 
       if (kind_R.eq.kind_REAL) then
         MPI_kind_R=MPI_kind_REAL
@@ -362,14 +395,22 @@
          stkdfy(i,j) = stk_y(j,i)
       ENDDO
       ENDDO
+      if(iw2o .GE. 1) then
       call CMP_gnr_SEND(dtaux,NGP,MPI_kind_wst)
       call CMP_gnr_SEND(dtauy,NGP,MPI_kind_wst)
+      endif
+      if(iw2o .GE. 2) then
       call CMP_gnr_SEND(stkdfx,NGP,MPI_kind_wst)
       call CMP_gnr_SEND(stkdfy,NGP,MPI_kind_wst)
+      endif
+      if(iw2a .GE. 1) then
       call CMP_gnr_SEND(alpha,NGP,MPI_kind_wst)
       call CMP_gnr_SEND(gamma,NGP,MPI_kind_wst) 
+      endif
+      if(iw2o .GE. 1) then
       call CMP_gnr_SEND(wbcond,NGP,MPI_kind_wst)
       call CMP_gnr_SEND(lamda,NGP,MPI_kind_wst)
+      endif
 
       call WW_ANNOUNCE('Delta(Tau) sent',1)
 
@@ -491,6 +532,7 @@
         RETURN
       end if
 
+      if(ia2w .LT. 1) RETURN
       if (Coupler_id.lt.0) RETURN     !   <- standalone mode
 
       if (getSBC) then
@@ -551,18 +593,22 @@
       if (Coupler_id.lt.0) RETURN     !   <- standalone mode
 
       if (getCUR) then
+      if(io2w .GE. 2) then
        call CMP_gnr_RECV(SFCURX,NGP,MPI_kind_CURR)
        call CMP_gnr_RECV(SFCURY,NGP,MPI_kind_CURR)
-       call CMP_gnr_RECV(DPCURX,NGP,MPI_kind_CURR)
-       call CMP_gnr_RECV(DPCURY,NGP,MPI_kind_CURR)
        call MPI_BCAST(SFCURX,NGP,MPI_kind_CURR,    &
        component_master_rank_local,MPI_COMM_WW,rc)
        call MPI_BCAST(SFCURY,NGP,MPI_kind_CURR,    &
        component_master_rank_local,MPI_COMM_WW,rc)
+      endif
+      if(io2w .GE. 1) then 
+       call CMP_gnr_RECV(DPCURX,NGP,MPI_kind_CURR)
+       call CMP_gnr_RECV(DPCURY,NGP,MPI_kind_CURR)
        call MPI_BCAST(DPCURX,NGP,MPI_kind_CURR,    &
        component_master_rank_local,MPI_COMM_WW,rc)
        call MPI_BCAST(DPCURY,NGP,MPI_kind_CURR,    &
        component_master_rank_local,MPI_COMM_WW,rc) 
+      endif
        DO i = 1, nx
        DO j = 1, ny
          IF ( ABS(SFCURX(i,j)) .GT. sfcurmax ) THEN
@@ -607,6 +653,7 @@
 
        call WW_ANNOUNCE('WW_RECV_CUR entered '//trim(ch),3)
 
+       if(io2w .LT. 3) RETURN
        if (.not. getKPPH) RETURN
 
        if (Coupler_id.lt.0) RETURN     !   <- standalone mode
@@ -721,6 +768,7 @@
       character*80 s
 !
 
+      if(ia2w .LT. 1) RETURN
       if (Coupler_id.lt.0 .and. .not.dummy_C_mode) RETURN
                                 !   <- standalone mode
 
@@ -821,7 +869,8 @@
         'assigned in WW_RECV_SBC. Returning',3)
         RETURN
       end if
-
+ 
+      if(ia2w .LT. 1) RETURN
       if (Coupler_id.lt.0) RETURN     !   <- standalone mode
 
       call CMP_gnr_RECV(ice,NGP,MPI_INTEGER)
