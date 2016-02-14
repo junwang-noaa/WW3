@@ -22,16 +22,12 @@ echo ${MACHINE}
 
 # check NETCDF environment variables
 if ( $MACHINE == jet ) then
-  if ( $?NETCDF4 ) then
+  if ( $?NETCDF ) then
+    setenv WWATCH3_NETCDF NC4
+    setenv NETCDF_CONFIG ${NETCDF}/bin/nc-config
+  else if ( $?NETCDF4 ) then
     setenv WWATCH3_NETCDF NC4
     setenv NETCDF_CONFIG ${NETCDF4}/bin/nc-config
-  else if ( $?NETCDF ) then
-    setenv WWATCH3_NETCDF NC3
-    setenv NETCDF_LIBDIR  ${NETCDF}/lib
-    setenv NETCDF_INCDIR  ${NETCDF}/include
-    echo ${WWATCH3_NETCDF}
-    echo ${NETCDF_INCDIR}
-    echo ${NETCDF_LIBDIR}
   else
     echo "WARNING: WWATCH3_NETCDF not defined"
   endif
@@ -42,22 +38,19 @@ else if ( $MACHINE == wcosscray ) then
 # The comp/link options for NETCDF is actually manually specified by comp/link.Intel_wcosscray.
     set NC_CONFIG=`which nc-config` 
     setenv NETCDF_CONFIG ${NC_CONFIG}
-    echo ${WWATCH3_NETCDF}
-    echo ${NETCDF_CONFIG}
 else if ( $MACHINE == wcoss ) then
     setenv WWATCH3_NETCDF NC4
     setenv NETCDF_CONFIG ${NETCDF}/bin/nc-config
-    echo ${WWATCH3_NETCDF}
-    echo ${NETCDF_CONFIG}
 else if ( $MACHINE == theia ) then
     setenv WWATCH3_NETCDF NC4
     setenv NETCDF_CONFIG ${NETCDF}/bin/nc-config
-    echo ${WWATCH3_NETCDF}
-    echo ${NETCDF_CONFIG}
 else
     echo "WARNING: Unkown machine"
     echo "WARNING: WWATCH3_NETCDF not defined"
 endif
+
+echo "WWATCH3_NETCDF=${WWATCH3_NETCDF}"
+echo "NETCDF_CONFIG=${NETCDF_CONFIG}"
 
 cd build/
 
