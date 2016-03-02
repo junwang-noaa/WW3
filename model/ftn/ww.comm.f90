@@ -617,16 +617,19 @@
          IF ( ABS(SFCURY(i,j)) .GT. sfcurmax ) THEN
             SFCURY(i,j) = 0.0_kind_CURR
          ENDIF
-         IF ( ABS(dpcurx(i,j)) .GT. sfcurmax ) THEN
-            cdx(j,i) = 0.0_kind_CURR
-         ELSE
-            cdx(j,i) = dpcurx(i,j)
+         IF ( ABS(DPCURX(i,j)) .GT. sfcurmax ) THEN
+            DPCURX(i,j) = 0.0_kind_CURR
          ENDIF
-         IF ( ABS(dpcury(i,j)) .GT. sfcurmax ) THEN
-            cdy(j,i) = 0.0_kind_CURR
-         ELSE
-            cdy(j,i) = dpcury(i,j)
+         IF ( ABS(DPCURY(i,j)) .GT. sfcurmax ) THEN
+            DPCURY(i,j) = 0.0_kind_CURR
          ENDIF
+       ENDDO
+       ENDDO
+
+       DO i = 1, nx
+       DO j = 1, ny
+            cdx(j,i) = SFCURX(i,j)
+            cdy(j,i) = SFCURY(i,j)
        ENDDO
        ENDDO
 
@@ -827,8 +830,10 @@
       dtime=dtc
       call TICK21(itime1,dtime)
 
-      CX0=SFCURX
-      CY0=SFCURY
+!      CX0=SFCURX
+!      CY0=SFCURY
+      CX0=DPCURX
+      CY0=DPCURY
   
       if (dummy_dummy_C_mode) then
 !        if (n_ts.gt.1) then  !debug
