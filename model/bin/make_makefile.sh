@@ -334,11 +334,11 @@
       coupler ) TY='upto1'
 	        ID='Coupler calculations'
                 OK='URIC' ;;
-#sort:ssdcd
+#sort:ssdcd:
       ssdcd  ) TY='upto1'
                ID='coupler stress calculation'
                OK='FLD1 FLD2' ;;
-#sort:mfbg
+#sort:mfbg:
       mfbg   ) TY='upto1'
                ID='momentum budget calculation'
                OK='MFB1' ;;
