@@ -25,7 +25,7 @@
 # 1. Preparations                                                             #
 # --------------------------------------------------------------------------- #
 # 1.a Check and process input
-
+set -x
   if [ "$#" -lt '1' ]
   then
     echo "usage: link name [name]" ; exit 1
@@ -107,7 +107,7 @@
     #comp=mpiifort
     #which mpiifort 1> /dev/null 2> /dev/null
     comp=ftn
-    which ftn 1> /dev/null 2> /dev/null
+    which ftn
     OK=$?
     if [ $OK != 0 ]
     then
@@ -122,13 +122,12 @@
   then
     opt="$opt -openmp"
   fi
-
+set -u
   case $prog in
-    #'ww3_grib'  ) libs="-L $main_dir/../../hwrf-utilities/libs -lg2 -lw3_i4r4 -lbacio -ljasper -lpng -lz" ;;
-    #'ww3_grib'  ) libs="-L/nwprod/lib -lg2_v2.5.0_4 -lw3nco_v2.0.6_4 -lbacio_v2.0.1_4 -ljasper -lpng -lz" ;;
     'ww3_grib'  ) libs="${G2_LIB4} ${W3NCO_LIB4} ${BACIO_LIB4} ${JASPER_LIB} ${PNG_LIB} ${Z_LIB}" ;;
        *        ) libs= ;;
   esac
+set +u
 
   if [ "$netcdf_compile" = 'yes' ]
   then
@@ -141,7 +140,7 @@
   fi
 
 # 3.b Link
-
+  echo "$comp $opt $objects $libs"                  1>&2
   $comp $opt $objects $libs                         > link.out 2> link.err
   OK="$?"
 

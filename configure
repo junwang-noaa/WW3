@@ -1,37 +1,105 @@
-#!/bin/csh -f
+#!/bin/sh
 
-if ($#argv == 1) then
-  set MACHINE=$1
-else if ($#argv == 0) then
-  echo "Warning: assuming on jet machine"
-  set MACHINE=jet
-else
-  echo "Usage: $0 machine"
-  echo "Install compile WW3 on this machine"
-  echo "Example: $0 jet"
-  exit 1
-endif
+set -uex
+
+case "$#" in
+    1) MACHINE=$1 ;;
+    0)
+	echo "Warning: assuming on jet machine" 1>&2
+        MACHINE=jet ;;
+    *) 
+	echo "Usage: $0 machine" 1>&2
+	echo "Install compile WW3 on this machine" 1>&2
+	echo "Example: $0 jet" 1>&2
+	exit 1
+	;;
+esac
+
+up=$(dirname $( pwd ) )
+hlib="$up/hwrf-utilities/libs"
+
+# Check libraries for GRIB2
+if [[ "Q${G2_LIB4:-}" == Q ]] ; then
+    G2_LIB4="-L$hlib -lg2"
+fi
+if [[ "Q${W3NCO_LIB4:-}" == Q ]] ; then
+    W3NCO_LIB4="-L$hlib -lw3nco_i4r4"
+fi
+if [[ "Q${BACIO_LIB4:-}" == Q ]] ; then
+    BACIO_LIB4="-L$hlib -lbacio"
+fi
+if [[ "Q${JASPER_LIB:-}" == Q ]] ; then
+    for ldir in ${JASPER:+$JASPER/lib} ${JASPERLIB:+$JASPERLIB} \
+		/usrx/local/lib /gpfs/hps/nco/opts/nwprod/lib \
+		/gpfs/hps/usrx/local/jasper/1.900.1/lib \
+		/usr/lib64 /usr/local/lib /usr/lib ; do
+	if [[ -s $ldir/libjasper.a || -s $ldir/libjasper.so ]] ; then
+	    JASPER_LIB="-L$ldir -ljasper"
+	    break
+	fi
+    done
+    if [[ "Q${JASPER_LIB:-}" == Q ]] ; then
+	echo "Cannot find libjasper." 1>&2
+	echo "Set JASPER_LIB to jasper linker flags (-L/path -ljasper)." 1>&2
+	exit 1
+    fi
+fi
+if [[ "Q${PNG_LIB:-}" == Q ]] ; then
+    for ldir in ${LIB_PNG_PATH:-} \
+		/usrx/local/lib /gpfs/hps/nco/opts/nwprod/lib \
+		/gpfs/hps/usrx/local/libpng/1.2.49/cce/lib/ \
+		/usr/lib64 /usr/local/lib /usr/lib ; do
+	if [[ -s $ldir/libpng.a || -s $ldir/libpng.so ]] ; then
+	    PNG_LIB="-L$ldir -lpng"
+	    break
+	fi
+    done
+    if [[ "Q${PNG_LIB:-}" == Q ]] ; then
+	echo "Cannot find libpng." 1>&2
+	echo "Set PNG_LIB to libpng linker flags (-L/path -lpng)." 1>&2
+	exit 1
+    fi
+fi
+if [[ "Q${Z_LIB:-}" == Q ]] ; then
+    for ldir in ${LIB_Z_PATH:-} \
+		/usrx/local/lib /gpfs/hps/nco/opts/nwprod/lib \
+		/gpfs/hps/usrx/local/zlib/1.2.8/gnu/49/lib/ \
+		/usr/lib64 /usr/local/lib /usr/lib; do
+	if [[ -s $ldir/libz.a || -s $ldir/libz.so ]] ; then
+	    Z_LIB="-L$ldir -lz"
+	    break
+	fi
+    done
+    if [[ "Q${Z_LIB:-}" == Q ]] ; then
+	echo "Cannot find zlib." 1>&2
+	echo "Set Z_LIB to zlib linker flags (-L/path -lz)." 1>&2
+	exit 1
+    fi
+fi
 
 # check compiler for WW3 util 
-if ( $MACHINE == wcosscray ) then
-  set F77=ftn
+if [[ $MACHINE == wcosscray ]] ; then
+    F77=ftn
 else
-  set F77=ifort
-endif
+    F77=ifort
+fi
 
 echo "MACHINE: ${MACHINE}"
 echo "F77 for WW3 util: ${F77}"
 
 # Make a build dir and go to the actual build dir 
+if [[ -e build || -L build ]] ; then
+    rm -rf build
+fi
 mkdir -p build
 cd build
 rm -f svn
 ln -sf .. svn
 
-set WW3_DIR=`pwd`
+WW3_DIR=`pwd`
 
 #Preapare wwatch3.env
-cat > wwatch3.env << EOF 
+cat > wwatch3.env <<EOF
 WWATCH3_LPR      printer
 WWATCH3_F77      ${F77} 
 WWATCH3_CC       cc
@@ -41,3 +109,11 @@ WWATCH3_SOURCE   yes
 WWATCH3_LIST     yes
 EOF
 
+cat > grib2libs.env <<EOF
+G2_LIB4="$G2_LIB4"
+W3NCO_LIB4="$W3NCO_LIB4"
+BACIO_LIB4="$BACIO_LIB4"
+JASPER_LIB="$JASPER_LIB"
+PNG_LIB="$PNG_LIB"
+Z_LIB="$Z_LIB"
+EOF

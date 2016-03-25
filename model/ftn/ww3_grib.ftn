@@ -563,11 +563,13 @@
 !
 ! ... Set GRIB2 Data Representation Template Number (Code Table 5.0)
 !
-!/NCEP2       IDRSNUM = 40 !jpeg2000 *** SEGFAULTS in some linux
-!                            clusters with Intel compiler ***
+!/NCEP2       !IDRSNUM = 40 !jpeg2000 *** SEGFAULTS in some linux
+!                             clusters with Intel compiler ***
 !/NCEP2       !IDRSNUM = 0 !simple packing
 !/NCEP2       !IDRSNUM = 41 !png packing
 !/NCEP2       !IDRSNUM = 2 !Complex Packing (Grid Point Data)
+!/NCEP2       IDRSNUM = 32 ! Complex encoding with second-order differences
+!/NCEP2                    ! (faster than jpeg with similar size)
 !
 ! ... Set GRIB2 IDRS elements
 !     ( 1) Reference value (R) (IEEE 32-bit floating-point value)

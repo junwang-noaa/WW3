@@ -41,7 +41,7 @@
 # 1. Preparations                                                             #
 # --------------------------------------------------------------------------- #
 # 1.a Check and process input
-
+set -x
   if [ "$#" != '1' ]
   then
     echo "usage: comp name" ; exit 1
@@ -93,7 +93,7 @@
     #comp=mpiifort
     #which mpiifort 1> /dev/null 2> /dev/null
     comp=ftn
-    which ftn 1> /dev/null 2> /dev/null
+    which ftn
     OK=$?
     if [ $OK != 0 ]
     then 
@@ -122,7 +122,7 @@
   opt="$opt -I$path_i"
 
 # 2.b.2 Compile
-
+  echo "$comp $opt" 1>&2
   $comp $opt                             $name.$fext > $name.out 2> $name.err
   OK="$?"
 
