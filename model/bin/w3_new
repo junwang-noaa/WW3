@@ -27,7 +27,7 @@
 # 1. Preparations                                                             #
 # --------------------------------------------------------------------------- #
 # 1.a Check and process input
-
+set -x
   if test "$#" -lt '1'
   then
     keys='all'
