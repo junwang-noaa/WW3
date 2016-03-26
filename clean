@@ -1,16 +1,18 @@
-#!/bin/csh -f
+#!/bin/bash
 
-set PATH=".:$PATH"
+set -x
 
-if ( ! -d build ) then
+export PATH=".:$PATH"
+
+if [[ ! -d build ]] ; then
   echo "Already cleaned, do Nothing"
   exit
-endif
+fi
 
-if ( "$1" == '-a' ) then
+if [[ "$1" == '-a' ]] ; then
   rm -r build
 else
   cd build/bin
   #./w3_clean
   ./w3_new all
-endif
+fi
