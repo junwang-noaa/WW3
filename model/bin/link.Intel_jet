@@ -25,7 +25,7 @@
 # 1. Preparations                                                             #
 # --------------------------------------------------------------------------- #
 # 1.a Check and process input
-
+set -x
   if [ "$#" -lt '1' ]
   then
     echo "usage: link name [name]" ; exit 1
@@ -122,11 +122,12 @@
   then
     opt="$opt -openmp"
   fi
-
+set -u
   case $prog in
     'ww3_grib'  ) libs="${G2_LIB4} ${W3NCO_LIB4} ${BACIO_LIB4} ${JASPER_LIB} ${PNG_LIB} ${Z_LIB}" ;;
        *        ) libs= ;;
   esac
+set +u
 
   if [ "$netcdf_compile" = 'yes' ]
   then

@@ -41,7 +41,7 @@
 # 1. Preparations                                                             #
 # --------------------------------------------------------------------------- #
 # 1.a Check and process input
-
+set -x
   if [ "$#" != '1' ]
   then
     echo "usage: comp name" ; exit 1
