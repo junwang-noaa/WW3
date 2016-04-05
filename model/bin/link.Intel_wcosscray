@@ -131,12 +131,7 @@ set +u
 
   if [ "$netcdf_compile" = 'yes' ]
   then
-    case $WWATCH3_NETCDF in
-      NC3) libs="$libs -L$NETCDF_LIBDIR -lnetcdf" ;;
-      NC4) libs="$libs -L$NETCDF/lib -lnetcdff -lnetcdf" ;;
-#      NC4) if [ "$mpi_mod" = 'no' ]; then comp="`$NETCDF_CONFIG --fc`"; fi
-#           libs="$libs `$NETCDF_CONFIG --flibs`" ;;
-    esac
+      libs="$libs $NETCDF_LDFLAGS"
   fi
 
 # 3.b Link
