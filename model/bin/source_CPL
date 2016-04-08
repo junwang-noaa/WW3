@@ -1,0 +1,189 @@
+#!/bin/sh
+# --------------------------------------------------------------------------- #
+# source_CPL    : Script to manage consecutive creating the source code for   #
+#                 individual executables of WW3 for the coupled HWRF system   #
+#                                                                             #
+#    Copyright 2010-2014 National Weather Service (NWS),                      #
+#       National Oceanic and Atmospheric Administration.  All rights          #
+#       reserved.  WAVEWATCH III is a trademark of the NWS.                   #
+#       No unauthorized use without permission.                               #
+#                                                                             #
+# --------------------------------------------------------------------------- #
+# 1. Preparations                                                             #
+# --------------------------------------------------------------------------- #
+# 1.a Internal variables
+set -xe
+  tmp='ww3_temp'           # temporary working directory
+
+  ww3_env="${HOME}/.wwatch3.env"                           # setup file
+# The following line must not be removed: it is a switch for local install
+# so that all bin scripts point to the local wwatch3.env
+# WW3ENV
+# The following line must not be removed: it is a switch for local install
+# so that all bin scripts point to the local wwatch3.env
+# For manual install (without install_ww3_tar or install_ww3_svn) make sure to
+# either use the generic ww3_env or to add your own ww3_env="${my_directory}"
+
+  if [ ${WWATCH3_ENV} ]; then ww3_env="${WWATCH3_ENV}"; fi # alternate file
+
+# 1.b ID header  - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+  clear
+  echo ' '
+  echo '                ************************************'
+  echo '              ***   WAVEWATCH III compile for MPI  ***'
+  echo '                ************************************'
+  echo ' '
+
+# 1.c Read data from the environment file  - - - - - - - - - - - - - - - - - -
+
+  if test -f $ww3_env
+  then
+    set `grep WWATCH3_DIR $ww3_env` ; shift
+    main_dir="$*"
+  else
+    echo "*** Set-up file $ww3_env not found ***"
+    exit
+  fi
+
+# 1.d Check / make directories   - - - - - - - - - - - - - - - - - - - - - - -
+
+  if test -d $main_dir
+  then
+    cd $main_dir
+  else
+    echo "*** Directory $main_dir not found ***"
+    exit
+  fi
+
+  if test -d bin
+  then
+    cd bin
+  else
+    echo "*** Directory $main_dir/bin not found ***"
+    exit
+  fi
+
+# 1.e Check NetCDF setup - - - - - - - - - - - - - - - - - - - - - - - - - - -
+  WWATCH3_NETCDF=NC4
+  if [ -z "$WWATCH3_NETCDF" ]
+  then
+    ww3_NetCDF=
+  else
+    ww3_NetCDF="ww3_prnc ww3_ounf ww3_ounp ww3_bounc"
+  fi
+
+  echo $ww3_NetCDF
+
+# --------------------------------------------------------------------------- #
+# 2. Process switch files                                                     #
+# --------------------------------------------------------------------------- #
+
+  cp switch_CPL_HWRF switch
+
+  ./sort_switch -s -r switch
+  cp switch                             switch.hold
+  sed -e 's/DIST/SHRD/g' \
+      -e 's/OMPG //g'\
+      -e 's/OMPH //g'\
+      -e 's/OMPX //g'\
+      -e 's/MPI //g'      switch.hold > switch.shrd
+  sed 's/SHRD/DIST MPI/g' switch.shrd > switch.MPI
+  sed -e 's/NCC/ /g' \
+      -e 's/URIC/ /g'\
+      -e 's/MFB1/ /g'\
+      -e 's/FLD1/ /g'     switch.shrd > switch.NOCPL
+  sed -e 's/NCC/ /g' \
+      -e 's/URIC/ /g'\
+      -e 's/MFB1/ /g'\
+      -e 's/NCEP2/NCO NCEP2/g'\
+      -e 's/FLD1/ /g'     switch.shrd > switch.NOCPL_NCO
+# --------------------------------------------------------------------------- #
+# 3. Compile non-MPI codes                                                    #
+# --------------------------------------------------------------------------- #
+#  cp switch.shrd switch
+  cp switch.NOCPL switch
+
+  ./w3_source ww3_grib
+
+  ls  -l ../work/
+  
+# --------------------------------------------------------------------------- #
+# 3. Compile MPI codes                                                        #
+# --------------------------------------------------------------------------- #
+
+  cp switch.MPI switch
+  ./w3_source ww3_shel ww3_multi ww3_sbs1
+
+  ls  -l ../work/
+
+# --------------------------------------------------------------------------- #
+# 3. Compile non-MPI codes                                                    #
+# --------------------------------------------------------------------------- #
+
+#  cp switch.shrd switch
+  cp switch.NOCPL switch
+  ./w3_source ww3_grid ww3_strt ww3_prep ww3_outf ww3_trck \
+         gx_outf gx_outp ww3_systrk ww3_bound ww3_gint
+
+  ./w3_source ww3_gspl
+
+  ./w3_source $ww3_NetCDF
+
+  cp switch.NOCPL_NCO switch
+
+  ./w3_source ww3_outp
+
+  ls  -l ../work/
+
+
+# --------------------------------------------------------------------------- #
+# 4. Reset switch file                                                        #
+# --------------------------------------------------------------------------- #
+
+  cp switch.hold switch
+# cp switch.shrd switch
+
+# --------------------------------------------------------------------------- #
+# 5. Untar the source code                                                    #
+# --------------------------------------------------------------------------- #
+
+  mkdir -p ../../src
+  cd ../../src
+  cp ../build/work/*.tar.gz ./
+  progall="ww3_shel ww3_multi ww3_sbs1 \
+           ww3_grib \
+           ww3_grid ww3_strt ww3_prep ww3_outf ww3_trck \
+           ww3_gspl gx_outf gx_outp ww3_systrk ww3_bound ww3_gint \
+           ${ww3_NetCDF} \
+           ww3_outp"
+  for prog in ${progall}  
+  do
+    if [ -f ${prog}.tar.gz ];
+    then
+      mkdir -p ${prog}.fd
+      cd ${prog}.fd
+      echo "untaring ${prog}.tar.gz ..."
+      tar -zxvf ../${prog}.tar.gz 
+      cd ../
+    else
+     echo "Warning: ${prog}.tar.gz does not exist."
+    fi
+    rm ${prog}.tar.gz
+  done
+
+# --------------------------------------------------------------------------- #
+# 6. Clean up                                                                 #
+# --------------------------------------------------------------------------- #
+
+# rm -f switch.hold switch.shrd switch.MPI
+# ./w3_clean
+
+  echo ' '
+  echo ' '
+  echo '                   *******************************'
+  echo '                 ***       End of program        ***'
+  echo '                   *******************************'
+  echo ' '
+
+# end of script ------------------------------------------------------------- #
