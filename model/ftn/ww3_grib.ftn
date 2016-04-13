@@ -143,9 +143,25 @@
 !/NCEP1      INTEGER                 :: KPDS(25), KGDS(22)
 ! GRIB2 specific variables
 !/NCEP2      INTEGER                 :: KPDS(200), KGDS(200)
-!/NCEP2      INTEGER, TARGET         :: IDRS(200), IDRS0(200)
-!/NCEP2      INTEGER, TARGET         :: IDRSNUM, IDRSNUM0
-!/NCEP2      INTEGER, POINTER        :: IDRSPTR(:), IDRSPNUM
+!
+!-----------------------------------------------------------------------
+! Data representation section for GRIB2 encoding.  Note that IDRS is a
+! temporary work array that is modified during ADDFIELD.  The IDRS must
+! be must be reset to original values before the next call to ADDFIELD,
+! or the data may be encoded wrong.
+!
+!   IDRS = work array for G2 library.  At input, it specifies encoding settings.
+!   IDRS1 = IDRS settings for when there is at least one point that is not undef.
+!   IDRS0 = IDRS settings for when all data is undef.
+!
+!   IDRSNUM = encoding method temporary variable
+!   IDRSNUM1 = encoding method for when at least one point is not undef.
+!   IDRSNUM0 = encoding method for when all points are undef
+!
+!/NCEP2      INTEGER                 :: IDRS(200), IDRS1(200), IDRS0(200)
+!/NCEP2      INTEGER, TARGET         :: IDRSNUM,   IDRSNUM1,   IDRSNUM0
+!-----------------------------------------------------------------------
+!
 !/NCEP2      INTEGER                 :: LISTSEC0(3), LISTSEC1(13),IGDS(5)
 !/NCEP2      INTEGER                 :: IDEFLIST, IDEFNUM, KPDSNUM, NUMCOORD
 !/NCEP2      INTEGER                 :: IBMP, LCGRIB, LENGRIB
@@ -571,13 +587,14 @@
 !
 ! Option to use when all data is masked out:
 !/NCEP2       IDRSNUM0 = 0 ! fallback if no data (all mask = false)
-! Options for when data is present:
-!/NCEP2       !IDRSNUM = 40 !jpeg2000 *** SEGFAULTS in some linux
+!
+! Option for when data is present:
+!/NCEP2       !IDRSNUM1 = 40 !jpeg2000 *** SEGFAULTS in some linux
 !                             clusters with Intel compiler ***
-!/NCEP2       !IDRSNUM = 0 !simple packing
-!/NCEP2       !IDRSNUM = 41 !png packing
-!/NCEP2       !IDRSNUM = 2 !Complex Packing (Grid Point Data)
-!/NCEP2       IDRSNUM=32 ! Complex Packing (2nd order diff)
+!/NCEP2       !IDRSNUM1 = 0 !simple packing
+!/NCEP2       !IDRSNUM1 = 41 !png packing
+!/NCEP2       !IDRSNUM1 = 2 !Complex Packing (Grid Point Data)
+!/NCEP2       IDRSNUM1=32 ! Complex Packing (2nd order diff)
 !
 ! ... Set GRIB2 IDRS elements
 !     ( 1) Reference value (R) (IEEE 32-bit floating-point value)
@@ -589,15 +606,15 @@
 !/NCEP2      ! IDRS0 is fallback if no data (all mask = false)
 !/NCEP2      IDRS0   = 0
 !/NCEP2      IDRS0(3)= 2
-!/NCEP2      ! IDRS is used if data is present (any mask /= false)
-!/NCEP2      IDRS    = 0
-!/NCEP2      IDRS(3) = 2
-!/NCEP2      IF(IDRSNUM==31 .or. IDRSNUM==32) THEN
-!/NCEP2        IDRS(17)=MOD(IDRSNUM,10)
-!/NCEP2        IDRSNUM=3
-!/NCEP2        IDRS(6)=1
-!/NCEP2        IDRS(7)=1
-!/NCEP2        call mkieee(undef,idrs(8),1)
+!/NCEP2      ! IDRS1 is used if data is present (any mask /= false)
+!/NCEP2      IDRS1    = 0
+!/NCEP2      IDRS1(3) = 2
+!/NCEP2      IF(IDRSNUM1==31 .or. IDRSNUM1==32) THEN
+!/NCEP2        IDRS1(17)=MOD(IDRSNUM1,10)
+!/NCEP2        IDRSNUM1=3
+!/NCEP2        IDRS1(6)=1
+!/NCEP2        IDRS1(7)=1
+!/NCEP2        call mkieee(undef,IDRS1(8),1)
 !/NCEP2      ENDIF
 !
 !/T      WRITE (NDST,9050) KPDS
@@ -1273,11 +1290,11 @@
 		  ENDIF
                 END DO
 !/NCEP2         if(nmask==0) then
-!/NCEP2            IDRSPTR=>IDRS0
-!/NCEP2            IDRSPNUM=>IDRSNUM0
+!/NCEP2            IDRS=IDRS0
+!/NCEP2            IDRSNUM=IDRSNUM0
 !/NCEP2         else
-!/NCEP2            IDRSPTR=>IDRS
-!/NCEP2            IDRSPNUM=>IDRSNUM0
+!/NCEP2            IDRS=IDRS1
+!/NCEP2            IDRSNUM=IDRSNUM1
 !/NCEP2         end if
 !/NCEP1                CALL PUTGB (NDSDAT,NDATA,KPDS,KGDS,BITMAP,YY(:,0),IO)
 !/NCEP2                CALL GRIBCREATE (CGRIB,LCGRIB,LISTSEC0,LISTSEC1,IO)
@@ -1286,7 +1303,7 @@
 !/NCEP2                             IDEFNUM, IO)
 !/NCEP2                IF (IO .NE. 0) GOTO 820
 !/NCEP2                CALL ADDFIELD (CGRIB,LCGRIB,KPDSNUM,KPDS,200,        &
-!/NCEP2                               COORDLIST,NUMCOORD,IDRSPNUM, IDRSPTR, &
+!/NCEP2                               COORDLIST,NUMCOORD,IDRSNUM, IDRS,     &
 !/NCEP2                               200,YY(:,0), NDATA, IBMP, BITMAP, IO)
 !/NCEP2                IF (IO .NE. 0) GOTO 820
 !/NCEP2                CALL GRIBEND (CGRIB, LCGRIB, LENGRIB, IO)
@@ -1308,11 +1325,11 @@
                       ENDIF
                    END DO
 !/NCEP2            if(nmask==0) then
-!/NCEP2               IDRSPTR=>IDRS0
-!/NCEP2               IDRSPNUM=>IDRSNUM0
+!/NCEP2               IDRS=IDRS0
+!/NCEP2               IDRSNUM=IDRSNUM0
 !/NCEP2            else
-!/NCEP2               IDRSPTR=>IDRS
-!/NCEP2               IDRSPNUM=>IDRSNUM0
+!/NCEP2               IDRS=IDRS1
+!/NCEP2               IDRSNUM=IDRSNUM1
 !/NCEP2            end if
 !/NCEP1                  CALL PUTGB (NDSDAT,NDATA,KPDS,KGDS,BITMAP,YY(:,I),IO)
 !/NCEP2                  CALL GRIBCREATE (CGRIB,LCGRIB,LISTSEC0,LISTSEC1,IO)
@@ -1321,7 +1338,7 @@
 !/NCEP2                               IDEFNUM, IO)
 !/NCEP2                  IF (IO .NE. 0) GOTO 820
 !/NCEP2                  CALL ADDFIELD (CGRIB,LCGRIB,KPDSNUM,KPDS,200,        &
-!/NCEP2                                 COORDLIST, NUMCOORD,IDRSPNUM, IDRSPTR,&
+!/NCEP2                                 COORDLIST, NUMCOORD,IDRSNUM, IDRS,&
 !/NCEP2                                 200,YY(:,I), NDATA, IBMP, BITMAP, IO)
 !/NCEP2                  IF (IO .NE. 0) GOTO 820
 !/NCEP2                  CALL GRIBEND (CGRIB, LCGRIB, LENGRIB, IO)
@@ -1345,13 +1362,12 @@
 		  ENDIF
                 END DO
 !/NCEP2         if(nmask==0) then
-!/NCEP2            IDRSPTR=>IDRS0
-!/NCEP2            IDRSPNUM=>IDRSNUM0
+!/NCEP2            IDRS=IDRS0
+!/NCEP2            IDRSNUM=IDRSNUM0
 !/NCEP2         else
-!/NCEP2            IDRSPTR=>IDRS
-!/NCEP2            IDRSPNUM=>IDRSNUM0
+!/NCEP2            IDRS=IDRS1
+!/NCEP2            IDRSNUM=IDRSNUM1
 !/NCEP2         end if
-!
 !/NCEP1            CALL PUTGB (NDSDAT,NDATA,KPDS,KGDS,BITMAP,X1,IO)
 !/NCEP2            CALL GRIBCREATE (CGRIB,LCGRIB,LISTSEC0,LISTSEC1,IO)
 !/NCEP2            IF (IO .NE. 0) GOTO 810
@@ -1359,7 +1375,7 @@
 !/NCEP2                         IDEFNUM, IO)
 !/NCEP2            IF (IO .NE. 0) GOTO 820
 !/NCEP2            CALL ADDFIELD (CGRIB,LCGRIB,KPDSNUM,KPDS,200,        &
-!/NCEP2                           COORDLIST, NUMCOORD, IDRSPNUM,IDRSPTR,&
+!/NCEP2                           COORDLIST, NUMCOORD, IDRSNUM, IDRS,   &
 !/NCEP2                           200,X1, NDATA, IBMP, BITMAP, IO)
 !/NCEP2            IF (IO .NE. 0) GOTO 820
 !/NCEP2            CALL GRIBEND (CGRIB, LCGRIB, LENGRIB, IO)
@@ -1376,11 +1392,11 @@
 		  ENDIF
                 END DO
 !/NCEP2         if(nmask==0) then
-!/NCEP2            IDRSPTR=>IDRS0
-!/NCEP2            IDRSPNUM=>IDRSNUM0
+!/NCEP2            IDRS=IDRS0
+!/NCEP2            IDRSNUM=IDRSNUM0
 !/NCEP2         else
-!/NCEP2            IDRSPTR=>IDRS
-!/NCEP2            IDRSPNUM=>IDRSNUM0
+!/NCEP2            IDRS=IDRS1
+!/NCEP2            IDRSNUM=IDRSNUM1
 !/NCEP2         end if
 !/NCEP1            CALL PUTGB (NDSDAT,NDATA,KPDS,KGDS,BITMAP,X1,IO)
 !/NCEP2            CALL GRIBCREATE (CGRIB,LCGRIB,LISTSEC0,LISTSEC1,IO)
@@ -1388,8 +1404,8 @@
 !/NCEP2            CALL ADDGRID (CGRIB,LCGRIB,IGDS,KGDS,200,IDEFLIST, &
 !/NCEP2                         IDEFNUM, IO)
 !/NCEP2            IF (IO .NE. 0) GOTO 820
-!/NCEP2            CALL ADDFIELD (CGRIB,LCGRIB,KPDSNUM,KPDS,200, &
-!/NCEP2                           COORDLIST,NUMCOORD,IDRSPNUM,IDRSPTR,&
+!/NCEP2            CALL ADDFIELD (CGRIB,LCGRIB,KPDSNUM,KPDS,200,      &
+!/NCEP2                           COORDLIST,NUMCOORD,IDRSNUM,IDRS,    &
 !/NCEP2                           200,X1, NDATA, IBMP, BITMAP, IO)
 !/NCEP2            IF (IO .NE. 0) GOTO 820
 !/NCEP2            CALL GRIBEND (CGRIB, LCGRIB, LENGRIB, IO)
@@ -1404,8 +1420,15 @@
 !/NCEP2                    CALL ADDGRID (CGRIB,LCGRIB,IGDS,KGDS,200,IDEFLIST, &
 !/NCEP2                                 IDEFNUM, IO)
 !/NCEP2                    IF (IO .NE. 0) GOTO 820
+!/NCEP2         if(nmask==0) then
+!/NCEP2            IDRS=IDRS0
+!/NCEP2            IDRSNUM=IDRSNUM0
+!/NCEP2         else
+!/NCEP2            IDRS=IDRS1
+!/NCEP2            IDRSNUM=IDRSNUM1
+!/NCEP2         end if
 !/NCEP2                    CALL ADDFIELD (CGRIB,LCGRIB,KPDSNUM,KPDS,200,      &
-!/NCEP2                                   COORDLIST,NUMCOORD,IDRSPNUM,IDRSPTR,&
+!/NCEP2                                   COORDLIST,NUMCOORD,IDRSNUM,IDRS,    &
 !/NCEP2                                   200,X2, NDATA, IBMP, BITMAP, IO)
 !/NCEP2                    IF (IO .NE. 0) GOTO 820
 !/NCEP2                    CALL GRIBEND (CGRIB, LCGRIB, LENGRIB, IO)
@@ -1419,8 +1442,15 @@
 !/NCEP2                    CALL ADDGRID (CGRIB,LCGRIB,IGDS,KGDS,200,IDEFLIST, &
 !/NCEP2                                 IDEFNUM, IO)
 !/NCEP2                    IF (IO .NE. 0) GOTO 820
+!/NCEP2         if(nmask==0) then
+!/NCEP2            IDRS=IDRS0
+!/NCEP2            IDRSNUM=IDRSNUM0
+!/NCEP2         else
+!/NCEP2            IDRS=IDRS1
+!/NCEP2            IDRSNUM=IDRSNUM1
+!/NCEP2         end if
 !/NCEP2                    CALL ADDFIELD (CGRIB,LCGRIB,KPDSNUM,KPDS,200,      &
-!/NCEP2                                   COORDLIST,NUMCOORD,IDRSPNUM,IDRSPTR,&
+!/NCEP2                                   COORDLIST,NUMCOORD,IDRSNUM,IDRS,    &
 !/NCEP2                                   200,XX, NDATA, IBMP, BITMAP, IO)
 !/NCEP2                    IF (IO .NE. 0) GOTO 820
 !/NCEP2                    CALL GRIBEND (CGRIB, LCGRIB, LENGRIB, IO)
@@ -1434,8 +1464,15 @@
 !/NCEP2                    CALL ADDGRID (CGRIB,LCGRIB,IGDS,KGDS,200,IDEFLIST, &
 !/NCEP2                                 IDEFNUM, IO)
 !/NCEP2                    IF (IO .NE. 0) GOTO 820
+!/NCEP2         if(nmask==0) then
+!/NCEP2            IDRS=IDRS0
+!/NCEP2            IDRSNUM=IDRSNUM0
+!/NCEP2         else
+!/NCEP2            IDRS=IDRS1
+!/NCEP2            IDRSNUM=IDRSNUM1
+!/NCEP2         end if
 !/NCEP2                    CALL ADDFIELD (CGRIB,LCGRIB,KPDSNUM,KPDS,200,      &
-!/NCEP2                                   COORDLIST,NUMCOORD,IDRSPNUM,IDRSPTR,&
+!/NCEP2                                   COORDLIST,NUMCOORD,IDRSNUM,IDRS,    &
 !/NCEP2                                   200,XY, NDATA, IBMP, BITMAP, IO)
 !/NCEP2                    IF (IO .NE. 0) GOTO 820
 !/NCEP2                    CALL GRIBEND (CGRIB, LCGRIB, LENGRIB, IO)
