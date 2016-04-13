@@ -221,32 +221,7 @@
       IF ( .NOT. FLAGLL ) GOTO 810
 !
 !--- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-! 3.  Read general data and first fields from file
-! 3.a Read file.
-!
-      CALL W3IOGO ( 'READ', NDSOG, IOTEST )
-!
-! 3.b Output fields in file
-!
-!
-      WRITE (NDSO,930)
-      DO I=1, NOGRP
-       DO J=1, NGRPP
-        IF ( FLOGRD(I,J) ) WRITE (NDSO,931) IDOUT(I,J)
-        END DO
-        END DO
-!
-! 3.c Flip MAPSF
-!
-      DO ISEA=1, NSEA
-        IX            = MAPSF(ISEA,1)
-        IY            = MAPSF(ISEA,2)
-        MAPSF(ISEA,2) = NY + 1 - IY
-        MAPSF(ISEA,3) = IY +( IX-1)*NY
-        END DO
-!
-!--- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-! 4.  Read requests from input file.
+! 3.  Read requests from input file.
 !     Output times
 !
       CALL NEXTLN ( COMSTR , NDSI , NDSE )
@@ -365,7 +340,35 @@
 !
       CALL STME21 ( FTIME , IDTIME )
       WRITE (NDSO,948) IDTIME, CID, PID, GID, GDS
-! 
+!
+!--- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+! 4.  Read general data and first fields from file
+! 4.a Read file.
+!
+      CALL W3IOGO ( 'READ', NDSOG, IOTEST )
+!
+! 4.b Output fields in file
+!
+!
+      WRITE (NDSO,930)
+      DO I=1, NOGRP
+       DO J=1, NGRPP
+        IF ( FLOGRD(I,J) ) WRITE (NDSO,931) IDOUT(I,J)
+        END DO
+        END DO
+!
+! 4.c Flip MAPSF
+!
+      DO ISEA=1, NSEA
+        IX            = MAPSF(ISEA,1)
+        IY            = MAPSF(ISEA,2)
+        MAPSF(ISEA,2) = NY + 1 - IY
+        MAPSF(ISEA,3) = IY +( IX-1)*NY
+        END DO
+!
+!--- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+! 5. Set grib encoding parameter Sections
+!
 ! ... Initialize KPDS and KGDS (for both NCEP1 and NCEP2)
 !
       KPDS     =   0
@@ -515,15 +518,15 @@
 !/NCEP2      KGDS( 1) = 6
 !/NCEP2      KGDS( 8) = NX
 !/NCEP2      KGDS( 9) = NY
-!/NCEP2      KGDS(12) = NINT(1000000.*(Y0+(REAL(NY-1)*SY)))
+!/NCEP2      KGDS(12) = NINT(1000000._8*(Y0+(REAL(NY-1)*SY)))
 !/NCEP2      X0 = MOD(X0 + 360.,360.)
-!/NCEP2      KGDS(13) = NINT(1000000.*X0)
+!/NCEP2      KGDS(13) = NINT(1000000._8*X0)
 !/NCEP2      KGDS(14) = 48
-!/NCEP2      KGDS(15) = NINT(1000000.*Y0)
+!/NCEP2      KGDS(15) = NINT(1000000._8*Y0)
 !/NCEP2      XN = MOD(X0+REAL(NX-1)*SX + 360., 360.)
-!/NCEP2      KGDS(16) = NINT(1000000.*XN)
-!/NCEP2      KGDS(17) = NINT(1000000.*SX)
-!/NCEP2      KGDS(18) = NINT(1000000.*SY)
+!/NCEP2      KGDS(16) = NINT(1000000._8*XN)
+!/NCEP2      KGDS(17) = NINT(1000000._8*SX)
+!/NCEP2      KGDS(18) = NINT(1000000._8*SY)
 !
 ! ... Set GRIB2 PDS elements
 !     KPDSNUM   (0 indicates forecast at a horizontal level)
@@ -954,7 +957,7 @@
                   IF (UA(ISEA) .NE. UNDEF) THEN
                      UABS   = SQRT(UA(ISEA)**2+UD(ISEA)**2)
                      IF ( UABS .GT. 0.001 ) THEN
-                         UD(ISEA) = MOD ( 630. -                         &
+                         UD(ISEA) = MOD ( 630. -                       &
                                RADE*ATAN2(UD(ISEA),UA(ISEA)) , 360. )
                        ELSE
                          UD(ISEA) = 0.
