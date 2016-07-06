@@ -473,8 +473,10 @@
                    (DTMAX*max(1.,REAL(ITIME-ITIME0)))
               TAU_DY(IY,IX)=(aMY/REAL(K)-aMY0/REAL(K))/&
                    (DTMAX*max(1.,REAL(ITIME-ITIME0)))
-              TAU_CX(IY,IX)=FCOR*MY(IY,IX)
-              TAU_CY(IY,IX)=-FCOR*MX(IY,IX)
+!              TAU_CX(IY,IX)=FCOR*MY(IY,IX)
+!              TAU_CY(IY,IX)=-FCOR*MX(IY,IX)
+              TAU_CX(IY,IX)= (aMX/REAL(K)-aMX0/REAL(K))/DTMAX
+              TAU_CY(IY,IX)= (aMY/REAL(K)-aMY0/REAL(K))/DTMAX
               DENER(IY,IX)=(ENER(IY,IX)-ENER0(IY,IX))/&
                    (DTMAX*max(1.,REAL(ITIME-ITIME0)))
            ENDIF
@@ -524,8 +526,9 @@
                (MFYX(IY,IXP)-MFYX(IY,IXM))/DX
            DENER(IY,IX)=DENER(IY,IX)+(EFX(IY,IXP)-EFX(IY,IXM))/DX + &
                 (EFY(IYP,IX)-EFY(IYM,IX))/DY
-           ASIM_WBCD(IY,IX) = (MX(IY,IXP)-MX(IY,IXM))/DX + &
-                 (MY(IYP,IX)-MY(IYM,IX))/DY
+!           ASIM_WBCD(IY,IX) = (MX(IY,IXP)-MX(IY,IXM))/DX + &
+!                 (MY(IYP,IX)-MY(IYM,IX))/DY
+           ASIM_WBCD(IY,IX) = 0.0
            !/ Quality Control
            TAU_DX(IY,IX)=MAX(MIN(TAU_DX(IY,IX),2.5),-2.5)
            TAU_DY(IY,IX)=MAX(MIN(TAU_DY(IY,IX),2.5),-2.5)
