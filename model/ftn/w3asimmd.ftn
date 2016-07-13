@@ -304,6 +304,7 @@
 !/MPI        CALL MPPSUM( ASIM_WNDY, NX, NY, MPI_COMM_WAVE)
 !/MPI        CALL MPPSUM( SL_STK_X, NX, NY, MPI_COMM_WAVE)
 !/MPI        CALL MPPSUM( SL_STK_Y, NX, NY, MPI_COMM_WAVE)
+!/MPI        CALL MPPSUM( ASIM_WL, NX, NY, MPI_COMM_WAVE)
 ! Overwrite WXN(0)/WYN(0) on all locations (hence post-MPISUM) 
 ! This replaces the input atmospheric wind with 10m neutral wind
 ! that WW3 should run with.  (Averaging appropriate?)
