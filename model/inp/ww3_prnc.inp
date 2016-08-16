@@ -2,7 +2,9 @@ $ -------------------------------------------------------------------- $
 $ WAVEWATCH III Field preprocessor input file                          $
 $ -------------------------------------------------------------------- $
 $ Major types of field and time flag
-$   Field types  :  ICE   Ice concentrations.
+$   Field types  :  IC1   Ice thickness.
+$                   IC5   Ice floe mean diameter.
+$                   ICE   Ice concentrations.
 $                   ISI   Icebergs and sea ice.
 $                   LEV   Water levels.
 $                   WND   Winds.
@@ -29,7 +31,8 @@ $
   'WND' 'LL' T T
 $
 $ Name of spatial dimensions------------------------------------------ $
-$ NB: time dimension is expected to be called 'time'
+$ NB: time dimension is expected to be called 'time' and must respect 
+$     Julian or Gregorian calendar with leap day.
 $
  longitude latitude
 $

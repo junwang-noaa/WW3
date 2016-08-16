@@ -6,7 +6,7 @@
 !/                  | WAVEWATCH III           NOAA/NCEP |
 !/                  |           H. L. Tolman            |
 !/                  |                        FORTRAN 90 |
-!/                  | Last update :         10-Dec-2014 |
+!/                  | Last update :         27-Aug-2015 |
 !/                  +-----------------------------------+
 !/
 !/    13-Dec-2004 : Origination.                        ( version 3.06 )
@@ -34,6 +34,9 @@
 !/                  reducing memory footprint for fields.
 !/    19-Dec-2012 : Move NOSWLL to data structure.      ( version 4.11 )
 !/    10-Dec-2014 : Add checks for allocate status      ( version 5.04 )
+!/    27-Aug-2015 : Adding interpolated ICEF (mean ice  ( version 5.10 )
+!/                  floe diameter), ICEH (ice thickness)
+!/                  and ICE (ice concentration).
 !/
 !/    Copyright 2009-2012 National Weather Service (NWS),
 !/       National Oceanic and Atmospheric Administration.  All rights
@@ -159,6 +162,9 @@
 !      CAO       R.A.  Public   Interpolated current speeds.
 !      CDO       R.A.  Public   Interpolated current directions.
 !      SPCO      R.A.  Public   Output spectra.
+!      ICEO      R.A.  Public   Interpolated ice concentration.
+!      ICEHO     R.A.  Public   Interpolated ice thickness.
+!      ICEFO     R.A.  Public   Interpolated ice floe.
 !      PTNME     C.A.  Public   Output locations.
 !      GRDID     C.A.  Public   Originating grid ID.
 !      O2INIT    Log.  Public   Flag for array initialization.
@@ -320,9 +326,10 @@
 !/MPI        INTEGER               :: NRQPO, NRQPO2
         INTEGER, POINTER      :: IPTINT(:,:,:), IL(:), IW(:), II(:)
 !/MPI        INTEGER, POINTER      :: IRQPO1(:), IRQPO2(:)
-        REAL, POINTER         :: PTLOC(:,:), PTIFAC(:,:),            &
-                                 DPO(:), WAO(:), WDO(:), ASO(:),     &
-                                 CAO(:), CDO(:), SPCO(:,:)
+        REAL, POINTER         :: PTLOC(:,:), PTIFAC(:,:),             &
+                                 DPO(:), WAO(:), WDO(:), ASO(:),      &
+                                 CAO(:), CDO(:), ICEO(:), ICEHO(:),   &
+                                 ICEFO(:), SPCO(:,:)
         CHARACTER(LEN=10), POINTER :: PTNME(:), GRDID(:)
         LOGICAL               :: O2INIT
 !/MPI        LOGICAL               :: O2IRQI
@@ -334,6 +341,7 @@
 !/MPI        INTEGER, POINTER      :: IRQTR(:)
         LOGICAL               :: O3INIT, STOP
         LOGICAL, POINTER      :: MASK1(:,:), MASK2(:,:)
+        CHARACTER(LEN=32), POINTER  :: TRCKID(:,:)
       END TYPE OTYPE3
 !/
       TYPE OTYPE4
@@ -418,9 +426,10 @@
 !/MPI      INTEGER, POINTER        :: NRQPO, NRQPO2
       INTEGER, POINTER        :: IPTINT(:,:,:), IL(:), IW(:), II(:)
 !/MPI      INTEGER, POINTER        :: IRQPO1(:), IRQPO2(:)
-      REAL, POINTER           :: PTLOC(:,:), PTIFAC(:,:),            &
-                                 DPO(:), WAO(:), WDO(:), ASO(:),     &
-                                 CAO(:), CDO(:), SPCO(:,:)
+      REAL, POINTER           :: PTLOC(:,:), PTIFAC(:,:),             &
+                                 DPO(:), WAO(:), WDO(:), ASO(:),      &
+                                 CAO(:), CDO(:), ICEO(:), ICEHO(:),   &
+                                 ICEFO(:), SPCO(:,:)
       CHARACTER(LEN=10), POINTER :: PTNME(:), GRDID(:)
       LOGICAL, POINTER        :: O2INIT
 !/MPI        LOGICAL, POINTER      :: O2IRQI
@@ -432,6 +441,7 @@
 !/MPI      INTEGER, POINTER        :: IRQTR(:)
       LOGICAL, POINTER        :: O3INIT, STOP
       LOGICAL, POINTER        :: MASK1(:,:), MASK2(:,:)
+      CHARACTER(LEN=32), POINTER   :: TRCKID(:,:)
 !/
 !/ Type 4 ...
 !/
@@ -642,8 +652,8 @@
       IDOUT( 1, 6)  = 'Ice concentration   '
       IDOUT( 1, 7)  = 'Iceberg damp coeffic'
 !/BT4      IDOUT( 1, 8)  = 'Sediment diam D50   '
-!     IDOUT( 1, 9)  = 'Critical Shields num'
-!     IDOUT( 1,10)  = 'Base roughness K_N0 '
+!/IS2      IDOUT( 1, 9)  = 'ice thickness   '
+!/IS2      IDOUT( 1, 10) = 'Avg. ice floe diam. '
 !
 ! 2) Standard mean wave parameters
 !
@@ -914,6 +924,9 @@
                  OUTPTS(IMOD)%OUT2%ASO(NPT)        ,                  &
                  OUTPTS(IMOD)%OUT2%CAO(NPT)        ,                  &
                  OUTPTS(IMOD)%OUT2%CDO(NPT)        ,                  &
+                 OUTPTS(IMOD)%OUT2%ICEO(NPT)       ,                  &
+                 OUTPTS(IMOD)%OUT2%ICEHO(NPT)      ,                  &
+                 OUTPTS(IMOD)%OUT2%ICEFO(NPT)      ,                  &  
                  OUTPTS(IMOD)%OUT2%SPCO(NSPEC,NPT) ,                  &
                  OUTPTS(IMOD)%OUT2%PTLOC(2,NPT)    , STAT=ISTAT       )
       CHECK_ALLOC_STATUS ( ISTAT )
@@ -1074,7 +1087,8 @@
 ! 2.  Allocate arrays
 !
       ALLOCATE ( OUTPTS(IMOD)%OUT3%MASK1(NY,NX) ,                     &
-                 OUTPTS(IMOD)%OUT3%MASK2(NY,NX) , STAT=ISTAT          )
+                 OUTPTS(IMOD)%OUT3%MASK2(NY,NX) ,                     &
+                 OUTPTS(IMOD)%OUT3%TRCKID(NY,NX), STAT=ISTAT          )
       CHECK_ALLOC_STATUS ( ISTAT )
 !
       OUTPTS(IMOD)%OUT3%O3INIT = .TRUE.
@@ -1478,6 +1492,9 @@
           ASO    => OUTPTS(IMOD)%OUT2%ASO
           CAO    => OUTPTS(IMOD)%OUT2%CAO
           CDO    => OUTPTS(IMOD)%OUT2%CDO
+          ICEO   => OUTPTS(IMOD)%OUT2%ICEO         
+          ICEHO  => OUTPTS(IMOD)%OUT2%ICEHO
+          ICEFO  => OUTPTS(IMOD)%OUT2%ICEFO
           SPCO   => OUTPTS(IMOD)%OUT2%SPCO
           PTNME  => OUTPTS(IMOD)%OUT2%PTNME
           GRDID  => OUTPTS(IMOD)%OUT2%GRDID
@@ -1500,6 +1517,7 @@
       IF ( O3INIT ) THEN
           MASK1  => OUTPTS(IMOD)%OUT3%MASK1
           MASK2  => OUTPTS(IMOD)%OUT3%MASK2
+          TRCKID => OUTPTS(IMOD)%OUT3%TRCKID
         END IF
 !
       IFILE4 => OUTPTS(IMOD)%OUT4%IFILE4

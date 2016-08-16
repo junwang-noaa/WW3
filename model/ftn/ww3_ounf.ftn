@@ -7,7 +7,7 @@
 !/                  |           F. Ardhuin              |
 !/                  |           M. Accensi              |
 !/                  |                        FORTRAN 90 |
-!/                  | Last update :         14-Oct-2014 |
+!/                  | Last update :         27-Aug-2015 |
 !/                  +-----------------------------------+
 !/
 !/    17-Mar-2010 : Creation                            ( version 3.14_SHOM )
@@ -19,6 +19,7 @@
 !/    30-Apr-2014 : Correct group3 freq dim.            ( version 5.00 )
 !/    23-May-2014 : Adding ice fluxes to W3SRCE         ( version 5.01 )
 !/    14-Oct-2014 : Keep the output files opened        ( version 5.01 )
+!/    27-Aug-2015 : ICEH and ICEF added as output       ( version 5.10 )
 !/
 !/    Copyright 2009-2013 National Weather Service (NWS),
 !/       National Oceanic and Atmospheric Administration.  All rights
@@ -101,7 +102,7 @@
       USE W3INITMD, ONLY: WWVER, SWITCHES
 !/
       USE W3GDATMD
-      USE W3WDATMD, ONLY: TIME, WLV, ICE, UST, USTDIR, BERG
+      USE W3WDATMD, ONLY: TIME, WLV, ICE, ICEH, ICEF, BERG, UST, USTDIR
       USE W3ADATMD, ONLY: DW, UA, UD, AS, CX, CY, HS, WLM, T0M1, THM,  &
                           THS, FP0, THP0, FP1, THP1, DTDYN, FCUT,      &
                           ABA, ABD, UBA, UBD, SXX, SYY, SXY, USERO,    &
@@ -129,7 +130,7 @@
                                  NDSTRC, NTRACE, IERR, I, J, I1F, I2F,    &
                                  TOUT(2), TDUM(2), IOTEST, NOUT, IFI, IFJ,&
                                  NCTYPE, IX1, IXN, IY1, IYN,              &
-                                 IOUT, S3, S4, S5, iret,                  &
+                                 IOUT, S3, iret,                          &
                                  NBIPART, CNTIPART, NCVARTYPE, IPART,     &
                                  NCIDS(NOGRP,NGRPP,6)
       INTEGER                 :: iyc, imc, idc, ihc, iminc, isc
@@ -253,13 +254,13 @@
         END IF
       END DO
       ALLOCATE(TABIPART(NBIPART))
-      CNTIPART=1
+      CNTIPART=0
       DO I=1,29
         IF ((STRINGIPART(I:I+1).EQ.'0').OR.(STRINGIPART(I:I+1).EQ.'1')      &
             .OR.(STRINGIPART(I:I+1).EQ.'2').OR.(STRINGIPART(I:I+1).EQ.'3')  &
             .OR.(STRINGIPART(I:I+1).EQ.'4').OR.(STRINGIPART(I:I+1).EQ.'5')) THEN
-          read(STRINGIPART(I:I+1),'(I1)') TABIPART(CNTIPART)
           CNTIPART=CNTIPART+1
+          read(STRINGIPART(I:I+1),'(I1)') TABIPART(CNTIPART)
         END IF
       END DO
       CALL NEXTLN ( COMSTR , NDSI , NDSE )
@@ -355,7 +356,7 @@
 ! 5.1.2  Processes the variable value for the time step IOUT
         CALL W3EXNC ( NX, NY, IX1, IXN, IY1, IYN, NSEA, FILEPREFIX,   &
                       E3DF, P2MSF, US3DF, NCTYPE, TOGETHER, NCVARTYPE,&
-                      FLREQ, NCIDS, S3 )
+                      FLREQ, NCIDS, S3, stopdate )
 
 ! 5.1.3 Defines the stop date
         iyc=TOUT(1)/10000
@@ -387,21 +388,26 @@
           IF ( FLREQ(IFI,IFJ) ) THEN
             IF ( FLOGRD(IFI,IFJ) ) THEN
               IF (.NOT. TOGETHER) THEN
-                iret = nf90_redef(ncids(IFI,IFJ,1))
-                call check_err(iret)
-                iret=nf90_put_att(ncids(IFI,IFJ,1),NF90_GLOBAL,'stop_date',stopdate)
-                call check_err(iret)
-                iret=nf90_close(ncids(IFI,IFJ,1))
-                call check_err(iret)
-                ! close partition files
+                IF (ncids(IFI,IFJ,1).NE.0) THEN
+                  iret = nf90_redef(ncids(IFI,IFJ,1))
+                  call check_err(iret)
+                  iret=nf90_put_att(ncids(IFI,IFJ,1),NF90_GLOBAL,'stop_date',stopdate)
+                  call check_err(iret)
+                  iret=nf90_close(ncids(IFI,IFJ,1))
+                  call check_err(iret)
+                END IF ! NCIDS
+                ! close partition files (except part 0 which is already closed by (IFI,IFJ,1)
                 IF ((IFI.EQ.4).AND.(IFJ.LE.6)) THEN
-                  DO IPART=0,NBIPART
-                    iret = nf90_redef(ncids(IFI,IFJ,IPART+1))
-                    call check_err(iret)
-                    iret=nf90_put_att(ncids(IFI,IFJ,IPART+1),NF90_GLOBAL,'stop_date',stopdate)
-                    call check_err(iret)
-                    iret=nf90_close(ncids(IFI,IFJ,IPART+1))
-                    call check_err(iret)
+                  DO IPART=1,5
+                    IF (ncids(IFI,IFJ,IPART+1).NE.0) THEN
+                      iret = nf90_redef(ncids(IFI,IFJ,IPART+1))
+                      call check_err(iret)
+                      iret=nf90_put_att(ncids(IFI,IFJ,IPART+1),NF90_GLOBAL,'stop_date',stopdate)
+                      call check_err(iret)
+
+                      iret=nf90_close(ncids(IFI,IFJ,IPART+1))
+                      call check_err(iret)
+                    END IF ! NCIDS
                   END DO ! IPART
                 END IF ! partition
               ! else if together
@@ -410,13 +416,15 @@
                 IF ( ((IFI.EQ.6).AND.(IFJ.EQ.8)) .OR.                 &
                      ((IFI.EQ.6).AND.(IFJ.EQ.9)) .OR.                 &
                      (IFI.EQ.3) ) THEN
-                  iret = nf90_redef(ncids(IFI,IFJ,1))
-                  call check_err(iret)
-                  iret=nf90_put_att(ncids(IFI,IFJ,1),NF90_GLOBAL,'stop_date',stopdate)
-                  call check_err(iret)
-                  iret=nf90_close(ncids(IFI,IFJ,1))
-                  call check_err(iret)
-                END IF
+                  IF (ncids(IFI,IFJ,1).NE.0) THEN
+                    iret = nf90_redef(ncids(IFI,IFJ,1))
+                    call check_err(iret)
+                    iret=nf90_put_att(ncids(IFI,IFJ,1),NF90_GLOBAL,'stop_date',stopdate)
+                    call check_err(iret)
+                    iret=nf90_close(ncids(IFI,IFJ,1))
+                    call check_err(iret)
+                  END IF ! NCIDS
+                END IF ! IFI
               END IF ! TOGETHER
             END IF ! FLOGRD
           END IF ! FLREQ
@@ -474,7 +482,6 @@
   970 FORMAT (//'  Generating files '/                                &
                ' --------------------------------------------------')
   971 FORMAT ( '      Files for ',A)
-  972 FORMAT ( ' NetCDF type should be 3 or 4 ')
 !
   999 FORMAT (/'  End of program '/                                   &
                ' ========================================='/          &
@@ -502,7 +509,7 @@
 !/ ------------------------------------------------------------------- /
       SUBROUTINE W3EXNC ( NX, NY, IX1, IXN, IY1, IYN, NSEA,           &
                           FILEPREFIX, E3DF, P2MSF, US3DF, NCTYPE,     &
-                          TOGETHER, NCVARTYPEI, FLREQ, NCIDS, S3 )
+                          TOGETHER, NCVARTYPEI, FLREQ, NCIDS, S3, stopdate )
 !/
 !/                  +-----------------------------------+
 !/                  |           F. Ardhuin              |
@@ -595,6 +602,7 @@
       LOGICAL, INTENT(IN)     :: TOGETHER
       LOGICAL, INTENT(IN)     :: FLREQ(NOGRP,NGRPP)
       INTEGER, INTENT(INOUT)  :: NCIDS(NOGRP,NGRPP,6), S3
+      CHARACTER*30,INTENT(IN) :: stopdate
 !/
 !/ ------------------------------------------------------------------- /
 !/ Local parameters
@@ -614,8 +622,7 @@
                                  dimid(6), varid(300), extradim, ivar,         &
                                  ivar1, idvarout, start(4),count(4),     &
                                  dimln(6),start1D(2), count1D(2), dimfield(3), &
-                                 iyc, imc, idc, ihc, iminc, isc,    &
-                                 Jday0, NCVARTYPE
+                                 iyc, imc, idc, ihc, iminc, isc, NCVARTYPE
 !/NC4    INTEGER                  :: deflate=1
 
      INTEGER(KIND=4)          :: VMIN, VMAX
@@ -636,14 +643,15 @@
       REAL                    :: X1(NX+1,NY), X2(NX+1,NY),            &
                                  XX(NX+1,NY), XY(NX+1,NY),            &
                                  XK(NX+1,NY,NK),                      &
-                                 XXK(NX+1,NY,NK),                       & 
+                                 XXK(NX+1,NY,NK),                     & 
                                  XYK(NX+1,NY,NK) 
 !/BT4   REAL, PARAMETER            :: LOG2=LOG(2.)
       DOUBLE PRECISION        :: SXD, SYD, X0D, Y0D
       LOGICAL                 :: FLFRQ, FLDIR
 !/T      LOGICAL                 :: LTEMP(NGRPP)
-      CHARACTER               :: FNAMENC*50,      &
+      CHARACTER               :: FNAMENC*50,                          &
                                  ENAME*6,FORMF*11, UNITS*20, UNITS2*20
+      CHARACTER, SAVE         :: OLDTIMEID*16 = '0000000000000000'
       CHARACTER, SAVE         :: TIMEID*16 = '0000000000000000'
 !/
 !/ ------------------------------------------------------------------- /
@@ -688,12 +696,13 @@
       ! Defines the format of FILETIME
       S5=S3-8
       S4=S3
-      ! if S3=>YYYYMMDDHH then filetime='YYYYMMDDTHHMMSS'
+      OLDTIMEID=TIMEID
+      ! if S3=>YYYYMMDDHH then filetime='YYYYMMDDTHH'
       IF (S3.EQ.10) THEN 
         S4=S4+1 ! T between day and minutes
         WRITE(FORMAT1,'(A,I1,A,I1,A)') '(I8.8,A1,I',S5,'.',S5,')'
         WRITE (TIMEID,FORMAT1) TIME(1), 'T', &
-               NINT(REAL(TIME(2))/NINT(10.**(6-S5)))
+               FLOOR(REAL(TIME(2))/NINT(10.**(6-S5)))
       ! if S3=>YYYYMMDD then filetime='YYYYMMDD'
       ELSE IF (S3.EQ.8) THEN
         WRITE(FORMAT1,'(A,I1,A,I1,A)') '(I',S3,'.',S3,')'
@@ -702,7 +711,7 @@
       ! or S3=>YYYY then filetime='YYYY'
       ELSE 
         WRITE(FORMAT1,'(A,I1,A,I1,A)') '(I',S3,'.',S3,')'
-        WRITE (TIMEID,FORMAT1) NINT(REAL(TIME(1))/NINT(10.**(8-S3)))
+        WRITE (TIMEID,FORMAT1) FLOOR(REAL(TIME(1))/NINT(10.**(8-S3)))
       END IF       
       ! redefines filename with updated date format
       S1=LEN_TRIM(FILEPREFIX)
@@ -881,7 +890,7 @@
               UNITS  = 'km-1'
               ENAME  = '.ibg'
               CALL W3S2XY ( NSEA, NSEA, NX+1, NY, BERG   , MAPSF, X1 )
-              WHERE ( XX.NE.UNDEF) X1 = X1*0.1
+              WHERE ( X1.NE.UNDEF) X1 = X1*0.1
               NFIELD=1
               varnm(1)='ibg'
               varnl(1)='icebergs_damping'
@@ -896,7 +905,7 @@
 !/BT4              UNITS  = 'Krumbein phi scale'
 !/BT4              ENAME  = '.d50'
 !/BT4              CALL W3S2XY ( NSEA, NSEA, NX+1, NY, SED_D50   , MAPSF, X1 )
-!/BT4              WHERE ( XX.NE.UNDEF) X1 = -LOG(XX/0.001)/LOG2    
+!/BT4              WHERE ( X1.NE.UNDEF) X1 = -LOG(X1/0.001)/LOG2    
 !/BT4              NFIELD=1
 !/BT4              varnm(1)='d50'
 !/BT4              varnl(1)='grain_size'
@@ -906,6 +915,35 @@
 !/BT4              vmin = -10000
 !/BT4              vmax = 32000
 !
+!/IS2 ELSE IF (IFI .EQ. 1 .AND. IFJ .EQ. 9 ) THEN
+!/IS2              FSC = 0.001
+!/IS2              UNITS = 'm'
+!/IS2              ENAME = '.ic1'
+!/IS2              CALL W3S2XY (NSEA, NSEA, NX+1, NY, ICEH  , MAPSF, X1 )
+!/IS2              NFIELD=1
+!/IS2              varnm(1)='ic1'
+!/IS2              varnl(1)='ice thickness'
+!/IS2              varns(1)='ice_thickness'
+!/IS2              varng(1)='ice_thickness'
+!/IS2              varnc(1)=''
+!/IS2              vmin = 0
+!/IS2              vmax = 30000
+!
+!
+!/IS2 ELSE IF (IFI .EQ. 1 .AND. IFJ .EQ. 10 ) THEN
+!/IS2              FSC = 0.05
+!/IS2              UNITS = 'm'
+!/IS2              ENAME = '.ic5'
+!/IS2              CALL W3S2XY (NSEA, NSEA, NX+1, NY, ICEF  , MAPSF, X1 )
+!/IS2              NFIELD=1
+!/IS2              varnm(1)='ic5'
+!/IS2              varnl(1)='maximum floe diameter'
+!/IS2              varns(1)='maximum_ice_floe_diameter'
+!/IS2              varng(1)='maximum_ice_floe_diameter'
+!/IS2              varnc(1)=''
+!/IS2              vmin = 0
+!/IS2              vmax = 30000
+
             ELSE IF ( IFI .EQ. 2 .AND. IFJ .EQ. 1 ) THEN
 !
               NFIELD=1
@@ -2019,8 +2057,8 @@
               vmax = 32000
 !
             ELSE IF ( IFI .EQ. 10 ) THEN
-              FSC    = 0.01
-              UNITS  = 'TBD'
+              FSC    = 0.1
+              UNITS  = 'm'
               WRITE (ENAME,'(A2,I2.2)') '.u', IFJ
               CALL W3S2XY ( NSEA, NSEA, NX+1, NY, USERO(:,IFJ)        &
                                                         , MAPSF, X1 )
@@ -2116,11 +2154,33 @@
 ! 2.4 Gets the netcdf id
 
             OPEN (NDSDAT,FILE=FNAMENC,status='new',IOSTAT=iret)
-            IF (iret.EQ.0) THEN
-              ncid=0
-            ELSE
-              IF (TOGETHER.AND.(.NOT.FLFRQ)) THEN
+            IF (TOGETHER.AND.(.NOT.FLFRQ)) THEN
+              IF (iret.EQ.0) THEN
+                ! close old file
+                IF (INDEX('0000000000000000',OLDTIMEID).EQ.0 .AND. INDEX(TIMEID,OLDTIMEID).EQ.0) THEN
+                  iret = nf90_redef(ncids(1,1,1))
+                  call check_err(iret)
+                  iret=nf90_put_att(ncids(1,1,1),NF90_GLOBAL,'stop_date',stopdate)
+                  call check_err(iret)
+                  iret=nf90_close(ncids(1,1,1))
+                  call check_err(iret)
+                END IF
+                ncid=0
+              ELSE
                 ncid=ncids(1,1,1)
+              END IF
+            ELSE ! TOGETHER AND NOR FLFRQ
+              IF (iret.EQ.0) THEN
+                ! close old file
+                IF (INDEX('0000000000000000',OLDTIMEID).EQ.0 .AND. INDEX(TIMEID,OLDTIMEID).EQ.0) THEN
+                  iret = nf90_redef(ncids(IFI,IFJ,IPART+1))
+                  call check_err(iret)
+                  iret=nf90_put_att(ncids(IFI,IFJ,IPART+1),NF90_GLOBAL,'stop_date',stopdate)
+                  call check_err(iret)
+                  iret=nf90_close(ncids(IFI,IFJ,IPART+1))
+                  call check_err(iret)
+                END IF
+                ncid=0
               ELSE
                 ncid=ncids(IFI,IFJ,IPART+1)
               END IF
@@ -2545,13 +2605,14 @@
             iminc=(TIME(2)-ihc*10000)/100
             isc=TIME(2)-ihc*10000-100*iminc
 !
-            timenc=DBLE(julday(idc,imc,iyc))+(DBLE(ihc)+(DBLE(iminc)+(DBLE(isc)/60.))/60.)/24.
-            Jday0=julday(1,1,1990)
-            timenc=timenc-Jday0
+            timenc=DBLE(julday(idc,imc,iyc)) - DBLE(julday(1,1,1990))              &
+                   + DBLE((ihc + DBLE((iminc + DBLE(isc /60.)) /60.)) /24.)
+
 !
-            WRITE(NDSO,'(3A,I6,A,I4,X,I2,X,I2,X,I2,X,I2,2A)')  &
+
+            WRITE(NDSO,'(3A,I6,A,I4,A,I2.2,A,I2.2,A,I2.2,A,I2.2,A,I2.2,2A)')       &
                     'Writing new record ', ENAME(2:) ,'number ',n, & 
-                    ' for date:',iyc,imc,idc,ihc,iminc,            &
+                    ' for ',iyc,':',imc,':',idc,'T',ihc,':',iminc,':',isc,         &
                     ' in file ',TRIM(FNAMENC)
 
             ! Defines starting point and size of arrays to be written
@@ -2955,13 +3016,13 @@
         iret=nf90_put_att(ncid,varid(1),'long_name','longitude')
         iret=nf90_put_att(ncid,varid(1),'standard_name','longitude')
         iret=nf90_put_att(ncid,varid(1),'valid_min',-180.0)
-        iret=nf90_put_att(ncid,varid(1),'valid_max',180.)
+        iret=nf90_put_att(ncid,varid(1),'valid_max',360.)
 !
         iret=nf90_put_att(ncid,varid(2),'units','degree_north')
         iret=nf90_put_att(ncid,varid(2),'long_name','latitude')
         iret=nf90_put_att(ncid,varid(2),'standard_name','latitude')
         iret=nf90_put_att(ncid,varid(2),'valid_min',-90.0)
-        iret=nf90_put_att(ncid,varid(2),'valid_max',90.)
+        iret=nf90_put_att(ncid,varid(2),'valid_max',180.)
       ELSE 
         IF (GTYPE.EQ.RLGTYPE) THEN 
           iret = nf90_def_var(ncid, 'x', nf90_float, dimid(2), varid(1))

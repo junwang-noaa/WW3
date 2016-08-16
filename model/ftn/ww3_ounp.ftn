@@ -48,6 +48,8 @@
 !/    04-Jun-2014 : Update use of date   (M. Accensi)   ( version 5.00 )
 !/    13-Jun-2014 : Dimension order opt. (M. Accensi)   ( version 5.00 )
 !/    18-Jun-2014 : add mpi implementat. (M. Accensi)   ( version 5.00 )
+!/    27-Aug-2015 : Sice add as additional output       ( version 5.10 )
+!/                  (in source terms)
 !/
 !/    Copyright 2009 National Weather Service (NWS),
 !/       National Oceanic and Atmospheric Administration.  All rights
@@ -162,7 +164,7 @@
       USE W3WDATMD, ONLY: TIME
       USE W3ODATMD, ONLY: NDSE, NDST, NDSO, NOPTS, PTLOC, PTNME,     &
                           DPO, WAO, WDO, ASO, CAO, CDO, SPCO, FNMPRE,&
-                          IPASS => IPASS2
+                          IPASS => IPASS2, ICEFO, ICEO, ICEHO
 !/SETUP      USE W3ODATMD, ONLY: ZET_SETO
 !
 !/O14      USE W3ODATMD, ONLY: GRDID
@@ -192,7 +194,7 @@
       REAL                    :: M2KM
       REAL, ALLOCATABLE       :: XPART(:,:)
       INTEGER, ALLOCATABLE    :: INDREQ(:), INDREQTMP(:)
-      LOGICAL                 :: FLFORM, FLSRCE(6)
+      LOGICAL                 :: FLFORM, FLSRCE(7)
       LOGICAL, ALLOCATABLE    :: FLREQ(:)
       LOGICAL                 :: TOGETHER, ORDER
 
@@ -202,7 +204,7 @@
                                  NCNAME*128, FILETIME*16,   &
                                  attname*120,attval*120
 
-      CHARACTER*25            :: IDSRCE(6)
+      CHARACTER*25            :: IDSRCE(7)
 
       REAL(kind=4)            :: DTHD,RTH0
       REAL(kind=4),DIMENSION(:),ALLOCATABLE    :: THD
@@ -225,6 +227,7 @@
                     'Nonlinear interactions   ' ,                     &
                     'Dissipation              ' ,                     &
                     'Wave-bottom interactions ' ,                     &
+                    'Wave-ice interactions    ' ,                     &
                     'Sum of selected sources  ' /
       FLSRCE = .FALSE.
 !
@@ -401,7 +404,7 @@
         IF ( (IPOINT .GT. 0) .AND. (IPOINT .LE. NOPTS) ) THEN
           IF ( .NOT. FLREQ(IPOINT) ) THEN 
             NREQ = NREQ + 1
-            INDREQTMP(NREQ)=I
+            INDREQTMP(NREQ)=IPOINT
             END IF
           FLREQ(IPOINT) = .TRUE.
         END IF
@@ -439,7 +442,7 @@
       IF (S3.EQ.10) THEN 
         WRITE(FORMAT1,'(A,I1,A,I1,A)') '(I8.8,A1,I',S5,'.',S5,')'
         WRITE (FILETIME,FORMAT1) TIME(1), 'T', &
-               NINT(REAL(TIME(2))/NINT(10.**(6-S5)))
+               FLOOR(REAL(TIME(2))/NINT(10.**(6-S5)))
       ! if S3=>YYYYMMDD then filetime='YYYYMMDD'
       ELSE IF (S3.EQ.8) THEN
         WRITE(FORMAT1,'(A,I1,A,I1,A)') '(I',S3,'.',S3,')'
@@ -448,7 +451,7 @@
       ! or S3=>YYYY then filetime='YYYY'
       ELSE 
         WRITE(FORMAT1,'(A,I1,A,I1,A)') '(I',S3,'.',S3,')'
-        WRITE (FILETIME,FORMAT1) NINT(REAL(TIME(1))/NINT(10.**(8-S3)))
+        WRITE (FILETIME,FORMAT1) FLOOR(REAL(TIME(1))/NINT(10.**(8-S3)))
       END IF
  
 
@@ -823,7 +826,7 @@
         ! together
         IF (TOGETHER) THEN
           DO I=1+(IFL-1)*MFL,(IFL-1)*MFL+NBSTATION
-            IF (FLREQ(I) .OR. TOGETHER) THEN
+            IF (FLREQ(I)) THEN
               IF ( FLAGLL ) THEN
                 IF ( IAPROC .EQ. NAPOUT ) WRITE (NDSO,951) PTNME(I), M2KM*PTLOC(1,I),   &
                                            M2KM*PTLOC(2,I)
@@ -836,7 +839,7 @@
         ! not together
         ELSE
           DO I=1+(IFL-1)*MFL,(IFL-1)*MFL+NBFILEOUT
-            IF (FLREQ(I) .OR. TOGETHER) THEN
+            IF (FLREQ(I)) THEN
               IF ( FLAGLL ) THEN
                 IF ( IAPROC .EQ. NAPOUT ) WRITE (NDSO,951) PTNME(I), M2KM*PTLOC(1,I),   &
                                            M2KM*PTLOC(2,I)
@@ -903,7 +906,7 @@
           DO I=1+(IFL-1)*MFL,(IFL-1)*MFL+NBFILEOUT
             IF (FLREQ(I) .OR. TOGETHER) THEN
               ! together
-              IF ( TOGETHER ) THEN  
+              IF ( TOGETHER ) THEN 
                 CALL W3EXNC(I,ncid(I),NREQ,INDREQ,ORDER)
               ! not together
               ELSE 
@@ -1291,7 +1294,7 @@
 !/ST1      USE W3SRC1MD
 !/ST2      USE W3SRC2MD
 !/ST3      USE W3SRC3MD
-!/ST4      USE W3SRC4MD
+!/ST4      USE W3SRC4MD, ONLY : W3SPR4, W3SIN4, W3SDS4
 !/ST6      USE W3SRC6MD
 !/ST6      USE W3SWLDMD, ONLY : W3SWL6
 !/ST6      USE W3GDATMD, ONLY : SWL6S6
@@ -1310,9 +1313,11 @@
 !/TRX      USE W3STRXMD
 !/BS1      USE W3SBS1MD
 !/BSX      USE W3SBSXMD
+!/IS2      USE W3SIS2MD
 !/XXX      USE W3SXXXMD
       USE W3PARTMD, ONLY: W3PART
-      USE W3DISPMD, ONLY: WAVNU1
+      USE W3DISPMD, ONLY: WAVNU1, LIU_FORWARD_DISPERSION
+      USE W3GDATMD, ONLY: IICEDISP
 !/
       USE W3ARRYMD, ONLY: PRT1DS, PRT2DS, PRT1DM
       USE W3DISPMD, ONLY: NAR1D, DFAC, N1MAX, ECG1, EWN1, DSIE
@@ -1345,6 +1350,8 @@
                                    XYZ, AGE1, AFR, AGE2, FACT, XSTAR,   &
                                    YSTAR, FHIGH, ZWND, Z0, USTD, EMEAN, &
                                    FMEAN, WNMEAN, UDIRCA, CHARN, M2KM
+      REAL                      :: ICETHICK, ICECON, WN_R(NK),CG_ICE(NK), ALPHA_LIU(NK)
+!/IS2       REAL                     :: ICEF, ICEDMAX				   
       REAL                      :: UDIR1(NREQ), CDIR1(NREQ)
       LOGICAL                   :: LASTSTATION=.FALSE.
       LOGICAL                   :: SHORT=.TRUE.
@@ -1366,22 +1373,22 @@
       REAL                      :: E(NK,NTH), E1(NK), APM(NK),          &
                                    THBND(NK), SPBND(NK), A(NTH,NK),     &
                                    WN2(NTH,NK)
-      REAL                      :: DIA(NTH,NK), SWN(NK,NTH), SNL(NK,NTH),&
-                                   SDS(NK,NTH), SBT(NK,NTH), XLN(NTH,NK),&
-                                   XIN(NTH,NK), XNL(NTH,NK), XTR(NTH,NK),&
+      REAL                      :: STT(NK,NTH), SWN(NK,NTH), SNL(NK,NTH),&
+                                   SDS(NK,NTH), SBT(NK,NTH), SIS(NK,NTH)
+      REAL                      :: XIN(NTH,NK), XNL(NTH,NK), XTR(NTH,NK),&
                                    XDS(NTH,NK), XDB(NTH,NK), XBT(NTH,NK),&
-                                   XBS(NTH,NK), XXX(NTH,NK), STT(NK,NTH),&
-                                   XWL(NTH,NK)
+                                   XBS(NTH,NK), XXX(NTH,NK), DIA(NTH,NK),&
+                                   XLN(NTH,NK), XWL(NTH,NK), XIS(NTH,NK), DIA2(NTH,NK)
       REAL                      :: SIN1(NK), SNL1(NK), SDS1(NK),         &
-                                   SBT1(NK), STT1(NK), E1ALL(NK,5)
+                                   SBT1(NK), SIS1(NK), STT1(NK), E1ALL(NK,6)
 !/ST3      LOGICAL                 :: LLWS(NSPEC)
 !/ST4      LOGICAL                 :: LLWS(NSPEC)
 !/ST4      REAL                    :: LAMBDA(NSPEC)
-      CHARACTER*4               :: VAR1(5)
-      REAL(kind=8)              :: timenc,Jday0
-      INTEGER(kind=4)           :: iyc,imc,idc,ihc,iminc,isc
+      CHARACTER*4               :: VAR1(6)
+      DOUBLE PRECISION          :: timenc
+      INTEGER                   :: iyc,imc,idc,ihc,iminc,isc
 !
-      DATA VAR1   / 'Sin ' , 'Snl ', 'Sds ' , 'Sbt ' , 'Stot' /
+      DATA VAR1   / 'Sin ' , 'Snl ', 'Sds ' , 'Sbt ' , 'Sice', 'Stot' /
 
 
 
@@ -1413,6 +1420,7 @@
           XBT = 0.
           XBS = 0.
           XWL = 0.
+          XIS = 0.
           XXX = 0.
         END IF
 
@@ -1487,11 +1495,9 @@
         ihc=TIME(2)/10000
         iminc=(TIME(2)-ihc*10000)/100
         isc=TIME(2)-ihc*10000-100*iminc
-  
-        timenc=DBLE(julday(idc,imc,iyc))                              &
-              +(DBLE(ihc)+(DBLE(iminc)+(DBLE(isc)/60.))/60.)/24.
-        Jday0=JULDAY(1,1,1990)
-        timenc=timenc-Jday0
+
+        timenc=DBLE(julday(idc,imc,iyc)) - DBLE(julday(1,1,1990))              &
+               + DBLE((ihc + DBLE((iminc + DBLE(isc /60.)) /60.)) /24.)
 !
         iret=nf90_put_var(ncid,varid(1),timenc,(/IOUT/))
         call check_err(iret)
@@ -1574,13 +1580,17 @@
 !
 ! 2. Calculate grid parameters using and inlined version of WAVNU1.
 !
-          DEPTH  = MAX ( DMIN, DPO(J) )
-          SQRTH  = SQRT ( depth )
-          UDIR   = MOD ( 270. - WDO(J)*RADE , 360. )
-          UDIRCA = WDO(J)*RADE
-          UDIRR  = WDO(J)
-          UABS   = MAX ( 0.001 , WAO(J) )
-          CDIR   = MOD ( 270. - CDO(J)*RADE , 360. )
+          DEPTH    = MAX ( DMIN, DPO(J) )
+          SQRTH    = SQRT ( depth )
+          UDIR     = MOD ( 270. - WDO(J)*RADE , 360. )
+          UDIRCA   = WDO(J)*RADE
+          UDIRR    = WDO(J)
+          UABS     = MAX ( 0.001 , WAO(J) )
+          CDIR     = MOD ( 270. - CDO(J)*RADE , 360. )
+!/IS2           ICEDMAX  = MAX ( 0., ICEFO(J))
+!/IS2           ICEF     = ICEDMAX
+          ICETHICK = MAX (0., ICEHO(J))
+          ICECON   = MAX (0., ICEO(J))
 !
 !/STAB2            STAB0  = ZWIND * GRAV / 273.
 !/STAB2            STAB   = STAB0 * ASO(J) / MAX(5.,WAO(J))**2
@@ -1989,6 +1999,18 @@
 !/BSX                    CALL W3SBSX
 !
             END IF
+            IF ( FLSRCE(6) ) THEN
+              IF (IICEDISP) THEN  
+	              CALL LIU_FORWARD_DISPERSION (ICETHICK,0.,DEPTH, &
+                     SIG,WN_R,CG_ICE,ALPHA_LIU)
+              ELSE
+                WN_R=WN
+                CG_ICE=CG
+                END IF
+!
+!/IS2              CALL W3SIS2(A, DEPTH, ICECON, ICETHICK, ICEF, ICEDMAX,  &
+!/IS2                          IX, IY, XIS, DIA, DIA2, WN, CG, WN_R, CG_ICE)  	      
+            END IF
 !
 !/XXX                CALL W3SXXX
 !
@@ -2015,6 +2037,7 @@
               SNL1(IK) = 0.
               SDS1(IK) = 0.
               SBT1(IK) = 0.
+              SIS1(IK) = 0.
               STT1(IK) = 0.
               DO ITH=1, NTH
                 ISP         = ITH + (IK-1)*NTH
@@ -2024,27 +2047,31 @@
                 SDS(IK,ITH) = ( XDS(ITH,IK) + XDB(ITH,IK) ) * FACTOR
 !/ST6         SDS(IK,ITH) =   SDS(IK,ITH) +(XWL(ITH,IK)   * FACTOR)
                 SBT(IK,ITH) = ( XBT(ITH,IK) + XBS(ITH,IK) ) * FACTOR
+                SIS(IK,ITH) = XIS(ITH,IK) * FACTOR
                 STT(IK,ITH) = SWN(IK,ITH) + SNL(IK,ITH) + SDS(IK,ITH) + &
-                              SBT(IK,ITH) + XXX(ITH,IK) * FACTOR
+                              SBT(IK,ITH) + SIS(IK,ITH) + XXX(ITH,IK) * FACTOR
                 E1  (IK) = E1  (IK) + E(IK,ITH)
                 SIN1(IK) = SIN1(IK) + SWN(IK,ITH)
                 SNL1(IK) = SNL1(IK) + SNL(IK,ITH)
                 SDS1(IK) = SDS1(IK) + SDS(IK,ITH)
                 SBT1(IK) = SBT1(IK) + SBT(IK,ITH)
+                SIS1(IK) = SIS1(IK) + SIS(IK,ITH)
               END DO
               E1  (IK) = E1(IK)   * DTH * FACE
               SIN1(IK) = SIN1(IK) * DTH * FACS
               SNL1(IK) = SNL1(IK) * DTH * FACS
               SDS1(IK) = SDS1(IK) * DTH * FACS
               SBT1(IK) = SBT1(IK) * DTH * FACS
+              SIS1(IK) = SIS1(IK) * DTH * FACS
             END DO
 !
-            STT1       = SIN1 + SNL1 + SDS1 + SBT1
+            STT1       = SIN1 + SNL1 + SDS1 + SBT1 + SIS1
             E1ALL(:,1) = SIN1
             E1ALL(:,2) = SNL1
             E1ALL(:,3) = SDS1
             E1ALL(:,4) = SBT1
-            E1ALL(:,5) = STT1
+            E1ALL(:,5) = SIS1
+            E1ALL(:,6) = STT1
 !
           END IF ! 3.e
 
@@ -2064,9 +2091,8 @@
               iminc=(TIME(2)-ihc*10000)/100
               isc=TIME(2)-ihc*10000-100*iminc
    
-              timenc=DBLE(julday(idc,imc,iyc))+(DBLE(ihc)+(DBLE(iminc)+(DBLE(isc)/60.))/60.)/24.
-              Jday0=julday(1,1,1990)
-              timenc=timenc-Jday0
+              timenc=DBLE(julday(idc,imc,iyc)) - DBLE(julday(1,1,1990))              &
+                     + DBLE((ihc + DBLE((iminc + DBLE(isc /60.)) /60.)) /24.)
 
               iret=nf90_put_var(ncid,varid(1),timenc,(/IOUT/))
               call check_err(iret)
@@ -2182,9 +2208,8 @@
             iminc=(TIME(2)-ihc*10000)/100
             isc=TIME(2)-ihc*10000-100*iminc
 
-            timenc=DBLE(julday(idc,imc,iyc))+(DBLE(ihc)+(DBLE(iminc)+(DBLE(isc)/60.))/60.)/24.
-            Jday0=julday(1,1,1990)
-            timenc=timenc-Jday0
+            timenc=DBLE(julday(idc,imc,iyc)) - DBLE(julday(1,1,1990))              &
+                   + DBLE((ihc + DBLE((iminc + DBLE(isc /60.)) /60.)) /24.)
 
             iret=nf90_put_var(ncid,varid(1),timenc,(/IOUT/))
 
@@ -2322,9 +2347,8 @@
               iminc=(TIME(2)-ihc*10000)/100
               isc=TIME(2)-ihc*10000-100*iminc
    
-              timenc=DBLE(julday(idc,imc,iyc))+(DBLE(ihc)+(DBLE(iminc)+(DBLE(isc)/60.))/60.)/24.
-              Jday0=julday(1,1,1990)
-              timenc=timenc-Jday0
+              timenc=DBLE(julday(idc,imc,iyc)) - DBLE(julday(1,1,1990))              &
+                     + DBLE((ihc + DBLE((iminc + DBLE(isc /60.)) /60.)) /24.)
 
               iret=nf90_put_var(ncid,varid(1),timenc,(/IOUT/))
             END IF  
@@ -2340,8 +2364,8 @@
                            PTNME(J) )
                   IF (FLSRCE(2) .OR. FLSRCE(3) .OR.             &
                       FLSRCE(4) .OR. FLSRCE(5) .OR.             &
-                      FLSRCE(6) )                               &
-                      CALL PRT1DM (NDSO, NK, 5, E1ALL, SIG(1:NK),&
+                      FLSRCE(6) .OR. FLSRCE(7) )                &
+                      CALL PRT1DM (NDSO, NK, 6, E1ALL, SIG(1:NK),&
                            'RAD/S', 17, SCALE1, VAR1, 'M2',     &
                            PTNME(J) )
               END IF
@@ -2367,6 +2391,10 @@
                           SIG(1:NK), 'RAD/S', 1., SCALE2, 0.0001,&
                            'Sbt(f,th)', 'm^2', PTNME(J) )
                   IF ( FLSRCE(6) )                              &
+                      CALL PRT2DS (NDSO, NK, NK, NTH, SIS,      &
+                          SIG(1:NK), 'RAD/S', 1., SCALE2, 0.0001,&
+                           'Sice(f,th)', 'm^2', PTNME(J) )
+		          IF ( FLSRCE(7) )                              &
                       CALL PRT2DS (NDSO, NK, NK, NTH, STT,      &
                           SIG(1:NK), 'RAD/S', 1., SCALE2, 0.0001,&
                            'Stot(f,th)', 'm^2', PTNME(J) )
@@ -2391,7 +2419,8 @@
               iret=nf90_put_var(ncid,varid(12),SNL1(1:NK),start=(/1,J1,IOUT /),count=(/NK,1,1/))
               iret=nf90_put_var(ncid,varid(13),SDS1(1:NK),start=(/1,J1,IOUT /),count=(/NK,1,1/))
               iret=nf90_put_var(ncid,varid(14),SBT1(1:NK),start=(/1,J1,IOUT /),count=(/NK,1,1/))
-              iret=nf90_put_var(ncid,varid(15),STT1(1:NK),start=(/1,J1,IOUT /),count=(/NK,1,1/))
+              iret=nf90_put_var(ncid,varid(15),SIS1(1:NK),start=(/1,J1,IOUT /),count=(/NK,1,1/))	      
+              iret=nf90_put_var(ncid,varid(16),STT1(1:NK),start=(/1,J1,IOUT /),count=(/NK,1,1/))
 
 !
 !  Performs subtype 3
@@ -2416,13 +2445,15 @@
                   iret=nf90_put_var(ncid,varid(12),FACT*SNL1(IK),(/ IK,J1,IOUT /))
                   iret=nf90_put_var(ncid,varid(13),FACT*SDS1(IK),(/ IK,J1,IOUT /))
                   iret=nf90_put_var(ncid,varid(14),FACT*SBT1(IK),(/ IK,J1,IOUT /))
-                  iret=nf90_put_var(ncid,varid(15),FACT*STT1(IK),(/ IK,J1,IOUT /))
+                  iret=nf90_put_var(ncid,varid(15),FACT*SIS1(IK),(/ IK,J1,IOUT /))		  
+                  iret=nf90_put_var(ncid,varid(16),FACT*STT1(IK),(/ IK,J1,IOUT /))
                 ELSE
                   iret=nf90_put_var(ncid,varid(11),NF90_FILL_FLOAT,(/ IK,J1,IOUT /))
                   iret=nf90_put_var(ncid,varid(12),NF90_FILL_FLOAT,(/ IK,J1,IOUT /))
                   iret=nf90_put_var(ncid,varid(13),NF90_FILL_FLOAT,(/ IK,J1,IOUT /))
                   iret=nf90_put_var(ncid,varid(14),NF90_FILL_FLOAT,(/ IK,J1,IOUT /))
                   iret=nf90_put_var(ncid,varid(15),NF90_FILL_FLOAT,(/ IK,J1,IOUT /))
+                  iret=nf90_put_var(ncid,varid(16),NF90_FILL_FLOAT,(/ IK,J1,IOUT /))
                 END IF
               END DO
 
@@ -2464,6 +2495,9 @@
                  TRANSPOSE(SBT(1:NK,1:NTH)), start=(/1,1,J1,IOUT/), &
                  count=(/NTH,NK,1,1/)                               )
               IF ( FLSRCE(6) )  iret=nf90_put_var(ncid,varid(21),   &
+                 TRANSPOSE(SIS(1:NK,1:NTH)), start=(/1,1,J1,IOUT/), &
+                 count=(/NTH,NK,1,1/)                               )		 
+              IF ( FLSRCE(7) )  iret=nf90_put_var(ncid,varid(22),   &
                  TRANSPOSE(STT(1:NK,1:NTH)), start=(/1,1,J1,IOUT/), &
                  count=(/NTH,NK,1,1/)                               )
 !
@@ -2495,11 +2529,6 @@
 !
 ! Formats
 !
-  900 FORMAT (I8.8,I7.6)
-  901 FORMAT ('''',A10,'''',2F7.2,F10.1,2(F7.2,F6.1))
-  701 FORMAT ('''',A10,'''',2(F8.1,'E3'),F10.1,2(F7.2,F6.1))
-  902 FORMAT (7E11.3)
-  905 FORMAT (9X,A)
   910 FORMAT (/15X,' Water depth       :',F7.1,'  (m)'/               &
                15X,' Wind speed        :',F8.2,' (m/s)')
   911 FORMAT ( 15X,' Wind direction    :',F7.1,'  (degr)')
@@ -2511,198 +2540,6 @@
                15X,' Mean wave period  :',F7.1,'  (s)'/               &
                15X,' Mean wave direct. :',F7.1,'  (degr)'/            &
                15X,' Direct. spread    :',F7.1,'  (degr)'/)
-  920 FORMAT (' Time     : ',A/                                  &
-              ' Location : ',A,'  (',2F8.2,' )'/                 &
-              ' depth    : ',F7.1,'   m'/                        &
-              ' U*       : ',F9.3,' m/s'/                        &
-              ' U10      : ',F7.1,'   m/s'/                      &
-              ' Dir U10  : ',F7.1,'   degr'//                    &
-       '      f     f/fp      F(f)    theta    spr    alpha  '/  &
-       '     (Hz)    (-)     (m2s)    (deg)   (deg)    (-)   '/  &
-           '  --------------------------------------------------')
-  720 FORMAT (' Time     : ',A/                                  &
-              ' Location : ',A,'  (',2(F8.1,'E3'),' )'/          &
-              ' depth    : ',F7.1,'   m'/                        &
-              ' U*       : ',F9.3,' m/s'/                        &
-              ' U10      : ',F7.1,'   m/s'/                      &
-              ' Dir U10  : ',F7.1,'   degr'//                    &
-       '      f     f/fp      F(f)    theta    spr    alpha  '/  &
-       '     (Hz)    (-)     (m2s)    (deg)   (deg)    (-)   '/  &
-       '  --------------------------------------------------')
-  921 FORMAT (1x,F8.5,F7.3,E11.3,2F8.1,F8.4)
-  922 FORMAT (' '/' ')
-!
-  940 FORMAT (1X,I8.8,1X,I6.6,2F8.3,2X,'''',A10,'''',            &
-              1X,I2,F7.1,F5.1,f6.1,F5.2,F6.1)
-  943 FORMAT (1X,I8.8,1X,I6.6,2(F8.1,'E3'),2X,'''',A10,'''',     &
-              1X,I2,F7.1,F5.1,f6.1,F5.2,F6.1)
-  941 FORMAT ('        hs     tp     lp       theta     sp      wf')
-  942 FORMAT (I3,3F8.2,2F9.2,F7.2)
-!
- 1901 FORMAT (                                                        &
-       '    Date     Time        d     Uc     Dir.  U10    Dir. '/    &
-       '            h  m  s     (m)   (m/s)  (d.N) (m/s)  (d.N) '/    &
-       ' ---------------------------------------------------------')
- 1902 FORMAT (                                                        &
-       '    Date     Time        Hs     L      Tr    Dir.  Spr. ',    &
-       '    fp    p_dir  p_spr'/                                      &
-       '            h  m  s     (m)    (m)    (s)   (d.N)  (deg)',    &
-       '   (Hz)   (d.N)  (deg)'/                                      &
-       ' -------------------------------------------------------',    &
-       '-----------------------')
- 1903 FORMAT (                                                        &
-    '    Date     Time       U*       E*        fp*       Cd   alpha'/&
-    '            h  m  s   (m/s)     (-)        (-)     *1000  *100'/ &
-    ' --------------------------------------------------------------')
- 1904 FORMAT (                                                        &
-     '    Date     Time     U10       E*        fp*       Cd   alpha'/&
-     '            h  m  s  (m/s)     (-)        (-)     *1000  *100'/ &
-     ' --------------------------------------------------------------')
- 1905 FORMAT (                                                        &
-       '   Date     Time     U10    Dir.    Hs      H*    cp/U  ',    &
-           '  cm/U     Dt'/                                           &
-       '                    (m/s)  (d.N)   (m)     (-)    (-)   ',    &
-           '   (-)   (deg)'/                                          &
-      ' --------------------------------------------------',          &
-       '---------------------')
- 1906 FORMAT (                                                         &
-     '     Time      U10    Dir. Hs  Tp  '/         &
-     '  yr mth dy h  (m/s) (d.N) (m) (s) '/         &
-     ' ----------------------------------')
- 1910 FORMAT ( ' '/' ' )
- 1911 FORMAT (' Time : ',A//                                     &
-   '    Long.    Lat.       d     Uc     Dir.  U10    Dir. '/    &
-   '                       (m)   (m/s)  (d.N) (m/s)  (d.N) '/    &
-   ' --------------------------------------------------------')
- 1912 FORMAT (' Time : ',A//                                     &
-   '    Long.    Lat.       Hs     L      Tr    Dir.  Spr. ',    &
-   '    fp    p_dir  p_spr'/                                     &
-   '                       (m)    (m)    (s)   (d.N)  (deg)',    &
-   '   (Hz)   (d.N)  (deg)'/                                     &
-   ' ------------------------------------------------------',    &
-   '-----------------------')
- 1711 FORMAT (' Time : ',A//                                     &
-   '       X        Y          d     Uc     Dir.  U10    Dir. '/ &
-   '      (m)      (m)        (m)   (m/s)  (d.N) (m/s)  (d.N) '/ &
-   ' ----------------------------------------------------------')
- 1712 FORMAT (' Time : ',A//                                     &
-   '       X        Y          Hs     L      Tr    Dir.  Spr. ', &
-   '    fp    p_dir  p_spr'/                                     &
-   '      (m)      (m))       (m)    (m)    (s)   (d.N)  (deg)', &
-   '   (Hz)   (d.N)  (deg)'/                                     &
-   ' ------------------------------------------------------',    &
-   '-------------------------')
- 1913 FORMAT (' Time : ',A//                                          &
-   '       X*       Y*       U*       E*        fp*       Cd   alpha'/&
-   '      (-)      (-)     (m/s)     (-)        (-)     *1000  *100'/ &
-   ' --------------------------------------------------------------')
- 1914 FORMAT (' Time : ',A//                                          &
-   '       X*       Y*     U10       E*        fp*       Cd   alpha'/ &
-   '      (-)      (-)    (m/s)     (-)        (-)     *1000  *100 '/ &
-   ' --------------------------------------------------------------')
- 1915 FORMAT (' Time : ',A//                                     &
-   '     Long.    Lat.   U10    Dir.    Hs      H*    cp/U  ',   &
-       '  cm/U     Dt'/                                          &
-   '                    (m/s)  (d.N)   (m)     (-)    (-)   ',   &
-       '   (-)   (deg)'/                                         &
-   ' -------------------------------------------------',         &
-   '---------------------')
- 1715 FORMAT (' Time : ',A//                                     &
-   '       X        Y      U10    Dir.    Hs      H*    cp/U  ', &
-       '  cm/U     Dt'/                                          &
-   '      (m)      (m)    (m/s)  (d.N)   (m)     (-)    (-)   ', &
-       '   (-)   (deg)'/                                         &
-   ' ---------------------------------------------------',       &
-   '---------------------')
- 1916 FORMAT (' Time : ',A//                                     &
-   '   Long.   Lat.   U10     Dir.     Hs      Tp  '/         &
-   '                 (m/s)   (d.N)    (m)     (s)  '/         &
-   '-----------------------------------------------')
- 1716 FORMAT (' Time : ',A//                                     &
-   '    X     Y     U10     Dir.     Hs      Tp  '/         &
-   '    (m)  (m)   (m/s)   (d.N)    (m)     (s)  '/         &
-   '---------------------------------------------')
- 1921 FORMAT ( 2X,I8.8,I3,2(1X,I2.2),F10.1,F6.2,F7.1,F6.2,F7.1)
- 1922 FORMAT ( 2X,I8.8,I3,2(1X,I2.2),F9.3,F7.1,F7.2,F7.1,F7.2,        &
-               F8.4,F7.1,F7.2)
- 1923 FORMAT ( 2X,I8.8,I3,2(1X,I2.2),F8.4,2E11.3,2F7.3)
- 1924 FORMAT ( 2X,I8.8,I3,2(1X,I2.2),F7.1,2E11.3,2F7.3)
- 1925 FORMAT ( 2X,I8.8,I3,2(1X,I2.2),F7.2,F7.1,2F7.2,2F8.2,F7.1)
- 1926 FORMAT ( 2X,I4,3(1X,I2),F5.1,1X,I3,2F5.1)
- 1931 FORMAT ( 2X,2F8.3,F10.1,F6.2,F7.1,F6.2,F7.1)
- 1932 FORMAT ( 2X,2F8.3,F9.3,F7.1,F7.2,F7.1,F7.2,                &
-               F8.4,F7.1,F7.2)
- 1731 FORMAT ( 2X,2(F7.1,'E3'),F10.1,F6.2,F7.1,F6.2,F7.1)
- 1732 FORMAT ( 2X,2(F7.1,'E3'),F9.3,F7.1,F7.2,F7.1,F7.2,         &
-               F8.4,F7.1,F7.2)
- 1933 FORMAT ( 2X,2(F7.1,'E4'),F8.4,2E11.3,2F7.3)
- 1934 FORMAT ( 2X,2F9.1,F7.1,2E11.3,2F7.3)
- 1935 FORMAT ( 2X,2F8.3,F7.2,F7.1,2F7.2,2F8.2,F7.1)
- 1735 FORMAT ( 2X,2(F7.1,'E3'),F7.2,F7.1,2F7.2,2F8.2,F7.1)
- 1936 FORMAT ( 2X,2F8.3,F5.1,1X,I3,2F5.1)
- 1736 FORMAT ( 2X,2(F7.1,'E3'),F5.1,1X,I3,2F5.1)
-!
- 2920 FORMAT (' Time     : ',A/                                  &
-              ' Location : ',A,'  (',2F8.2,' )'/                 &
-              ' depth    : ',F7.1,'   m'/                        &
-              ' U*       : ',F9.3,' m/s'/                        &
-              ' U10      : ',F7.1,'   m/s'/)
- 2720 FORMAT (' Time     : ',A/                                  &
-              ' Location : ',A,'  (',2(F8.1,'E3'),' )'/          &
-              ' depth    : ',F7.1,'   m'/                        &
-              ' U*       : ',F9.3,' m/s'/                        &
-              ' U10      : ',F7.1,'   m/s'/)
- 2921 FORMAT ('    f           E      ',                              &
-              '    Sin        Snl        Sds        Sbt       Stot'/  &
-              '   (Hz)       (m2s)    ',                              &
-              '   (m2)       (m2)       (m2)       (m2)       (m2)'/  &
-              ' -------------------------------------',               &
-              '--------------------------------------')
- 2922 FORMAT ('    f*          E*    ',                               &
-              '    Sin*       Snl*       Sds*       Sbt*      Stot*'/ &
-              '   (-)         (-)    ',                               &
-              '    (-)        (-)        (-)        (-)        (-)'/  &
-              ' -------------------------------------',               &
-              '--------------------------------------')
- 2923 FORMAT ('   f/fp         E      ',                              &
-              '   Sin        Snl        Sds        Sbt       Stot'/   &
-              '   (-)        (m2s)    ',                              &
-              '  (m2)       (m2)       (m2)       (m2)       (m2)'/   &
-              ' -------------------------------------',               &
-              '--------------------------------------')
- 2924 FORMAT ('   f/fp         E*     ',                              &
-              '   Sin*       Snl*       Sds*       Sbt*      Stot*'/  &
-              '     (-)       (-)     ',                              &
-              '   (-)        (-)        (-)        (-)        (-)'/   &
-              ' -------------------------------------',               &
-              '--------------------------------------')
- 2925 FORMAT ('    f         E      ',                                &
-              '  Tini       Tnli       Tdsi       Tbti      Ttoti'/   &
-              '   (Hz)     (m2s)    ',                                &
-              ' (1/s)      (1/s)      (1/s)      (1/s)      (1/s)'/   &
-              ' -----------------------------------',                 &
-              '--------------------------------------')
- 2926 FORMAT ('    f*        E*     ',                                &
-              ' Tini*      Tnli*      Tdsi*      Tbti*     Ttoti*'/   &
-              '   (-)       (-)     ',                                &
-              '  (-)        (-)        (-)        (-)        (-)'/    &
-              ' -----------------------------------',                 &
-              '--------------------------------------')
- 2927 FORMAT ('   f/fp       E      ',                                &
-              '  Tini       Tnli       Tdsi       Tbti      Ttoti'/   &
-              '   (-)       (m2s)    ',                               &
-              ' (1/s)      (1/s)      (1/s)      (1/s)      (1/s)'/   &
-              ' -----------------------------------',                 &
-              '--------------------------------------')
- 2928 FORMAT ('   f/fp       E*     ',                                &
-              ' Tini*      Tnli*      Tdsi*      Tbti*     Ttoti*'/   &
-              '   (-)       (-)     ',                                &
-              '  (-)        (-)        (-)        (-)        (-)'/    &
-              ' -----------------------------------',                 &
-              '--------------------------------------')
- 2930 FORMAT (1X,F7.4,2X,6E11.3)
- 2931 FORMAT (1X,F7.4,6E11.3)
- 2940 FORMAT ( ' '/' ' )
 !
 !/T 9000 FORMAT (' TEST W3EXNC : FLAGS :',40L2)
 !/T 9001 FORMAT (' TEST W3EXNC : ITPYE  :',I4/                        &
@@ -2740,7 +2577,7 @@
       INTEGER                           :: iret
 !/NC4    INTEGER                             :: deflate=1
       REAL(kind=4)                      :: freq(NK), freq1(NK),freq2(NK), dir(NTH)
-      LOGICAL, INTENT(IN), OPTIONAL     :: FLSRCE(6)
+      LOGICAL, INTENT(IN), OPTIONAL     :: FLSRCE(7)
 
 !
 ! Creation in netCDF3 or netCDF4
@@ -2827,7 +2664,7 @@
         iret=nf90_put_att(ncid,varid(4),'scale_factor',1.)
         iret=nf90_put_att(ncid,varid(4),'add_offset',0.)
         iret=nf90_put_att(ncid,varid(4),'valid_min',-180.0)
-        iret=nf90_put_att(ncid,varid(4),'valid_max',180.)
+        iret=nf90_put_att(ncid,varid(4),'valid_max',360.)
         iret=nf90_put_att(ncid,varid(4),'_FillValue',NF90_FILL_FLOAT)
         iret=nf90_put_att(ncid,varid(4),'content','TX')
         iret=nf90_put_att(ncid,varid(4),'associates','time station')
@@ -2843,7 +2680,7 @@
         iret=nf90_put_att(ncid,varid(5),'scale_factor',1.)
         iret=nf90_put_att(ncid,varid(5),'add_offset',0.)
         iret=nf90_put_att(ncid,varid(5),'valid_min',-90.0)
-        iret=nf90_put_att(ncid,varid(5),'valid_max',90.)
+        iret=nf90_put_att(ncid,varid(5),'valid_max',180.)
         iret=nf90_put_att(ncid,varid(5),'_FillValue',NF90_FILL_FLOAT)
         iret=nf90_put_att(ncid,varid(5),'content','TX')
         iret=nf90_put_att(ncid,varid(5),'associates','time station')
@@ -2935,7 +2772,7 @@
         iret=nf90_put_att(ncid,varid(7),'_FillValue',NF90_FILL_FLOAT)
         iret=nf90_put_att(ncid,varid(7),'content','TX')
         iret=nf90_put_att(ncid,varid(7),'associates','time station')
-!U*
+!Ust
          iret=nf90_def_var(ncid, 'ust', NF90_FLOAT, (/ dimid(two),dimid(one) /), varid(8))
 !/NC4        IF (NCTYPE.EQ.4) iret=nf90_def_var_deflate(ncid, varid(8), 1, 1, deflate)
         iret=nf90_put_att(ncid,varid(8),'long_name','friction velocity')
@@ -3007,7 +2844,7 @@
         iret=nf90_put_att(ncid,varid(12),'_FillValue',NF90_FILL_FLOAT)
         iret=nf90_put_att(ncid,varid(12),'content','TXY')
         iret=nf90_put_att(ncid,varid(12),'associates','time station frequency')
-!theta
+!th1m
          iret=nf90_def_var(ncid, 'th1m', NF90_FLOAT, (/ dimid(4),dimid(two),dimid(one) /), varid(13))
 !/NC4        IF (NCTYPE.EQ.4) iret=nf90_def_var_deflate(ncid, varid(13), 1, 1, deflate)
         iret=nf90_put_att(ncid,varid(13),'long_name','mean wave direction from spectral moments')
@@ -3021,8 +2858,8 @@
         iret=nf90_put_att(ncid,varid(13),'_FillValue',NF90_FILL_FLOAT)
         iret=nf90_put_att(ncid,varid(13),'content','TXY')
         iret=nf90_put_att(ncid,varid(13),'associates','time station frequency')
-!spr
-         iret=nf90_def_var(ncid, 'sprm', NF90_FLOAT,(/ dimid(4),dimid(two),dimid(one) /), varid(14))
+!sth1m
+         iret=nf90_def_var(ncid, 'sth1m', NF90_FLOAT,(/ dimid(4),dimid(two),dimid(one) /), varid(14))
 !/NC4        IF (NCTYPE.EQ.4) iret=nf90_def_var_deflate(ncid, varid(14), 1, 1, deflate)
         iret=nf90_put_att(ncid,varid(14),'long_name','directional spread from spectral moments')
         iret=nf90_put_att(ncid,varid(14),'standard_name','mean_wave_spreading')
@@ -3421,7 +3258,7 @@
         iret=nf90_put_att(ncid,varid(16),'content','TXY')
         iret=nf90_put_att(ncid,varid(16),'associates','time station npart')
 !sth1m
-         iret=nf90_def_var(ncid, 'sprm', NF90_FLOAT,(/dimid(4),dimid(two),dimid(one)/),varid(17))
+         iret=nf90_def_var(ncid, 'sth1m', NF90_FLOAT,(/dimid(4),dimid(two),dimid(one)/),varid(17))
 !/NC4        IF (NCTYPE.EQ.4) iret=nf90_def_var_deflate(ncid, varid(17), 1, 1, deflate)
         iret=nf90_put_att(ncid,varid(17),'long_name','directional spread from spectral moments')
         iret=nf90_put_att(ncid,varid(17),'standard_name','mean_wave_spreading')
@@ -3582,7 +3419,7 @@
         iret=nf90_put_att(ncid,varid(8),'_FillValue',NF90_FILL_FLOAT)
         iret=nf90_put_att(ncid,varid(8),'content','TX')
         iret=nf90_put_att(ncid,varid(8),'associates','time station')
-!Dir
+!th1p
          iret=nf90_def_var(ncid, 'th1p', NF90_FLOAT, (/ dimid(two),dimid(one) /), varid(9))
 !/NC4        IF (NCTYPE.EQ.4) iret=nf90_def_var_deflate(ncid, varid(9), 1, 1, deflate)
         iret=nf90_put_att(ncid,varid(9),'long_name','mean wave direction from spectral moments at spectral peak')
@@ -3596,8 +3433,8 @@
         iret=nf90_put_att(ncid,varid(9),'_FillValue',NF90_FILL_FLOAT)
         iret=nf90_put_att(ncid,varid(9),'content','TX')
         iret=nf90_put_att(ncid,varid(9),'associates','time station')
-!Spr
-         iret=nf90_def_var(ncid, 'sprp', NF90_FLOAT, (/ dimid(two),dimid(one) /), varid(10))
+!sth1p
+         iret=nf90_def_var(ncid, 'sth1p', NF90_FLOAT, (/ dimid(two),dimid(one) /), varid(10))
 !/NC4        IF (NCTYPE.EQ.4) iret=nf90_def_var_deflate(ncid, varid(10), 1, 1, deflate)
         iret=nf90_put_att(ncid,varid(10),'long_name','directional spread at spectral peak')
         iret=nf90_put_att(ncid,varid(10),'standard_name','dominant_wave_spreading')
@@ -3624,7 +3461,7 @@
         iret=nf90_put_att(ncid,varid(11),'_FillValue',NF90_FILL_FLOAT)
         iret=nf90_put_att(ncid,varid(11),'content','TX')
         iret=nf90_put_att(ncid,varid(11),'associates','time station')
-!p_dir
+!th1m
          iret=nf90_def_var(ncid, 'th1m', NF90_FLOAT, (/ dimid(two),dimid(one) /), varid(12))
 !/NC4        IF (NCTYPE.EQ.4) iret=nf90_def_var_deflate(ncid, varid(12), 1, 1, deflate)
         iret=nf90_put_att(ncid,varid(12),'standard_name','mean wave direction from spectral moments')
@@ -3638,8 +3475,8 @@
         iret=nf90_put_att(ncid,varid(12),'_FillValue',NF90_FILL_FLOAT)
         iret=nf90_put_att(ncid,varid(12),'content','TX')
         iret=nf90_put_att(ncid,varid(12),'associates','time station')
-!p_spr
-         iret=nf90_def_var(ncid, 'sprm', NF90_FLOAT, (/ dimid(two),dimid(one) /), varid(13))
+!sth1m
+         iret=nf90_def_var(ncid, 'sth1m', NF90_FLOAT, (/ dimid(two),dimid(one) /), varid(13))
 !/NC4        IF (NCTYPE.EQ.4) iret=nf90_def_var_deflate(ncid, varid(13), 1, 1, deflate)
         iret=nf90_put_att(ncid,varid(13),'long_name','directional spread from spectral moments')
         iret=nf90_put_att(ncid,varid(13),'standard_name','mean_wave_spreading')
@@ -3663,7 +3500,7 @@
 !
 
       ELSE IF (ITYPE.EQ.2 .AND. OTYPE.EQ.3) THEN
-!U*
+!Ust
          iret=nf90_def_var(ncid, 'ust', NF90_FLOAT, (/ dimid(two),dimid(one) /), varid(6))
 !/NC4        IF (NCTYPE.EQ.4) iret=nf90_def_var_deflate(ncid, varid(6), 1, 1, deflate)
         iret=nf90_put_att(ncid,varid(6),'long_name','friction velocity')
@@ -3677,13 +3514,14 @@
         iret=nf90_put_att(ncid,varid(6),'_FillValue',NF90_FILL_FLOAT)
         iret=nf90_put_att(ncid,varid(6),'content','TX')
         iret=nf90_put_att(ncid,varid(6),'associates','time station')
-!E*
-         iret=nf90_def_var(ncid, 'estar', NF90_FLOAT, (/ dimid(two),dimid(one) /), varid(7))
+!Efst
+         iret=nf90_def_var(ncid, 'efst', NF90_FLOAT, (/ dimid(two),dimid(one) /), varid(7))
 !/NC4        IF (NCTYPE.EQ.4) iret=nf90_def_var_deflate(ncid, varid(7), 1, 1, deflate)
-        iret=nf90_put_att(ncid,varid(7),'long_name','surface elevation variance spectrum')
+        iret=nf90_put_att(ncid,varid(7),'long_name',                     &
+                          'nondimensionalized using surface elevation variance spectrum')
         iret=nf90_put_att(ncid,varid(7),'standard_name','sea_surface_wave_variance_spectral_density')
         iret=nf90_put_att(ncid,varid(7),'globwave_name','variance_spectral_density')
-        iret=nf90_put_att(ncid,varid(7),'units','m2 s')
+        iret=nf90_put_att(ncid,varid(7),'units','-')
         iret=nf90_put_att(ncid,varid(7),'scale_factor',1.)
         iret=nf90_put_att(ncid,varid(7),'add_offset',0.)
         iret=nf90_put_att(ncid,varid(7),'valid_min',0.)
@@ -3691,13 +3529,13 @@
         iret=nf90_put_att(ncid,varid(7),'_FillValue',NF90_FILL_FLOAT)
         iret=nf90_put_att(ncid,varid(7),'content','TX')
         iret=nf90_put_att(ncid,varid(7),'associates','time station')
-!fp*
-         iret=nf90_def_var(ncid, 'fpstar', NF90_FLOAT, (/ dimid(two),dimid(one) /), varid(8))
+!fpst
+         iret=nf90_def_var(ncid, 'fpst', NF90_FLOAT, (/ dimid(two),dimid(one) /), varid(8))
 !/NC4        IF (NCTYPE.EQ.4) iret=nf90_def_var_deflate(ncid, varid(8), 1, 1, deflate)
-        iret=nf90_put_att(ncid,varid(8),'long_name','peak frequency (Fp=1/Tp)')
+        iret=nf90_put_att(ncid,varid(8),'long_name','nondimensionalized using peak frequency (Fp=1/Tp)')
         iret=nf90_put_att(ncid,varid(8),'standard_name','dominant_wave_frequency')
         iret=nf90_put_att(ncid,varid(8),'globwave_name','dominant_wave_frequency')
-        iret=nf90_put_att(ncid,varid(8),'units','s-1')
+        iret=nf90_put_att(ncid,varid(8),'units','-')
         iret=nf90_put_att(ncid,varid(9),'scale_factor',1.)
         iret=nf90_put_att(ncid,varid(9),'add_offset',0.)
         iret=nf90_put_att(ncid,varid(9),'valid_min',0.)
@@ -3759,13 +3597,14 @@
         iret=nf90_put_att(ncid,varid(6),'_FillValue',NF90_FILL_FLOAT)
         iret=nf90_put_att(ncid,varid(6),'content','TX')
         iret=nf90_put_att(ncid,varid(6),'associates','time station')
-!E*
-         iret=nf90_def_var(ncid, 'estar', NF90_FLOAT, (/ dimid(two),dimid(one) /), varid(7))
+!Efst
+         iret=nf90_def_var(ncid, 'efst', NF90_FLOAT, (/ dimid(two),dimid(one) /), varid(7))
 !/NC4        IF (NCTYPE.EQ.4) iret=nf90_def_var_deflate(ncid, varid(7), 1, 1, deflate)
-        iret=nf90_put_att(ncid,varid(7),'long_name','surface elevation variance spectrum')
+        iret=nf90_put_att(ncid,varid(7),'long_name',                    &
+                          'nondimensionalized using surface elevation variance spectrum')
         iret=nf90_put_att(ncid,varid(7),'standard_name','sea_surface_wave_variance_spectral_density')
         iret=nf90_put_att(ncid,varid(7),'globwave_name','variance_spectral_density')
-        iret=nf90_put_att(ncid,varid(7),'units','m2 s')
+        iret=nf90_put_att(ncid,varid(7),'units','-')
         iret=nf90_put_att(ncid,varid(7),'scale_factor',1.)
         iret=nf90_put_att(ncid,varid(7),'add_offset',0.)
         iret=nf90_put_att(ncid,varid(7),'valid_min',0.)
@@ -3773,13 +3612,14 @@
         iret=nf90_put_att(ncid,varid(7),'_FillValue',NF90_FILL_FLOAT)
         iret=nf90_put_att(ncid,varid(7),'content','TX')
         iret=nf90_put_att(ncid,varid(7),'associates','time station')
-!fp*
-         iret=nf90_def_var(ncid, 'fpstar', NF90_FLOAT, (/ dimid(two),dimid(one) /), varid(8))
+!fpst
+         iret=nf90_def_var(ncid, 'fpst', NF90_FLOAT, (/ dimid(two),dimid(one) /), varid(8))
 !/NC4        IF (NCTYPE.EQ.4) iret=nf90_def_var_deflate(ncid, varid(8), 1, 1, deflate)
-        iret=nf90_put_att(ncid,varid(8),'long_name','peak frequency (Fp=1/Tp)')
+        iret=nf90_put_att(ncid,varid(8),'long_name',                    &
+                          'nondimensionalized using peak frequency (Fp=1/Tp)')
         iret=nf90_put_att(ncid,varid(8),'standard_name','dominant_wave_frequency')
         iret=nf90_put_att(ncid,varid(8),'globwave_name','dominant_wave_frequency')
-        iret=nf90_put_att(ncid,varid(8),'units','s-1')
+        iret=nf90_put_att(ncid,varid(8),'units','-')
         iret=nf90_put_att(ncid,varid(8),'scale_factor',1.)
         iret=nf90_put_att(ncid,varid(8),'add_offset',0.)
         iret=nf90_put_att(ncid,varid(8),'valid_min',0.)
@@ -3868,13 +3708,14 @@
         iret=nf90_put_att(ncid,varid(8),'_FillValue',NF90_FILL_FLOAT)
         iret=nf90_put_att(ncid,varid(8),'content','TX')
         iret=nf90_put_att(ncid,varid(8),'associates','time station')
-!H*
-         iret=nf90_def_var(ncid, 'hstar', NF90_FLOAT, (/ dimid(two),dimid(one) /), varid(9))
+!Hsst
+         iret=nf90_def_var(ncid, 'hsst', NF90_FLOAT, (/ dimid(two),dimid(one) /), varid(9))
 !/NC4        IF (NCTYPE.EQ.4) iret=nf90_def_var_deflate(ncid, varid(9), 1, 1, deflate)
-        iret=nf90_put_att(ncid,varid(9),'long_name','spectral estimate of significant wave height') 
+        iret=nf90_put_att(ncid,varid(9),'long_name',                    &
+                          'nondimensionalized using spectral estimate of significant wave height') 
         iret=nf90_put_att(ncid,varid(9),'standard_name','sea_surface_wave_significant_height') 
         iret=nf90_put_att(ncid,varid(9),'globwave_name','significant_wave_height') 
-        iret=nf90_put_att(ncid,varid(9),'units','m')
+        iret=nf90_put_att(ncid,varid(9),'units','-')
         iret=nf90_put_att(ncid,varid(9),'scale_factor',1.)
         iret=nf90_put_att(ncid,varid(9),'add_offset',0.)
         iret=nf90_put_att(ncid,varid(9),'valid_min',0.)
@@ -4011,11 +3852,11 @@
 !     define specifics variables
 !
 
-!  frequency
+!  frequency / frequencyst / ffp
         IF (ISCALE.EQ.0) THEN
           iret=nf90_def_var(ncid, 'frequency', NF90_FLOAT, dimid(4), varid(6))
         ELSE IF ( ISCALE.EQ.1 .OR. ISCALE.EQ.2 ) THEN
-          iret=nf90_def_var(ncid, 'frequencystar', NF90_FLOAT, dimid(4), varid(6))
+          iret=nf90_def_var(ncid, 'frequencyst', NF90_FLOAT, dimid(4), varid(6))
         ELSE
           iret=nf90_def_var(ncid, 'ffp', NF90_FLOAT, dimid(4), varid(6))
         END IF
@@ -4046,7 +3887,7 @@
         iret=nf90_put_att(ncid,varid(7),'content','TX')
         iret=nf90_put_att(ncid,varid(7),'associates','time station')
 
-!U*
+!Ust
         iret=nf90_def_var(ncid, 'ust', NF90_FLOAT, (/ dimid(two),dimid(one) /), varid(8))
 !/NC4        IF (NCTYPE.EQ.4) iret=nf90_def_var_deflate(ncid, varid(8), 1, 1, deflate)
         iret=nf90_put_att(ncid,varid(8),'long_name','friction velocity')
@@ -4076,122 +3917,215 @@
         iret=nf90_put_att(ncid,varid(9),'content','TX')
         iret=nf90_put_att(ncid,varid(9),'associates','time station')
 
-!Ef
+!Ef / Efst
         IF (ISCALE.EQ.0 .OR. ISCALE.EQ.3) THEN
           iret=nf90_def_var(ncid, 'ef', NF90_FLOAT,(/dimid(4),dimid(two),dimid(one)/), varid(10))
+          iret=nf90_put_att(ncid,varid(10),'long_name','surface elevation variance spectrum')
+          iret=nf90_put_att(ncid,varid(10),'standard_name','sea_surface_wave_variance_spectral_density')
+          iret=nf90_put_att(ncid,varid(10),'globwave_name','variance_spectral_density')
+          iret=nf90_put_att(ncid,varid(10),'units','m2 s')
         ELSE
-          iret=nf90_def_var(ncid, 'estar', NF90_FLOAT,(/dimid(4),dimid(two),dimid(one)/), varid(10))
+          iret=nf90_def_var(ncid, 'efst', NF90_FLOAT,(/dimid(4),dimid(two),dimid(one)/), varid(10))
+          iret=nf90_put_att(ncid,varid(10),'long_name',                 &
+                            'nondimensionalized using surface elevation variance spectrum')
+          iret=nf90_put_att(ncid,varid(10),'standard_name','sea_surface_wave_variance_spectral_density')
+          iret=nf90_put_att(ncid,varid(10),'globwave_name','variance_spectral_density')
+          iret=nf90_put_att(ncid,varid(10),'units','-')
         END IF
 !/NC4       IF (NCTYPE.EQ.4) iret=nf90_def_var_deflate(ncid, varid(10), 1, 1, deflate)
-        iret=nf90_put_att(ncid,varid(10),'long_name','surface elevation variance spectrum')
-        iret=nf90_put_att(ncid,varid(10),'standard_name','sea_surface_wave_variance_spectral_density')
-        iret=nf90_put_att(ncid,varid(10),'globwave_name','variance_spectral_density')
-        iret=nf90_put_att(ncid,varid(10),'units','m2 s')
         iret=nf90_put_att(ncid,varid(10),'scale_factor',1.)
         iret=nf90_put_att(ncid,varid(10),'add_offset',0.)
         iret=nf90_put_att(ncid,varid(10),'valid_min',0.)
         iret=nf90_put_att(ncid,varid(10),'valid_max',10.)
         iret=nf90_put_att(ncid,varid(10),'_FillValue', NF90_FILL_FLOAT)
         iret=nf90_put_att(ncid,varid(10),'content','TXY')
-        iret=nf90_put_att(ncid,varid(10),'associates','time station frequency')
+        IF (ISCALE.EQ.0) THEN
+          iret=nf90_put_att(ncid,varid(10),'associates','time station frequency')
+        ELSE IF ( ISCALE.EQ.1 .OR. ISCALE.EQ.2 ) THEN
+          iret=nf90_put_att(ncid,varid(10),'associates','time station frequencyst')
+        ELSE
+          iret=nf90_put_att(ncid,varid(10),'associates','time station ffp')
+        END IF
 
-!Sin
+!Sin / Sinst
         IF (ISCALE.EQ.0 .OR. ISCALE.EQ.3) THEN
           iret=nf90_def_var(ncid, 'sin', NF90_FLOAT,(/dimid(4),dimid(two),dimid(one)/), varid(11))
+          iret=nf90_put_att(ncid,varid(11),'long_name','wind input source term')
+          iret=nf90_put_att(ncid,varid(11),'standard_name','wind_input_source_term')
+          iret=nf90_put_att(ncid,varid(11),'globwave_name','wind_input_source_term')
+          iret=nf90_put_att(ncid,varid(11),'units','m2')
         ELSE
-          iret=nf90_def_var(ncid, 'sinstar', NF90_FLOAT,(/dimid(4),dimid(two),dimid(one)/), varid(11))
+          iret=nf90_def_var(ncid, 'sinst', NF90_FLOAT,(/dimid(4),dimid(two),dimid(one)/), varid(11))
+          iret=nf90_put_att(ncid,varid(11),'long_name',                 &
+                            'nondimensionalized using wind input source term')
+          iret=nf90_put_att(ncid,varid(11),'standard_name','wind_input_source_term')
+          iret=nf90_put_att(ncid,varid(11),'globwave_name','wind_input_source_term')
+          iret=nf90_put_att(ncid,varid(11),'units','-')
         END IF
 !/NC4        IF (NCTYPE.EQ.4) iret=nf90_def_var_deflate(ncid, varid(11), 1, 1, deflate)
-        iret=nf90_put_att(ncid,varid(11),'long_name','wind input source term')
-        iret=nf90_put_att(ncid,varid(11),'standard_name','wind_input_source_term')
-        iret=nf90_put_att(ncid,varid(11),'globwave_name','wind_input_source_term')
-        iret=nf90_put_att(ncid,varid(11),'units','m2 rad-1')
         iret=nf90_put_att(ncid,varid(11),'scale_factor',1.)
         iret=nf90_put_att(ncid,varid(11),'add_offset',0.)
         iret=nf90_put_att(ncid,varid(11),'valid_min',-1.)
         iret=nf90_put_att(ncid,varid(11),'valid_max',1.)
         iret=nf90_put_att(ncid,varid(11),'_FillValue', NF90_FILL_FLOAT)
         iret=nf90_put_att(ncid,varid(11),'content','TXY')
-        iret=nf90_put_att(ncid,varid(11),'associates','time station frequency')
+        IF (ISCALE.EQ.0) THEN
+          iret=nf90_put_att(ncid,varid(11),'associates','time station frequency')
+        ELSE IF ( ISCALE.EQ.1 .OR. ISCALE.EQ.2 ) THEN
+          iret=nf90_put_att(ncid,varid(11),'associates','time station frequencyst')
+        ELSE
+          iret=nf90_put_att(ncid,varid(11),'associates','time station ffp')
+        END IF
 
 
-!Snl
+!Snl / Snlst
         IF (ISCALE.EQ.0 .OR. ISCALE.EQ.3) THEN
           iret=nf90_def_var(ncid, 'snl', NF90_FLOAT,(/dimid(4),dimid(two),dimid(one)/), varid(12))
+          iret=nf90_put_att(ncid,varid(12),'long_name','nonlinear 4 wave source term')
+          iret=nf90_put_att(ncid,varid(12),'standard_name','nonlinear_4_wave_source_term')
+          iret=nf90_put_att(ncid,varid(12),'globwave_name','nonlinear_4_wave_source_term')
+          iret=nf90_put_att(ncid,varid(12),'units','m2')
         ELSE
-          iret=nf90_def_var(ncid, 'snlstar', NF90_FLOAT,(/dimid(4),dimid(two),dimid(one)/), varid(12))
+          iret=nf90_def_var(ncid, 'snlst', NF90_FLOAT,(/dimid(4),dimid(two),dimid(one)/), varid(12))
+          iret=nf90_put_att(ncid,varid(12),'long_name',                 &
+                            'nondimensionalized using nonlinear 4 wave source term')
+          iret=nf90_put_att(ncid,varid(12),'standard_name','nonlinear_4_wave_source_term')
+          iret=nf90_put_att(ncid,varid(12),'globwave_name','nonlinear_4_wave_source_term')
+          iret=nf90_put_att(ncid,varid(12),'units','-')
         END IF
 !/NC4       IF (NCTYPE.EQ.4) iret=nf90_def_var_deflate(ncid, varid(12), 1, 1, deflate)
-        iret=nf90_put_att(ncid,varid(12),'long_name','nonlinear 4 wave source term')
-        iret=nf90_put_att(ncid,varid(12),'standard_name','nonlinear_4_wave_source_term')
-        iret=nf90_put_att(ncid,varid(12),'globwave_name','nonlinear_4_wave_source_term')
-        iret=nf90_put_att(ncid,varid(12),'units','m2 rad-1')
         iret=nf90_put_att(ncid,varid(12),'scale_factor',1.)
         iret=nf90_put_att(ncid,varid(12),'add_offset',0.)
         iret=nf90_put_att(ncid,varid(12),'valid_min',-1.)
         iret=nf90_put_att(ncid,varid(12),'valid_max',1.)
         iret=nf90_put_att(ncid,varid(12),'_FillValue', NF90_FILL_FLOAT)
         iret=nf90_put_att(ncid,varid(12),'content','TXY')
-        iret=nf90_put_att(ncid,varid(12),'associates','time station frequency')
+        IF (ISCALE.EQ.0) THEN
+          iret=nf90_put_att(ncid,varid(12),'associates','time station frequency')
+        ELSE IF ( ISCALE.EQ.1 .OR. ISCALE.EQ.2 ) THEN
+          iret=nf90_put_att(ncid,varid(12),'associates','time station frequencyst')
+        ELSE
+          iret=nf90_put_att(ncid,varid(12),'associates','time station ffp')
+        END IF
 
 
-!Sds
+!Sds / Sdsst
         IF (ISCALE.EQ.0 .OR. ISCALE.EQ.3) THEN
           iret=nf90_def_var(ncid, 'sds', NF90_FLOAT,(/dimid(4),dimid(two),dimid(one)/), varid(13))
+          iret=nf90_put_att(ncid,varid(13),'long_name','wave breaking source term')
+          iret=nf90_put_att(ncid,varid(13),'standard_name','wave_breaking_source_term')
+          iret=nf90_put_att(ncid,varid(13),'globwave_name','wave_breaking_source_term')
+          iret=nf90_put_att(ncid,varid(13),'units','m2')
         ELSE
-          iret=nf90_def_var(ncid, 'sdsstar', NF90_FLOAT,(/dimid(4),dimid(two),dimid(one)/), varid(13))
+          iret=nf90_def_var(ncid, 'sdsst', NF90_FLOAT,(/dimid(4),dimid(two),dimid(one)/), varid(13))
+          iret=nf90_put_att(ncid,varid(13),'long_name',                 &
+                            'nondimensionalized using wave breaking source term')
+          iret=nf90_put_att(ncid,varid(13),'standard_name','wave_breaking_source_term')
+           iret=nf90_put_att(ncid,varid(13),'globwave_name','wave_breaking_source_term')
+         iret=nf90_put_att(ncid,varid(13),'units','-')
         END IF
 !/NC4       IF (NCTYPE.EQ.4) iret=nf90_def_var_deflate(ncid, varid(13), 1, 1, deflate)
-        iret=nf90_put_att(ncid,varid(13),'long_name','wave breaking source term')
-        iret=nf90_put_att(ncid,varid(13),'standard_name','wave_breaking_source_term')
-        iret=nf90_put_att(ncid,varid(13),'globwave_name','wave_breaking_source_term')
-        iret=nf90_put_att(ncid,varid(13),'units','m2 rad-1')
         iret=nf90_put_att(ncid,varid(13),'scale_factor',1.)
         iret=nf90_put_att(ncid,varid(13),'add_offset',0.)
         iret=nf90_put_att(ncid,varid(13),'valid_min',-1.)
         iret=nf90_put_att(ncid,varid(13),'valid_max',1.)
         iret=nf90_put_att(ncid,varid(13),'_FillValue', NF90_FILL_FLOAT)
         iret=nf90_put_att(ncid,varid(13),'content','TXY')
-        iret=nf90_put_att(ncid,varid(13),'associates','time station frequency')
+        IF (ISCALE.EQ.0) THEN
+          iret=nf90_put_att(ncid,varid(13),'associates','time station frequency')
+        ELSE IF ( ISCALE.EQ.1 .OR. ISCALE.EQ.2 ) THEN
+          iret=nf90_put_att(ncid,varid(13),'associates','time station frequencyst')
+        ELSE
+          iret=nf90_put_att(ncid,varid(13),'associates','time station ffp')
+        END IF
 
-!Sbt
+!Sbt / Sbtst
         IF (ISCALE.EQ.0 .OR. ISCALE.EQ.3) THEN
           iret=nf90_def_var(ncid, 'sbt', NF90_FLOAT,(/dimid(4),dimid(two),dimid(one)/), varid(14))
+          iret=nf90_put_att(ncid,varid(14),'long_name','depth induced breaking source term')
+          iret=nf90_put_att(ncid,varid(14),'standard_name','depth_induced_breaking_source_term')
+          iret=nf90_put_att(ncid,varid(14),'globwave_name','depth_induced_breaking_source_term')
+          iret=nf90_put_att(ncid,varid(14),'units','m2')
         ELSE
-          iret=nf90_def_var(ncid, 'sbtstar', NF90_FLOAT,(/dimid(4),dimid(two),dimid(one)/), varid(14))
+          iret=nf90_def_var(ncid, 'sbtst', NF90_FLOAT,(/dimid(4),dimid(two),dimid(one)/), varid(14))
+          iret=nf90_put_att(ncid,varid(14),'long_name',                 &
+                            'nondimensionalized using depth induced breaking source term')
+          iret=nf90_put_att(ncid,varid(14),'standard_name','depth_induced_breaking_source_term')
+          iret=nf90_put_att(ncid,varid(14),'globwave_name','depth_induced_breaking_source_term')
+          iret=nf90_put_att(ncid,varid(14),'units','-')
         END IF
 !/NC4       IF (NCTYPE.EQ.4) iret=nf90_def_var_deflate(ncid, varid(14), 1, 1, deflate)
-        iret=nf90_put_att(ncid,varid(14),'long_name','depth induced breaking source term')
-        iret=nf90_put_att(ncid,varid(14),'standard_name','depth_induced_breaking_source_term')
-        iret=nf90_put_att(ncid,varid(14),'globwave_name','depth_induced_breaking_source_term')
-        iret=nf90_put_att(ncid,varid(14),'units','m2 rad-1')
         iret=nf90_put_att(ncid,varid(14),'scale_factor',1.)
         iret=nf90_put_att(ncid,varid(14),'add_offset',0.)
         iret=nf90_put_att(ncid,varid(14),'valid_min',-1.)
         iret=nf90_put_att(ncid,varid(14),'valid_max',1.)
         iret=nf90_put_att(ncid,varid(14),'_FillValue', NF90_FILL_FLOAT)
         iret=nf90_put_att(ncid,varid(14),'content','TXY')
-        iret=nf90_put_att(ncid,varid(14),'associates','time station frequency')
-
-!Stot
-        IF (ISCALE.EQ.0 .OR. ISCALE.EQ.3) THEN
-          iret=nf90_def_var(ncid, 'stot', NF90_FLOAT,(/dimid(4),dimid(two),dimid(one)/), varid(15))
+        IF (ISCALE.EQ.0) THEN
+          iret=nf90_put_att(ncid,varid(14),'associates','time station frequency')
+        ELSE IF ( ISCALE.EQ.1 .OR. ISCALE.EQ.2 ) THEN
+          iret=nf90_put_att(ncid,varid(14),'associates','time station frequencyst')
         ELSE
-          iret=nf90_def_var(ncid, 'stotstar', NF90_FLOAT,(/dimid(4),dimid(two),dimid(one)/), varid(15))
+          iret=nf90_put_att(ncid,varid(14),'associates','time station ffp')
+        END IF
+
+!Sice / Sicest
+        IF (ISCALE.EQ.0 .OR. ISCALE.EQ.3) THEN
+          iret=nf90_def_var(ncid, 'sice', NF90_FLOAT,(/dimid(4),dimid(two),dimid(one)/), varid(15))
+          iret=nf90_put_att(ncid,varid(15),'long_name','wave-ice interactions source term')
+          iret=nf90_put_att(ncid,varid(15),'standard_name','wave_ice_interactions_source_term')
+          iret=nf90_put_att(ncid,varid(15),'globwave_name','wave_ice_interactions_source_term')
+          iret=nf90_put_att(ncid,varid(15),'units','m2')
+        ELSE
+          iret=nf90_def_var(ncid, 'sicest', NF90_FLOAT,(/dimid(4),dimid(two),dimid(one)/), varid(15))
+          iret=nf90_put_att(ncid,varid(15),'long_name','nondimensionalized using wave-ice interactions source term')
+          iret=nf90_put_att(ncid,varid(15),'standard_name','wave_ice_interactions_source_term')
+          iret=nf90_put_att(ncid,varid(15),'globwave_name','wave_ice_interactions_source_term')
+          iret=nf90_put_att(ncid,varid(15),'units','-')
         END IF
 !/NC4       IF (NCTYPE.EQ.4) iret=nf90_def_var_deflate(ncid, varid(15), 1, 1, deflate)
-        iret=nf90_put_att(ncid,varid(15),'long_name','total source term')
-        iret=nf90_put_att(ncid,varid(15),'standard_name','total_source_term')
-        iret=nf90_put_att(ncid,varid(15),'globwave_name','total_source_term')
-        iret=nf90_put_att(ncid,varid(15),'units','m2 rad-1')
         iret=nf90_put_att(ncid,varid(15),'scale_factor',1.)
         iret=nf90_put_att(ncid,varid(15),'add_offset',0.)
         iret=nf90_put_att(ncid,varid(15),'valid_min',-1.)
         iret=nf90_put_att(ncid,varid(15),'valid_max',1.)
         iret=nf90_put_att(ncid,varid(15),'_FillValue', NF90_FILL_FLOAT)
         iret=nf90_put_att(ncid,varid(15),'content','TXY')
-        iret=nf90_put_att(ncid,varid(15),'associates','time station frequency')
+        IF (ISCALE.EQ.0) THEN
+          iret=nf90_put_att(ncid,varid(15),'associates','time station frequency')
+        ELSE IF ( ISCALE.EQ.1 .OR. ISCALE.EQ.2 ) THEN
+          iret=nf90_put_att(ncid,varid(15),'associates','time station frequencyst')
+        ELSE
+          iret=nf90_put_att(ncid,varid(15),'associates','time station ffp')
+        END IF
 
+!Stot / Stotst
+        IF (ISCALE.EQ.0 .OR. ISCALE.EQ.3) THEN
+          iret=nf90_def_var(ncid, 'stot', NF90_FLOAT,(/dimid(4),dimid(two),dimid(one)/), varid(16))
+          iret=nf90_put_att(ncid,varid(16),'long_name','total source term')
+          iret=nf90_put_att(ncid,varid(16),'standard_name','total_source_term')
+          iret=nf90_put_att(ncid,varid(16),'globwave_name','total_source_term')
+          iret=nf90_put_att(ncid,varid(16),'units','m2')
+        ELSE
+          iret=nf90_def_var(ncid, 'stotst', NF90_FLOAT,(/dimid(4),dimid(two),dimid(one)/), varid(16))
+          iret=nf90_put_att(ncid,varid(16),'long_name','nondimensionalized using total source term')
+          iret=nf90_put_att(ncid,varid(16),'standard_name','total_source_term')
+          iret=nf90_put_att(ncid,varid(16),'globwave_name','total_source_term')
+          iret=nf90_put_att(ncid,varid(16),'units','-')
+        END IF
+!/NC4       IF (NCTYPE.EQ.4) iret=nf90_def_var_deflate(ncid, varid(16), 1, 1, deflate)
+        iret=nf90_put_att(ncid,varid(16),'scale_factor',1.)
+        iret=nf90_put_att(ncid,varid(16),'add_offset',0.)
+        iret=nf90_put_att(ncid,varid(16),'valid_min',-1.)
+        iret=nf90_put_att(ncid,varid(16),'valid_max',1.)
+        iret=nf90_put_att(ncid,varid(16),'_FillValue', NF90_FILL_FLOAT)
+        iret=nf90_put_att(ncid,varid(16),'content','TXY')
+        IF (ISCALE.EQ.0) THEN
+          iret=nf90_put_att(ncid,varid(16),'associates','time station frequency')
+        ELSE IF ( ISCALE.EQ.1 .OR. ISCALE.EQ.2 ) THEN
+          iret=nf90_put_att(ncid,varid(16),'associates','time station frequencyst')
+        ELSE
+          iret=nf90_put_att(ncid,varid(16),'associates','time station ffp')
+        END IF
 
 !  Add values in netCDF file   
         iret=nf90_enddef(ncid)
@@ -4214,11 +4148,11 @@
 !     define specifics variables
 !
 
-!  frequency
+!  frequency / frequencyst / ffp
         IF (ISCALE.EQ.0) THEN
           iret=nf90_def_var(ncid, 'frequency', NF90_FLOAT, dimid(4), varid(6))
         ELSE IF ( ISCALE.EQ.1 .OR. ISCALE.EQ.2 ) THEN
-          iret=nf90_def_var(ncid, 'frequencystar', NF90_FLOAT, dimid(4), varid(6))
+          iret=nf90_def_var(ncid, 'frequencyst', NF90_FLOAT, dimid(4), varid(6))
         ELSE
           iret=nf90_def_var(ncid, 'ffp', NF90_FLOAT, dimid(4), varid(6))
         END IF
@@ -4249,7 +4183,7 @@
         iret=nf90_put_att(ncid,varid(7),'content','TX')
         iret=nf90_put_att(ncid,varid(7),'associates','time station')
 
-!U*
+!Ust
         iret=nf90_def_var(ncid, 'ust', NF90_FLOAT, (/ dimid(two),dimid(one) /), varid(8))
 !/NC4        IF (NCTYPE.EQ.4) iret=nf90_def_var_deflate(ncid, varid(8), 1, 1, deflate)
         iret=nf90_put_att(ncid,varid(8),'long_name','friction velocity')
@@ -4279,122 +4213,211 @@
         iret=nf90_put_att(ncid,varid(9),'content','TX')
         iret=nf90_put_att(ncid,varid(9),'associates','time station')
 
-!Ef
+!Ef / Efst
         IF (ISCALE.EQ.0 .OR. ISCALE.EQ.3) THEN
           iret=nf90_def_var(ncid, 'ef', NF90_FLOAT,(/dimid(4),dimid(two),dimid(one)/), varid(10))
+          iret=nf90_put_att(ncid,varid(10),'long_name','surface elevation variance spectrum')
+          iret=nf90_put_att(ncid,varid(10),'standard_name','sea_surface_wave_variance_spectral_density')
+          iret=nf90_put_att(ncid,varid(10),'globwave_name','variance_spectral_density')
+          iret=nf90_put_att(ncid,varid(10),'units','m2 s')
         ELSE
-          iret=nf90_def_var(ncid, 'estar', NF90_FLOAT,(/dimid(4),dimid(two),dimid(one)/), varid(10))
+          iret=nf90_def_var(ncid, 'efst', NF90_FLOAT,(/dimid(4),dimid(two),dimid(one)/), varid(10))
+          iret=nf90_put_att(ncid,varid(10),'long_name',                 &
+                            'nondimensionalized using surface elevation variance spectrum')
+          iret=nf90_put_att(ncid,varid(10),'standard_name','sea_surface_wave_variance_spectral_density')
+          iret=nf90_put_att(ncid,varid(10),'globwave_name','variance_spectral_density')
+          iret=nf90_put_att(ncid,varid(10),'units','-')
         END IF
 !/NC4       IF (NCTYPE.EQ.4) iret=nf90_def_var_deflate(ncid, varid(10), 1, 1, deflate)
-        iret=nf90_put_att(ncid,varid(10),'long_name','surface elevation variance spectrum')
-        iret=nf90_put_att(ncid,varid(10),'standard_name','sea_surface_wave_variance_spectral_density')
-        iret=nf90_put_att(ncid,varid(10),'globwave_name','variance_spectral_density')
-        iret=nf90_put_att(ncid,varid(10),'units','m2 s')
         iret=nf90_put_att(ncid,varid(10),'scale_factor',1.)
         iret=nf90_put_att(ncid,varid(10),'add_offset',0.)
         iret=nf90_put_att(ncid,varid(10),'valid_min',0.)
         iret=nf90_put_att(ncid,varid(10),'valid_max',10.)
         iret=nf90_put_att(ncid,varid(10),'_FillValue', NF90_FILL_FLOAT)
         iret=nf90_put_att(ncid,varid(10),'content','TXY')
-        iret=nf90_put_att(ncid,varid(10),'associates','time station frequency')
+        IF (ISCALE.EQ.0) THEN
+          iret=nf90_put_att(ncid,varid(10),'associates','time station frequency')
+        ELSE IF ( ISCALE.EQ.1 .OR. ISCALE.EQ.2 ) THEN
+          iret=nf90_put_att(ncid,varid(10),'associates','time station frequencyst')
+        ELSE
+          iret=nf90_put_att(ncid,varid(10),'associates','time station ffp')
+        END IF
 
-!Tini
+!Tini / Tinist
         IF (ISCALE.EQ.0 .OR. ISCALE.EQ.3) THEN
           iret=nf90_def_var(ncid, 'tini', NF90_FLOAT,(/dimid(4),dimid(two),dimid(one)/), varid(11))
+          iret=nf90_put_att(ncid,varid(11),'long_name','tini')
+          iret=nf90_put_att(ncid,varid(11),'standard_name','tini')
+          iret=nf90_put_att(ncid,varid(11),'globwave_name','tini')
+          iret=nf90_put_att(ncid,varid(11),'units','m2')
         ELSE
-          iret=nf90_def_var(ncid, 'tinistar', NF90_FLOAT,(/dimid(4),dimid(two),dimid(one)/), varid(11))
+          iret=nf90_def_var(ncid, 'tinist', NF90_FLOAT,(/dimid(4),dimid(two),dimid(one)/), varid(11))
+          iret=nf90_put_att(ncid,varid(11),'long_name','nondimensionalized using tini')
+          iret=nf90_put_att(ncid,varid(11),'standard_name','tinist')
+          iret=nf90_put_att(ncid,varid(11),'globwave_name','tinist')
+          iret=nf90_put_att(ncid,varid(11),'units','-')
         END IF
 !/NC4        IF (NCTYPE.EQ.4) iret=nf90_def_var_deflate(ncid, varid(11), 1, 1, deflate)
-        iret=nf90_put_att(ncid,varid(11),'long_name','tini')
-        iret=nf90_put_att(ncid,varid(11),'standard_name','tini')
-        iret=nf90_put_att(ncid,varid(11),'globwave_name','tini')
-        iret=nf90_put_att(ncid,varid(11),'units','m2 rad-1')
         iret=nf90_put_att(ncid,varid(11),'scale_factor',1.)
         iret=nf90_put_att(ncid,varid(11),'add_offset',0.)
         iret=nf90_put_att(ncid,varid(11),'valid_min',-1.)
         iret=nf90_put_att(ncid,varid(11),'valid_max',1.)
         iret=nf90_put_att(ncid,varid(11),'_FillValue', NF90_FILL_FLOAT)
         iret=nf90_put_att(ncid,varid(11),'content','TXY')
-        iret=nf90_put_att(ncid,varid(11),'associates','time station frequency')
+        IF (ISCALE.EQ.0) THEN
+          iret=nf90_put_att(ncid,varid(11),'associates','time station frequency')
+        ELSE IF ( ISCALE.EQ.1 .OR. ISCALE.EQ.2 ) THEN
+          iret=nf90_put_att(ncid,varid(11),'associates','time station frequencyst')
+        ELSE
+          iret=nf90_put_att(ncid,varid(11),'associates','time station ffp')
+        END IF
 
 
-!Tnli
+!Tnli / Tnlist
         IF (ISCALE.EQ.0 .OR. ISCALE.EQ.3) THEN
           iret=nf90_def_var(ncid, 'tnli', NF90_FLOAT,(/dimid(4),dimid(two),dimid(one)/), varid(12))
+          iret=nf90_put_att(ncid,varid(12),'long_name','tnli')
+          iret=nf90_put_att(ncid,varid(12),'standard_name','tnli')
+          iret=nf90_put_att(ncid,varid(12),'globwave_name','tnli')
+          iret=nf90_put_att(ncid,varid(12),'units','m2')
         ELSE
-          iret=nf90_def_var(ncid, 'tnlistar', NF90_FLOAT,(/dimid(4),dimid(two),dimid(one)/), varid(12))
+          iret=nf90_def_var(ncid, 'tnlist', NF90_FLOAT,(/dimid(4),dimid(two),dimid(one)/), varid(12))
+          iret=nf90_put_att(ncid,varid(12),'long_name','nondimensionalized using tnli')
+          iret=nf90_put_att(ncid,varid(12),'standard_name','tnlist')
+          iret=nf90_put_att(ncid,varid(12),'globwave_name','tnlist')
+          iret=nf90_put_att(ncid,varid(12),'units','-')
         END IF
 !/NC4       IF (NCTYPE.EQ.4) iret=nf90_def_var_deflate(ncid, varid(12), 1, 1, deflate)
-        iret=nf90_put_att(ncid,varid(12),'long_name','tnli')
-        iret=nf90_put_att(ncid,varid(12),'standard_name','tnli')
-        iret=nf90_put_att(ncid,varid(12),'globwave_name','tnli')
-        iret=nf90_put_att(ncid,varid(12),'units','m2 rad-1')
         iret=nf90_put_att(ncid,varid(12),'scale_factor',1.)
         iret=nf90_put_att(ncid,varid(12),'add_offset',0.)
         iret=nf90_put_att(ncid,varid(12),'valid_min',-1.)
         iret=nf90_put_att(ncid,varid(12),'valid_max',1.)
         iret=nf90_put_att(ncid,varid(12),'_FillValue', NF90_FILL_FLOAT)
         iret=nf90_put_att(ncid,varid(12),'content','TXY')
-        iret=nf90_put_att(ncid,varid(12),'associates','time station frequency')
+        IF (ISCALE.EQ.0) THEN
+          iret=nf90_put_att(ncid,varid(12),'associates','time station frequency')
+        ELSE IF ( ISCALE.EQ.1 .OR. ISCALE.EQ.2 ) THEN
+          iret=nf90_put_att(ncid,varid(12),'associates','time station frequencyst')
+        ELSE
+          iret=nf90_put_att(ncid,varid(12),'associates','time station ffp')
+        END IF
 
 
-!Tdsi
+!Tdsi / Tdsist
         IF (ISCALE.EQ.0 .OR. ISCALE.EQ.3) THEN
           iret=nf90_def_var(ncid, 'tdsi', NF90_FLOAT,(/dimid(4),dimid(two),dimid(one)/), varid(13))
+          iret=nf90_put_att(ncid,varid(13),'long_name','tdsi')
+          iret=nf90_put_att(ncid,varid(13),'standard_name','tdsi')
+          iret=nf90_put_att(ncid,varid(13),'globwave_name','tdsi')
+          iret=nf90_put_att(ncid,varid(13),'units','m2')
         ELSE
-          iret=nf90_def_var(ncid, 'tdsistar', NF90_FLOAT,(/dimid(4),dimid(two),dimid(one)/), varid(13))
+          iret=nf90_def_var(ncid, 'tdsist', NF90_FLOAT,(/dimid(4),dimid(two),dimid(one)/), varid(13))
+          iret=nf90_put_att(ncid,varid(13),'long_name','nondimensionalized using tdsi')
+          iret=nf90_put_att(ncid,varid(13),'standard_name','tdsist')
+          iret=nf90_put_att(ncid,varid(13),'globwave_name','tdsist')
+          iret=nf90_put_att(ncid,varid(13),'units','-')
         END IF
 !/NC4       IF (NCTYPE.EQ.4) iret=nf90_def_var_deflate(ncid, varid(13), 1, 1, deflate)
-        iret=nf90_put_att(ncid,varid(13),'long_name','tdsi')
-        iret=nf90_put_att(ncid,varid(13),'standard_name','tdsi')
-        iret=nf90_put_att(ncid,varid(13),'globwave_name','tdsi')
-        iret=nf90_put_att(ncid,varid(13),'units','m2 rad-1')
         iret=nf90_put_att(ncid,varid(13),'scale_factor',1.)
         iret=nf90_put_att(ncid,varid(13),'add_offset',0.)
         iret=nf90_put_att(ncid,varid(13),'valid_min',-1.)
         iret=nf90_put_att(ncid,varid(13),'valid_max',1.)
         iret=nf90_put_att(ncid,varid(13),'_FillValue', NF90_FILL_FLOAT)
         iret=nf90_put_att(ncid,varid(13),'content','TXY')
-        iret=nf90_put_att(ncid,varid(13),'associates','time station frequency')
+        IF (ISCALE.EQ.0) THEN
+          iret=nf90_put_att(ncid,varid(13),'associates','time station frequency')
+        ELSE IF ( ISCALE.EQ.1 .OR. ISCALE.EQ.2 ) THEN
+          iret=nf90_put_att(ncid,varid(13),'associates','time station frequencyst')
+        ELSE
+          iret=nf90_put_att(ncid,varid(13),'associates','time station ffp')
+        END IF
 
-!Tbti
+!Tbti / Tbtist
         IF (ISCALE.EQ.0 .OR. ISCALE.EQ.3) THEN
           iret=nf90_def_var(ncid, 'tbti', NF90_FLOAT,(/dimid(4),dimid(two),dimid(one)/), varid(14))
+          iret=nf90_put_att(ncid,varid(14),'long_name','tbti')
+          iret=nf90_put_att(ncid,varid(14),'standard_name','tbti')
+          iret=nf90_put_att(ncid,varid(14),'globwave_name','tbti')
+          iret=nf90_put_att(ncid,varid(14),'units','m2')
         ELSE
-          iret=nf90_def_var(ncid, 'tbtistar', NF90_FLOAT,(/dimid(4),dimid(two),dimid(one)/), varid(14))
+          iret=nf90_def_var(ncid, 'tbtist', NF90_FLOAT,(/dimid(4),dimid(two),dimid(one)/), varid(14))
+          iret=nf90_put_att(ncid,varid(14),'long_name','nondimensionalized using tbti')
+          iret=nf90_put_att(ncid,varid(14),'standard_name','tbtist')
+          iret=nf90_put_att(ncid,varid(14),'globwave_name','tbtist')
+          iret=nf90_put_att(ncid,varid(14),'units','-')
         END IF
 !/NC4       IF (NCTYPE.EQ.4) iret=nf90_def_var_deflate(ncid, varid(14), 1, 1, deflate)
-        iret=nf90_put_att(ncid,varid(14),'long_name','tbti')
-        iret=nf90_put_att(ncid,varid(14),'standard_name','tbti')
-        iret=nf90_put_att(ncid,varid(14),'globwave_name','tbti')
-        iret=nf90_put_att(ncid,varid(14),'units','m2 rad-1')
         iret=nf90_put_att(ncid,varid(14),'scale_factor',1.)
         iret=nf90_put_att(ncid,varid(14),'add_offset',0.)
         iret=nf90_put_att(ncid,varid(14),'valid_min',-1.)
         iret=nf90_put_att(ncid,varid(14),'valid_max',1.)
         iret=nf90_put_att(ncid,varid(14),'_FillValue', NF90_FILL_FLOAT)
         iret=nf90_put_att(ncid,varid(14),'content','TXY')
-        iret=nf90_put_att(ncid,varid(14),'associates','time station frequency')
-
-!Ttoti
-        IF (ISCALE.EQ.0 .OR. ISCALE.EQ.3) THEN
-          iret=nf90_def_var(ncid, 'ttoti', NF90_FLOAT,(/dimid(4),dimid(two),dimid(one)/), varid(15))
+        IF (ISCALE.EQ.0) THEN
+          iret=nf90_put_att(ncid,varid(14),'associates','time station frequency')
+        ELSE IF ( ISCALE.EQ.1 .OR. ISCALE.EQ.2 ) THEN
+          iret=nf90_put_att(ncid,varid(14),'associates','time station frequencyst')
         ELSE
-          iret=nf90_def_var(ncid, 'ttotistar', NF90_FLOAT,(/dimid(4),dimid(two),dimid(one)/), varid(15))
+          iret=nf90_put_att(ncid,varid(14),'associates','time station ffp')
+        END IF
+
+!Ticei / Ticeist
+        IF (ISCALE.EQ.0 .OR. ISCALE.EQ.3) THEN
+          iret=nf90_def_var(ncid, 'ticei', NF90_FLOAT,(/dimid(4),dimid(two),dimid(one)/), varid(15))
+          iret=nf90_put_att(ncid,varid(15),'long_name','ticei')
+          iret=nf90_put_att(ncid,varid(15),'standard_name','ticei')
+          iret=nf90_put_att(ncid,varid(15),'globwave_name','ticei')
+          iret=nf90_put_att(ncid,varid(15),'units','m2')
+        ELSE
+          iret=nf90_def_var(ncid, 'ticeist', NF90_FLOAT,(/dimid(4),dimid(two),dimid(one)/), varid(15))
+          iret=nf90_put_att(ncid,varid(15),'long_name','nondimensionalized using ticei')
+          iret=nf90_put_att(ncid,varid(15),'standard_name','ticeist')
+          iret=nf90_put_att(ncid,varid(15),'globwave_name','ticeist')
+          iret=nf90_put_att(ncid,varid(15),'units','-')
         END IF
 !/NC4       IF (NCTYPE.EQ.4) iret=nf90_def_var_deflate(ncid, varid(15), 1, 1, deflate)
-        iret=nf90_put_att(ncid,varid(15),'long_name','ttoti')
-        iret=nf90_put_att(ncid,varid(15),'standard_name','ttoti')
-        iret=nf90_put_att(ncid,varid(15),'globwave_name','ttoti')
-        iret=nf90_put_att(ncid,varid(15),'units','m2 rad-1')
         iret=nf90_put_att(ncid,varid(15),'scale_factor',1.)
         iret=nf90_put_att(ncid,varid(15),'add_offset',0.)
         iret=nf90_put_att(ncid,varid(15),'valid_min',-1.)
         iret=nf90_put_att(ncid,varid(15),'valid_max',1.)
         iret=nf90_put_att(ncid,varid(15),'_FillValue', NF90_FILL_FLOAT)
         iret=nf90_put_att(ncid,varid(15),'content','TXY')
-        iret=nf90_put_att(ncid,varid(15),'associates','time station frequency')
+        IF (ISCALE.EQ.0) THEN
+          iret=nf90_put_att(ncid,varid(15),'associates','time station frequency')
+        ELSE IF ( ISCALE.EQ.1 .OR. ISCALE.EQ.2 ) THEN
+          iret=nf90_put_att(ncid,varid(15),'associates','time station frequencyst')
+        ELSE
+          iret=nf90_put_att(ncid,varid(15),'associates','time station ffp')
+        END IF
 
+!Ttoti / Ttotist
+        IF (ISCALE.EQ.0 .OR. ISCALE.EQ.3) THEN
+          iret=nf90_def_var(ncid, 'ttoti', NF90_FLOAT,(/dimid(4),dimid(two),dimid(one)/), varid(16))
+          iret=nf90_put_att(ncid,varid(16),'long_name','ttoti')
+          iret=nf90_put_att(ncid,varid(16),'standard_name','ttoti')
+          iret=nf90_put_att(ncid,varid(16),'globwave_name','ttoti')
+          iret=nf90_put_att(ncid,varid(16),'units','m2')
+        ELSE
+          iret=nf90_def_var(ncid, 'ttotist', NF90_FLOAT,(/dimid(4),dimid(two),dimid(one)/), varid(16))
+          iret=nf90_put_att(ncid,varid(16),'long_name','nondimensionalized using ttoti')
+          iret=nf90_put_att(ncid,varid(16),'standard_name','ttotist')
+          iret=nf90_put_att(ncid,varid(16),'globwave_name','ttotist')
+          iret=nf90_put_att(ncid,varid(16),'units','-')
+        END IF
+!/NC4       IF (NCTYPE.EQ.4) iret=nf90_def_var_deflate(ncid, varid(16), 1, 1, deflate)
+        iret=nf90_put_att(ncid,varid(16),'scale_factor',1.)
+        iret=nf90_put_att(ncid,varid(16),'add_offset',0.)
+        iret=nf90_put_att(ncid,varid(16),'valid_min',-1.)
+        iret=nf90_put_att(ncid,varid(16),'valid_max',1.)
+        iret=nf90_put_att(ncid,varid(16),'_FillValue', NF90_FILL_FLOAT)
+        iret=nf90_put_att(ncid,varid(16),'content','TXY')
+        IF (ISCALE.EQ.0) THEN
+          iret=nf90_put_att(ncid,varid(16),'associates','time station frequency')
+        ELSE IF ( ISCALE.EQ.1 .OR. ISCALE.EQ.2 ) THEN
+          iret=nf90_put_att(ncid,varid(16),'associates','time station frequencyst')
+        ELSE
+          iret=nf90_put_att(ncid,varid(16),'associates','time station ffp')
+        END IF
 
 !  Add values in netCDF file   
         iret=nf90_enddef(ncid)
@@ -4551,7 +4574,7 @@
         iret=nf90_put_att(ncid,varid(14),'content','TX')
         iret=nf90_put_att(ncid,varid(14),'associates','time station')
 
-!U*
+!Ust
         iret=nf90_def_var(ncid, 'ust', NF90_FLOAT, (/ dimid(two),dimid(one) /), varid(15))
 !/NC4        IF (NCTYPE.EQ.4) iret=nf90_def_var_deflate(ncid, varid(15), 1, 1, deflate)
         iret=nf90_put_att(ncid,varid(15),'long_name','friction velocity')
@@ -4599,8 +4622,8 @@
             iret=nf90_put_att(ncid,varid(17),'valid_min',-1.)
             iret=nf90_put_att(ncid,varid(17),'valid_max',1.)
             iret=nf90_put_att(ncid,varid(17),'_FillValue',NF90_FILL_FLOAT)
-            iret=nf90_put_att(ncid,varid(17),'content','TXY')
-            iret=nf90_put_att(ncid,varid(17),'associates','time station frequency')
+            iret=nf90_put_att(ncid,varid(17),'content','TXYZ')
+            iret=nf90_put_att(ncid,varid(17),'associates','time station frequency direction')
           ENDIF
 
 !Snl
@@ -4616,8 +4639,8 @@
             iret=nf90_put_att(ncid,varid(18),'valid_min',-1.)
             iret=nf90_put_att(ncid,varid(18),'valid_max',1.)
             iret=nf90_put_att(ncid,varid(18),'_FillValue',NF90_FILL_FLOAT)
-            iret=nf90_put_att(ncid,varid(18),'content','TXY')
-            iret=nf90_put_att(ncid,varid(18),'associates','time station frequency')
+            iret=nf90_put_att(ncid,varid(18),'content','TXYZ')
+            iret=nf90_put_att(ncid,varid(18),'associates','time station frequency direction')
           ENDIF
 
 !Sds
@@ -4633,8 +4656,8 @@
             iret=nf90_put_att(ncid,varid(19),'valid_min',-1.)
             iret=nf90_put_att(ncid,varid(19),'valid_max',1.)
             iret=nf90_put_att(ncid,varid(19),'_FillValue',NF90_FILL_FLOAT)
-            iret=nf90_put_att(ncid,varid(19),'content','TXY')
-            iret=nf90_put_att(ncid,varid(19),'associates','time station frequency')
+            iret=nf90_put_att(ncid,varid(19),'content','TXYZ')
+            iret=nf90_put_att(ncid,varid(19),'associates','time station frequency direction')
           ENDIF
 
 !Sbt
@@ -4650,25 +4673,42 @@
             iret=nf90_put_att(ncid,varid(20),'valid_min',-1.)
             iret=nf90_put_att(ncid,varid(20),'valid_max',1.)
             iret=nf90_put_att(ncid,varid(20),'_FillValue',NF90_FILL_FLOAT)
-            iret=nf90_put_att(ncid,varid(20),'content','TXY')
-            iret=nf90_put_att(ncid,varid(20),'associates','time station frequency')
+            iret=nf90_put_att(ncid,varid(20),'content','TXYZ')
+            iret=nf90_put_att(ncid,varid(20),'associates','time station frequency direction')
           ENDIF
 
-!Stt
+!Sice
           IF ( FLSRCE(6) )  THEN
-            iret=nf90_def_var(ncid,'stt',NF90_FLOAT,(/dimid(5),dimid(4),dimid(two),dimid(one)/),varid(21))
+            iret=nf90_def_var(ncid,'sice',NF90_FLOAT,(/dimid(5),dimid(4),dimid(two),dimid(one)/),varid(21))
 !/NC4            IF (NCTYPE.EQ.4) iret=nf90_def_var_deflate(ncid, varid(21), 1, 1, deflate)
-            iret=nf90_put_att(ncid,varid(21),'long_name','Stt')
-            iret=nf90_put_att(ncid,varid(21),'standard_name','Stt')
-            iret=nf90_put_att(ncid,varid(21),'globwave_name','Stt')
+            iret=nf90_put_att(ncid,varid(21),'long_name','wave-ice interactions source term')
+            iret=nf90_put_att(ncid,varid(21),'standard_name','wave_ice_intercations_source_term')
+            iret=nf90_put_att(ncid,varid(21),'globwave_name','wave_ice_intercations_source_term')
             iret=nf90_put_att(ncid,varid(21),'units','m2 rad-1')
             iret=nf90_put_att(ncid,varid(21),'scale_factor',1.)
             iret=nf90_put_att(ncid,varid(21),'add_offset',0.)
             iret=nf90_put_att(ncid,varid(21),'valid_min',-1.)
             iret=nf90_put_att(ncid,varid(21),'valid_max',1.)
             iret=nf90_put_att(ncid,varid(21),'_FillValue',NF90_FILL_FLOAT)
-            iret=nf90_put_att(ncid,varid(21),'content','TXY')
-            iret=nf90_put_att(ncid,varid(21),'associates','time station frequency')
+            iret=nf90_put_att(ncid,varid(21),'content','TXYZ')
+            iret=nf90_put_att(ncid,varid(21),'associates','time station frequency direction')
+          ENDIF
+
+!Stt
+          IF ( FLSRCE(7) )  THEN
+            iret=nf90_def_var(ncid,'stt',NF90_FLOAT,(/dimid(5),dimid(4),dimid(two),dimid(one)/),varid(22))
+!/NC4            IF (NCTYPE.EQ.4) iret=nf90_def_var_deflate(ncid, varid(22), 1, 1, deflate)
+            iret=nf90_put_att(ncid,varid(22),'long_name','Stt')
+            iret=nf90_put_att(ncid,varid(22),'standard_name','Stt')
+            iret=nf90_put_att(ncid,varid(22),'globwave_name','Stt')
+            iret=nf90_put_att(ncid,varid(22),'units','m2 rad-1')
+            iret=nf90_put_att(ncid,varid(22),'scale_factor',1.)
+            iret=nf90_put_att(ncid,varid(22),'add_offset',0.)
+            iret=nf90_put_att(ncid,varid(22),'valid_min',-1.)
+            iret=nf90_put_att(ncid,varid(22),'valid_max',1.)
+            iret=nf90_put_att(ncid,varid(22),'_FillValue',NF90_FILL_FLOAT)
+            iret=nf90_put_att(ncid,varid(22),'content','TXYZ')
+            iret=nf90_put_att(ncid,varid(22),'associates','time station frequency direction')
           ENDIF
         ENDIF
 
