@@ -108,7 +108,6 @@
 !      SIG2WN     Subr. W3FLD1MD  Depth-dependent dispersion relation
 !      MFLUX      Subr. W3FLD1MD  MO stability correction
 !      WND2Z0M    Subr. W3FLD1MD  Bulk Z0 from wind
-!      CALC_FPI   Subr. W3FLD1MD  Calculate peak frequency 
 !     ----------------------------------------------------------------
 !
 !  5. Called by :
@@ -229,38 +228,37 @@
       !----------------------------------------------|
       ! Check if wind height not equal to 10 m       |
       !----------------------------------------------|
-      !HeightFLG = (abs(zwnd-10.).GT.0.1) ! True if not 10m
+      HeightFLG =.FALSE.
+!/URIC      HeightFLG = (abs(zwnd-10.).GT.0.1) ! True if not 10m
       !----------------------------------------------|
       ! Assume bulk and calculate 10 m wind guess for|
       ! defining tail level                          |
       !----------------------------------------------|
       CALL wnd2z0m(uref,z01)  ! first guess at z0
-      wnd_10_mag=uref
-      ittot=1
       ! If input wind is not 10m, solve for approx 10 m
       !-------------------------------------------------|
       ! If height != 10 m, then iterate to get 10 m wind|
       ! (assuming neutral -- this is just a guess)      |
       !-------------------------------------------------|
-      !IF (HeightFLG) THEN
-      !   IterFLAG=.true.
-      !   COUNT = 1 !COUNT is now counting iteration over z0
-      !   do while(IterFLAG)
-      !      wnd_10_mag=UREF*log(10./z01)/log(zwnd/z01)
-      !      CALL wnd2z0m(wnd_10_mag,z02)
-      !      if ( (abs(z01/z02-1.).GT.0.001) .AND. &
-      !           (COUNT.LT.10))THEN
-      !         z01 = z02
-      !      else
-      !         IterFLAG = .false.
-      !      endif
-      !      COUNT = COUNT + 1
-      !   enddo
-      !   ITTOT = 3 !extra iterations for 10m wind
-      !ELSE
-      !   wnd_10_mag = uref
-      !   ITTOT = 1 !no iteration needed
-      !ENDIF
+      IF (HeightFLG) THEN
+         IterFLAG=.true.
+         COUNT = 1 !COUNT is now counting iteration over z0
+         do while(IterFLAG)
+            wnd_10_mag=UREF*log(10./z01)/log(zwnd/z01)
+            CALL wnd2z0m(wnd_10_mag,z02)
+            if ( (abs(z01/z02-1.).GT.0.001) .AND. &
+                 (COUNT.LT.10))THEN
+               z01 = z02
+            else
+               IterFLAG = .false.
+            endif
+            COUNT = COUNT + 1
+         enddo
+         ITTOT = 3 !extra iterations for 10m wind
+      ELSE
+         wnd_10_mag = uref
+         ITTOT = 1 !no iteration needed
+      ENDIF
       if (Tail_Choice.eq.0) then
           SAT=Tail_Level
        elseif (Tail_Choice.eq.1) then
@@ -353,7 +351,6 @@
       !DTX = (/ 1. , -1. , 0. /)
       !DTY = (/ 0. , 1. , -1. /)
 !/
-      HEIGHTFLG=.false.!Not set-up for non-10 m winds
       WIFLG = .TRUE.   !This kicks out when wind iteration complete
       NO_ERR = .TRUE.  !This kicks out when there is an error
       WI_COUNT = 1     !Count is now counting wind iterations
@@ -470,78 +467,78 @@
                   NO_ERR = .false.
                ENDIF
             ENDDO
-            !IF (HeightFLG) THEN
-            !   ! Get along stress wind at top wave boundary layer (10m)
-            !   WNDPA=WND_10_mag*COS(WND_10_dir-USTD)
-            !   WNDPE=WND_10_mag*SIN(WND_10_dir-USTD)
-            !   ! Calculate Cartesian of across wind
-            !   WNDPEx=WNDPE*cos(ustd+pi/2.)! add pi/2 since referenced
-            !   WNDPEy=WNDPE*sin(ustd+pi/2.)! to right of stress angle
-            !   !Approx as neutral inside 10 m (WBL) calculate z0
-            !   wnd_ref_al=uref*cos(urefd-ustd)
-            !   z0=10. / exp( wnd_10_mag * KAPPA / ustra )
-            !   ! Use that z0 to calculate stability 
-            !   ! Cd to ref height (based on input wind)
+            IF (HeightFLG) THEN
+               ! Get along stress wind at top wave boundary layer (10m)
+               WNDPA=WND_10_mag*COS(WND_10_dir-USTD)
+               WNDPE=WND_10_mag*SIN(WND_10_dir-USTD)
+               ! Calculate Cartesian of across wind
+               WNDPEx=WNDPE*cos(ustd+pi/2.)! add pi/2 since referenced
+               WNDPEy=WNDPE*sin(ustd+pi/2.)! to right of stress angle
+               !Approx as neutral inside 10 m (WBL) calculate z0
+               wnd_ref_al=uref*cos(urefd-ustd)
+               z0=10. / exp( wnd_10_mag * KAPPA / ustra )
+               ! Use that z0 to calculate stability 
+               ! Cd to ref height (based on input wind)
             ! Below is subroutine for computing stability effects
-            !   call mflux(wnd_ref_al,zwnd,z0,rib,cd)
+               call mflux(wnd_ref_al,zwnd,z0,rib,cd)
                ! 2. Get CD with stability
                ! 3. Get New 35-m wind based on calculated stress Cd from MO
-            !   WNDPA=ustra/sqrt(cd)
-            !   WNDPAX=WNDPA*cos(ustd)
-            !   WNDPAY=WNDPA*sin(ustd)
-            !   if (wi.eq.3) then
-            !      u35_1=WNDPAX+WNDPEX
-            !      v35_1=WNDPAY+WNDPEY
-            !   elseif (wi.eq.2) then
-            !      u35_2=WNDPAX+WNDPEX
-            !      v35_2=WNDPAY+WNDPEY
-            !   elseif (wi.eq.1) then
-            !      u35_3=WNDPAX+WNDPEX
-            !      v35_3=WNDPAY+WNDPEY
-            !   endif
-            !ENDIF
+               WNDPA=ustra/sqrt(cd)
+               WNDPAX=WNDPA*cos(ustd)
+               WNDPAY=WNDPA*sin(ustd)
+               if (wi.eq.3) then
+                  u35_1=WNDPAX+WNDPEX
+                  v35_1=WNDPAY+WNDPEY
+               elseif (wi.eq.2) then
+                  u35_2=WNDPAX+WNDPEX
+                  v35_2=WNDPAY+WNDPEY
+               elseif (wi.eq.1) then
+                  u35_3=WNDPAX+WNDPEX
+                  v35_3=WNDPAY+WNDPEY
+               endif
+            ENDIF
          ENDDO
-         !IF (HeightFLG) THEN
-         !   DIFU10xx= u35_3-u35_1
-         !   DIFU10yx= v35_3-v35_1
-         !   DIFU10xy= u35_2-u35_1
-         !   DIFU10yy= v35_2-v35_1
-         !   fd_a = difu10xx / DT
-         !   fd_b = difu10xy / DT
-         !   fd_c = difu10yx / DT
-         !   fd_d = difu10yy / DT
-         !   du = -wndx+u35_1
-         !   dv = -wndy+v35_1
-         !   uitv= abs(du)
-         !   vitv=abs(dv)
-         !   ch=sqrt(uitv*uitv+vitv*vitv)
-         !   if (ch.gt.10) then
-         !      apar=0.5/(fd_a*fd_d-fd_b*fd_c)
-         !   else
-         !      apar=1.0/(fd_a*fd_d-fd_b*fd_c)
-         !   endif
+         IF (HeightFLG) THEN
+            DIFU10xx= u35_3-u35_1
+            DIFU10yx= v35_3-v35_1
+            DIFU10xy= u35_2-u35_1
+            DIFU10yy= v35_2-v35_1
+            fd_a = difu10xx / DT
+            fd_b = difu10xy / DT
+            fd_c = difu10yx / DT
+            fd_d = difu10yy / DT
+            du = -wndx+u35_1
+            dv = -wndy+v35_1
+            uitv= abs(du)
+            vitv=abs(dv)
+            ch=sqrt(uitv*uitv+vitv*vitv)
+            if (ch.gt.10) then
+               apar=0.5/(fd_a*fd_d-fd_b*fd_c)
+            else
+               apar=1.0/(fd_a*fd_d-fd_b*fd_c)
+            endif
 
             ! Check for wind convergence
-         !   WND_IT_FLG = (((du**2+dv**2)/(wndx**2+wndy**2)).GT.0.001)
-         !   
-         !   IF ( WND_IT_FLG .AND. WI_COUNT.LT.10 ) THEN
-         !      ! New guesses
-         !      wnd_10_x=wnd_10_x-apar*( FD_D * DU - FD_B * DV )
-         !      wnd_10_y=wnd_10_y-apar*( -FD_C * DU +FD_A * DV )
-         !   ELSE
-         !      wiflg = .FALSE.
-         !      IF (WI_COUNT .gt. 10 .AND. &
-         !           ((du**2+dv**2)/(wndx**2+wndy**2)).GT.0.05 ) then
-         !         print*,'Attn: W3FLD2 Wind error gt 5%'
-         !         !print*,'  Wind y/error: ',wndy,dv
-         !         !print*,'  Wind x/error: ',wndx,du
-         !         NO_ERR = .false.
-         !      endif
-         !   ENDIF
-         !   WI_COUNT = WI_COUNT + 1
-         !ELSE
+            WND_IT_FLG = (((du**2+dv**2)/(wndx**2+wndy**2)).GT.0.001)
+            
+            IF ( WND_IT_FLG .AND. WI_COUNT.LT.10 ) THEN
+               ! New guesses
+               wnd_10_x=wnd_10_x-apar*( FD_D * DU - FD_B * DV )
+               wnd_10_y=wnd_10_y-apar*( -FD_C * DU +FD_A * DV )
+            ELSE
+               wiflg = .FALSE.
+               IF (WI_COUNT .gt. 10 .AND. &
+                    ((du**2+dv**2)/(wndx**2+wndy**2)).GT.0.05 ) then
+                  print*,'Attn: W3FLD2 Wind error gt 5%'
+                  !print*,'  Wind y/error: ',wndy,dv
+                  !print*,'  Wind x/error: ',wndx,du
+                  NO_ERR = .false.
+               endif
+            ENDIF
+            WI_COUNT = WI_COUNT + 1
+         ELSE
             wiflg=.false. ! If already 10 m wind then complete.
-         !ENDIF
+         ENDIF
       enddo
 
       UST = USTRB
