@@ -544,7 +544,9 @@
       UST = USTRB
       USTD = ATAN2(TAUY, TAUX)
       CD = UST**2 / UREF**2
-      CHARN = 0.01/SQRT(SQRT( TAUNUX**2 + TAUNUY**2 )/(UST**2))
+      IF (PRESENT(CHARN)) THEN
+        CHARN = 0.01/SQRT(SQRT( TAUNUX**2 + TAUNUY**2 )/(UST**2))
+      ENDIF
       IF (.not.((CD .LT. 0.01).AND.(CD .GT. 0.0005)).or. .not.(NO_ERR)) THEN
          !Fail safe to bulk
          print*,'Attn: W3FLD2 failed, using bulk stress'
