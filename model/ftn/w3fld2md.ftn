@@ -142,7 +142,7 @@
       USE W3SERVMD,  ONLY: EXTCDE
       USE W3FLD1MD,  ONLY: APPENDTAIL,sig2wn,wnd2z0m,infld,tail_choice,&
                            tail_level, tail_transition_ratio1,         &
-                           tail_transition_ratio2
+                           tail_transition_ratio2, I_FORM
 !/S      USE W3SERVMD, ONLY: STRACE
 !/
       IMPLICIT NONE
