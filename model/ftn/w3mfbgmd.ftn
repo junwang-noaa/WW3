@@ -222,6 +222,7 @@
          DWNFAC(J) = (XFR**2-1./XFR**2)*0.5 &
               * SQRT(GRAV)*WN(J)**(3./2.)
       ENDDO
+      SPCK = 0.0
       DO J=1, NKT
          FXX=0.0
          FYX=0.0
