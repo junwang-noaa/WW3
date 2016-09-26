@@ -92,12 +92,12 @@ set -xe
   sed -e 's/NCC/ /g' \
       -e 's/URIC/ /g'\
       -e 's/MFB1/ /g'\
-      -e 's/FLD1/ /g'     switch.shrd > switch.NOCPL
+      switch.shrd > switch.NOCPL
   sed -e 's/NCC/ /g' \
       -e 's/URIC/ /g'\
       -e 's/MFB1/ /g'\
       -e 's/NCEP2/NCO NCEP2/g'\
-      -e 's/FLD1/ /g'     switch.shrd > switch.NOCPL_NCO
+      switch.shrd > switch.NOCPL_NCO
 # --------------------------------------------------------------------------- #
 # 3. Compile non-MPI codes                                                    #
 # --------------------------------------------------------------------------- #
