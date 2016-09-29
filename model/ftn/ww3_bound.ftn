@@ -394,6 +394,8 @@
 !
             READ(200+IP,'(A1,A10,A1,2F7.2,F10.1,F7.2,F6.1,F7.2,F6.1)') &
               space,buoyname,space,LATS(IP),LONS(IP),depth,U10,Udir,Curr,Currdir
+            !RPH: added lines converting negative longs to positive
+            IF (LONS(IP) .LT. 0) LONS(IP)=LONS(IP)+360.0
             READ(200+IP,*,IOSTAT=IERR) SPEC2D 
               IF (IFMIN2.GT.1) THEN 
 !
