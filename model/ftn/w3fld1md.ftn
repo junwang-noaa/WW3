@@ -1841,7 +1841,7 @@
       !   print*,'zwnd          :',zh
       !   print*,'z0            :',z0
       !endif
-      call ust_to_znot(WND*sqrt(CD),ZT,z0b, IFORM)
+      call ust_to_znot(WND*sqrt(CD),ZT,z0b, I_FORM)
       ZETAT=ZETA/ZH*ZT/100.
       ZETAo=1.0e+10
       ZETA2o=0.0e+00
