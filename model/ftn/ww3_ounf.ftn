@@ -20,6 +20,7 @@
 !/    23-May-2014 : Adding ice fluxes to W3SRCE         ( version 5.01 )
 !/    14-Oct-2014 : Keep the output files opened        ( version 5.01 )
 !/    27-Aug-2015 : ICEH and ICEF added as output       ( version 5.10 )
+!/    10-Jan-2017 : Changes for US3D and USSP output    ( version 6.01 )
 !/
 !/    Copyright 2009-2013 National Weather Service (NWS),
 !/       National Oceanic and Atmospheric Administration.  All rights
@@ -112,8 +113,10 @@
                           USSX, USSY, MSSX, MSSY, MSCX, MSCY, CHARN,   &
                           TAUWNX, TAUWNY, BHD, T02, HSIG, CGE,         &
                           T01, BEDFORMS, WHITECAP, TAUBBL, PHIBBL,     &
-                          CFLTHMAX, CFLXYMAX, CFLKMAX , TAUICE, PHICE, &
-                          P2SMS, EF, US3D, TH1M, STH1M, TH2M, STH2M, WN
+                          CFLTHMAX, CFLXYMAX, CFLKMAX, TAUICE, PHICE,  &
+                          STMAXE, STMAXD, HMAXE, HCMAXE, HMAXD, HCMAXD,&
+                          P2SMS, EF, US3D, TH1M, STH1M, TH2M, STH2M,   &
+                          WN, USSP, USSP_WN
       USE W3ODATMD, ONLY: NDSO, NDSE, NDST, NOGRP, NGRPP, IDOUT, UNDEF,&
                           FLOGRD, FNMPRE, NOSWLL, NOGE
 !
@@ -355,7 +358,7 @@
 
 ! 5.1.2  Processes the variable value for the time step IOUT
         CALL W3EXNC ( NX, NY, IX1, IXN, IY1, IYN, NSEA, FILEPREFIX,   &
-                      E3DF, P2MSF, US3DF, NCTYPE, TOGETHER, NCVARTYPE,&
+                      E3DF, P2MSF, US3DF, USSPF, NCTYPE, TOGETHER, NCVARTYPE,&
                       FLREQ, NCIDS, S3, stopdate )
 
 ! 5.1.3 Defines the stop date
@@ -507,8 +510,8 @@
 !/
       CONTAINS
 !/ ------------------------------------------------------------------- /
-      SUBROUTINE W3EXNC ( NX, NY, IX1, IXN, IY1, IYN, NSEA,           &
-                          FILEPREFIX, E3DF, P2MSF, US3DF, NCTYPE,     &
+      SUBROUTINE W3EXNC ( NX, NY, IX1, IXN, IY1, IYN, NSEA,             &
+                          FILEPREFIX, E3DF, P2MSF, US3DF, USSPF,NCTYPE, &
                           TOGETHER, NCVARTYPEI, FLREQ, NCIDS, S3, stopdate )
 !/
 !/                  +-----------------------------------+
@@ -596,8 +599,8 @@
 !/ Parameter list
 !/
       INTEGER, INTENT(IN)     :: NX, NY, IX1, IXN, IY1, IYN, NSEA,     &
-                                 E3DF(3,5), P2MSF(3), US3DF(3), NCTYPE,&
-                                 NCVARTYPEI
+                                 E3DF(3,5), P2MSF(3), US3DF(3),        & 
+                                 USSPF(2), NCTYPE, NCVARTYPEI
       CHARACTER(30)           :: FILEPREFIX
       LOGICAL, INTENT(IN)     :: TOGETHER
       LOGICAL, INTENT(IN)     :: FLREQ(NOGRP,NGRPP)
@@ -648,6 +651,7 @@
 !/BT4   REAL, PARAMETER            :: LOG2=LOG(2.)
       DOUBLE PRECISION        :: SXD, SYD, X0D, Y0D
       LOGICAL                 :: FLFRQ, FLDIR
+      LOGICAL                 :: CUSTOMFRQ=.FALSE.
 !/T      LOGICAL                 :: LTEMP(NGRPP)
       CHARACTER               :: FNAMENC*50,                          &
                                  ENAME*6,FORMF*11, UNITS*20, UNITS2*20
@@ -663,8 +667,8 @@
 !/T        LTEMP  = FLREQ(IFI,:)
 !/T        WRITE (NDST,9000) IFI, LTEMP
 !/T        END DO
-!/T      WRITE (NDST,9001) NCTYPE, IX1, IXN, IXS, IY1, IYN, IYS,          &
-!/T                        SCALE, VECTOR
+!/T      WRITE (NDST,9001) NCTYPE, IX1, IXN, IY1, IYN,               &
+!/T                        VECTOR
 !
 !--- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 ! 1.  Preparations
@@ -984,7 +988,7 @@
               varnm(1)='t02'
               varnl(1)='mean period T02'
               varns(1)='sea_surface_wind_wave_mean_period_from_variance_&
-					                   spectral_density_second_frequency_moment'
+                                                           spectral_density_second_frequency_moment'
               varng(1)='mean_period_t02'
               varnc(1)=''
               vmin = 0
@@ -999,7 +1003,7 @@
               varnm(1)='t0m1'
               varnl(1)='mean period T0m1'
               varns(1)='sea_surface_wind_wave_mean_period_from_variance&
-					                  _spectral_density_inverse_frequency_moment'
+                                                          _spectral_density_inverse_frequency_moment'
               varng(1)='mean_period_t0m1'
               varnc(1)=''
               vmin = 0 
@@ -1014,7 +1018,7 @@
               varnm(1)='t01'
               varnl(1)='mean period T01'
               varns(1)='sea_surface_wind_wave_mean_period_from_variance&
-					                  _spectral_density_first_frequency_moment' 
+                                                          _spectral_density_first_frequency_moment' 
               varng(1)='mean_period_t01'
               varnc(1)=''
               vmin = 0
@@ -1099,6 +1103,90 @@
               varnc(1)=''
               vmin = 0 
               vmax = 5000
+!
+            ELSE IF ( IFI .EQ. 2 .AND. IFJ .EQ. 11 ) THEN
+              FSC    = 0.002
+              UNITS  = 'm'
+              ENAME  = '.mxe'
+              CALL W3S2XY ( NSEA, NSEA, NX+1, NY, STMAXE, MAPSF, X1 )
+              NFIELD=1
+              varnm(1)='stmaxe'
+              varnl(1)='expected maximum sea surface elevation (nonlinear,2nd order)'
+              varns(1)='expected maximum sea surface elevation (nonlinear,2nd order)'
+              varng(1)='expected maximum sea surface elevation (nonlinear,2nd order)'
+              varnc(1)=''
+              vmin = 0
+              vmax = 32000
+!
+            ELSE IF ( IFI .EQ. 2 .AND. IFJ .EQ. 12 ) THEN
+              FSC    = 0.002
+              UNITS  = 'm'
+              ENAME  = '.mxes'
+              CALL W3S2XY ( NSEA, NSEA, NX+1, NY, STMAXD, MAPSF, X1 )
+              NFIELD=1
+              varnm(1)='stmaxd'
+              varnl(1)='standard deviation of maximum sea surface elevation (nonlinear,2nd order)'
+              varns(1)='std of expected maximum sea surface elevation (nonlinear,2nd order)'
+              varng(1)='standard deviation of maximum sea surface elevation (nonlinear,2nd order)'
+              varnc(1)=''
+              vmin = 0
+              vmax = 32000
+!
+            ELSE IF ( IFI .EQ. 2 .AND. IFJ .EQ. 13 ) THEN
+              FSC    = 0.002
+              UNITS  = 'm'
+              ENAME  = '.mxh'
+              CALL W3S2XY ( NSEA, NSEA, NX+1, NY, HMAXE, MAPSF, X1 )
+              NFIELD=1
+              varnm(1)='hmaxe'
+              varnl(1)='expected maximum wave height (linear, 1st order)'
+              varns(1)='expected maximum wave height (linear, 1st order)'
+              varng(1)='expected maximum wave height (linear, 1st order)'
+              varnc(1)=''
+              vmin = 0
+              vmax = 32000
+!
+            ELSE IF ( IFI .EQ. 2 .AND. IFJ .EQ. 14 ) THEN
+              FSC    = 0.002
+              UNITS  = 'm'
+              ENAME  = '.mxhc'
+              CALL W3S2XY ( NSEA, NSEA, NX+1, NY, HCMAXE, MAPSF, X1 )
+              NFIELD=1
+              varnm(1)='hcmaxe'
+              varnl(1)='expected maximum wave height from crest (linear, 1st order)'
+              varns(1)='expected maximum wave height from crest (linear, 1st order)'
+              varng(1)='expected maximum wave height from crest (linear, 1st order)'
+              varnc(1)=''
+              vmin = 0
+              vmax = 32000
+!
+            ELSE IF ( IFI .EQ. 2 .AND. IFJ .EQ. 15 ) THEN
+              FSC    = 0.002
+              UNITS  = 'm'
+              ENAME  = '.sdmh'
+              CALL W3S2XY ( NSEA, NSEA, NX+1, NY, HMAXD, MAPSF, X1 )
+              NFIELD=1
+              varnm(1)='hmaxd'
+              varnl(1)='STD of maximum wave height (linear, 1st order)'
+              varns(1)='STD of maximum wave height (linear, 1st order)'
+              varng(1)='STD of maximum wave height (linear, 1st order)'
+              varnc(1)=''
+              vmin = 0
+              vmax = 32000
+!
+            ELSE IF ( IFI .EQ. 2 .AND. IFJ .EQ. 16 ) THEN
+              FSC    = 0.002
+              UNITS  = 'm'
+              ENAME  = '.sdmhc'
+              CALL W3S2XY ( NSEA, NSEA, NX+1, NY, HCMAXD, MAPSF, X1 )
+              NFIELD=1
+              varnm(1)='hcmaxd'
+              varnl(1)='STD of maximum wave height from crest (linear, 1st order)'
+              varns(1)='STD of maximum wave height from crest (linear, 1st order)'
+              varng(1)='STD of maximum wave height from crest (linear, 1st order)'
+              varnc(1)=''
+              vmin = 0
+              vmax = 32000
 !
             ELSE IF ( IFI .EQ. 3 .AND. IFJ .EQ. 1 ) THEN
               ! Information for spectral
@@ -1609,7 +1697,7 @@
 !
             ELSE IF ( IFI .EQ. 6 .AND. IFJ .EQ. 3 ) THEN
               FSC    = 0.1
-              UNITS  = 'N m-1'
+              UNITS  = 'm2 s-2'
               ENAME  = '.bhd'
               CALL W3S2XY ( NSEA, NSEA, NX+1, NY, BHD(1:NSEA)    &
                                                         , MAPSF, X1 )
@@ -1738,6 +1826,7 @@
             ELSE IF ( IFI .EQ. 6 .AND. IFJ .EQ. 8 ) THEN
               ! Information for spectral distribution of surface Stokes drift (2nd file)
               FLFRQ=.TRUE.
+              NFIELD=2
               varnm(1)='uusf'
               varnm(2)='vusf'
               varnl(1)='eastward spectral variance of surface stokes drift'
@@ -1748,7 +1837,7 @@
               varng(2)='northward_spectral_variance_of_surface_stokes_drift'
               varnc(1)='usf=sqrt(uusf**2+vusf**2)'
               varnc(2)='usf=sqrt(uusf**2+vusf**2)'
-              UNITS   = 'm s-1'
+              UNITS   = 'm s-1 Hz-1'
               I1F=US3DF(2)
               I2F=US3DF(3)
               DO IK= I1F,I2F
@@ -1831,11 +1920,41 @@
               varnc(1)=''
               vmin = 0 
               vmax = 9990
+
+           ELSE IF ( IFI .EQ. 6 .AND. IFJ .EQ. 12 ) THEN
+              ! Information for spectral distribution of surface Stokes drift (2nd file)
+              FLFRQ=.TRUE.
+              IF (USSPF(1)==1) THEN
+                 CUSTOMFRQ=.TRUE.
+              ENDIF
+              NFIELD=2
+              varnm(1)='ussp'
+              varnm(2)='vssp'
+              varnl(1)='eastward partitioned surface stokes drift'
+              varnl(2)='northward partitioned surface stokes drift'
+              varns(1)='eastward_partitioned_surface_stokes_drift'
+              varns(2)='northward_partitioned_surface_stokes_drift'
+              varng(1)='eastward_partitioned_surface_stokes_drift'
+              varng(2)='northward_partitioned_surface_stokes_drift'
+              varnc(1)='usp=sqrt(ussp**2+vssp**2)'
+              varnc(2)='usp=sqrt(ussp**2+vssp**2)'
+              UNITS   = 'm s-1'
+              I1F=1
+              I2F=USSPF(2)
+              DO IK= I1F,I2F
+                CALL W3S2XY ( NSEA, NSEA, NX+1,NY,USSP(:,IK), MAPSF, XX )
+                XXK(:,:,IK)=XX
+                CALL W3S2XY ( NSEA, NSEA, NX+1,NY,USSP(:,NK+IK), MAPSF, XY )
+                XYK(:,:,IK)=XY
+                END DO
+              FSC    = 0.0005
+              ENAME  = '.usp'
 !
             ELSE IF ( IFI .EQ. 7 .AND. IFJ .EQ. 1 ) THEN
               FSC    = 0.01
               ENAME  = '.abr'
               UNITS  = 'm'
+              ! NB: ABA and ABD are the X and Y components of the bottom displacement
               CALL W3S2XY ( NSEA, NSEA, NX+1, NY, ABA(1:NSEA)       &
                                                         , MAPSF, XX )
               CALL W3S2XY ( NSEA, NSEA, NX+1, NY, ABD(1:NSEA)       &
@@ -1859,6 +1978,7 @@
               FSC    = 0.01
               ENAME  = '.ubr'
               UNITS  = 'm s-1'
+              ! NB: UBA and UBD are the X and Y components of the bottom velocity
               CALL W3S2XY ( NSEA, NSEA, NX+1, NY, UBA(1:NSEA)       &
                                                         , MAPSF, XX )
               CALL W3S2XY ( NSEA, NSEA, NX+1, NY, UBD(1:NSEA)       &
@@ -1923,9 +2043,9 @@
               FSC    = 0.000001
               UNITS  = 'm2 s-2'
               ENAME  = '.tbb'
-              CALL W3S2XY ( NSEA, NSEA, NX+1, NY, TAUOX(1:NSEA)        &
+              CALL W3S2XY ( NSEA, NSEA, NX+1, NY, TAUBBL(1:NSEA,1) &
                                                         , MAPSF, XX )
-              CALL W3S2XY ( NSEA, NSEA, NX+1, NY, TAUOY(1:NSEA)        &
+              CALL W3S2XY ( NSEA, NSEA, NX+1, NY, TAUBBL(1:NSEA,2) &
                                                         , MAPSF, XY )
               NFIELD=2
               varnm(1)='utbb'
@@ -2368,9 +2488,16 @@
               ! Writes frequencies to netcdf file
               IF (extradim.EQ.1) THEN
                 ALLOCATE(freq(I2F-I1F+1))
-                DO i=1,I2F-I1F+1
-                  freq(i)=SIG(I1F-1+i)*TPIINV
-                END DO
+                !BGR Here is where we should tell it what frequencies are.
+                IF (CUSTOMFRQ) THEN
+                   DO i=1,usspf(2)
+                      FREQ(i)=sqrt(GRAV*USSP_WN(i))*TPIINV
+                   ENDDO
+                ELSE
+                   DO i=1,I2F-I1F+1
+                      freq(i)=SIG(I1F-1+i)*TPIINV
+                   END DO
+                ENDIF
                 iret=nf90_put_var(ncid,varid(3),freq)
                 call check_err(iret)
                 DEALLOCATE(freq)
@@ -2900,9 +3027,9 @@
 !
 !/T 9000 FORMAT (' TEST W3EXNC : FLAGS :',I3,2X,20L2)
 !/T 9001 FORMAT (' TEST W3EXNC : ITPYE :',I4/                         &
-!/T              '             IX1/N/S :',3I7/                        &
-!/T              '             IY1/N/S :',3I7/                        &
-!/T              '       SCALE, VECTOR :',2L2)
+!/T              '             IX1/N   :',2I7/                        &
+!/T              '             IY1/N   :',2I7/                        &
+!/T              '             VECTOR  :',1L2)
 !
 !/T 9012 FORMAT (' TEST W3EXNC : BLOK PARS    : ',3I4)
 !/T 9014 FORMAT ('           BASE NAME : ',A)
@@ -2949,8 +3076,8 @@
 !      
 ! Creation in netCDF3 or netCDF4
 !
-      IF(NCTYPE.EQ.3)  iret = nf90_create(ncfile, NF90_CLOBBER, ncid)
-!/NC4      IF(NCTYPE.EQ.4)  iret = nf90_create(ncfile, NF90_NETCDF4, ncid)
+      IF(NCTYPE.EQ.3)  iret = nf90_create(trim(ncfile), NF90_CLOBBER, ncid)
+!/NC4      IF(NCTYPE.EQ.4) iret = nf90_create(trim(ncfile), NF90_NETCDF4, ncid)
       call check_err(iret)
 !
 ! Define dimensions
@@ -3127,8 +3254,8 @@
       call check_err(iret)
 !/ST4    IF (ZZWND.NE.10)      iret=nf90_put_att(ncid,NF90_GLOBAL,'SIN4 namelist parameter ZWD',ZZWND)
 !/ST4    IF (AALPHA.NE.0.0095) iret=nf90_put_att(ncid,NF90_GLOBAL,'SIN4 namelist parameter ALPHA0',AALPHA)
-!/ST4    IF (BBETA.NE.1.52)    iret=nf90_put_att(ncid,NF90_GLOBAL,'SIN4 namelist parameter BETAMAX',BBETA)
-!/ST4    IF(SSDSC(7).NE.0.8)   iret=nf90_put_att(ncid,NF90_GLOBAL,'SDS4 namelist parameter WHITECAPWIDTH', SSDSC(7))
+!/ST4    IF (BBETA.NE.1.43)    iret=nf90_put_att(ncid,NF90_GLOBAL,'SIN4 namelist parameter BETAMAX',BBETA)
+!/ST4    IF(SSDSC(7).NE.0.3)   iret=nf90_put_att(ncid,NF90_GLOBAL,'SDS4 namelist parameter WHITECAPWIDTH', SSDSC(7))
 ! ... TO BE CONTINUED ... 
       open(unit=994,file='NC_globatt.inp',status='old',iostat=icode)
       IF (ICODE.EQ.0) THEN

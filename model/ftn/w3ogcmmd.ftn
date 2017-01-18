@@ -109,7 +109,8 @@
       USE W3OACPMD,  ONLY: ID_OASIS_TIME, IL_NB_SND, SND_FLD, CPL_OASIS_SND
       USE W3GDATMD,  ONLY: NSEAL, MAPSTA, MAPSF
       USE W3ADATMD,  ONLY: HS, T0M1, THM, BHD, TAUOX, TAUOY, PHIOC, UBA, UBD, &
-                           TAUWIX, TAUWIY, WLM
+                           TAUWIX, TAUWIY, TUSX, TUSY, USSX, USSY, WLM, &
+                           PHIBBL,TAUBBL
       USE W3ODATMD,  ONLY: NAPROC, IAPROC, UNDEF
       USE CONSTANTS, ONLY: PI, DERA
 !
@@ -210,6 +211,42 @@
             CALL CPL_OASIS_SND(IB_DO, ID_OASIS_TIME, RLA_OASIS_SND, LL_ACTION)
          ENDIF
          !
+         ! Wave-to-ocean TKE flux (phioc in W.m-2)
+         ! ---------------------------------------------------------------------
+         IF (SND_FLD(IB_DO)%CL_FIELD_NAME == 'WW3__FOC') THEN
+            TMP(1:NSEAL) = 0.0
+            WHERE(PHIOC /= UNDEF) TMP(:)=PHIOC(:)
+            RLA_OASIS_SND(:,1) = DBLE(TMP(1:NSEAL))
+            CALL CPL_OASIS_SND(IB_DO, ID_OASIS_TIME, RLA_OASIS_SND, LL_ACTION)
+         ENDIF
+         !
+         ! Momentum flux due to bottom friction (taubblx in m2.s-2)
+         ! ---------------------------------------------------------------------
+         IF (SND_FLD(IB_DO)%CL_FIELD_NAME == 'WW3_TBBX') THEN
+            TMP(1:NSEAL) = 0.0
+            WHERE(TAUOX /= UNDEF) TMP(:)=TAUBBL(:,1)
+            RLA_OASIS_SND(:,1) = DBLE(TMP(1:NSEAL))
+            CALL CPL_OASIS_SND(IB_DO, ID_OASIS_TIME, RLA_OASIS_SND, LL_ACTION)
+         ENDIF
+         !
+         ! Momentum flux due to bottom friction (taubbly in m2.s-2)
+         ! ---------------------------------------------------------------------
+         IF (SND_FLD(IB_DO)%CL_FIELD_NAME == 'WW3_TBBY') THEN
+            TMP(1:NSEAL) = 0.0
+            WHERE(TAUOY /= UNDEF) TMP(:)=TAUBBL(:,2)
+            RLA_OASIS_SND(:,1) = DBLE(TMP(1:NSEAL))
+            CALL CPL_OASIS_SND(IB_DO, ID_OASIS_TIME, RLA_OASIS_SND, LL_ACTION)
+         ENDIF
+         !
+         ! Energy flux due to bottom friction (phibbl in W.m-2)
+         ! ---------------------------------------------------------------------
+         IF (SND_FLD(IB_DO)%CL_FIELD_NAME == 'WW3__FBB') THEN
+            TMP(1:NSEAL) = 0.0
+            WHERE(PHIOC /= UNDEF) TMP(:)=PHIBBL(:)
+            RLA_OASIS_SND(:,1) = DBLE(TMP(1:NSEAL))
+            CALL CPL_OASIS_SND(IB_DO, ID_OASIS_TIME, RLA_OASIS_SND, LL_ACTION)
+         ENDIF
+         !
          ! rms amplitude of orbital velocity of the waves (ubr in m.s-1)
          ! ---------------------------------------------------------------------
          IF (SND_FLD(IB_DO)%CL_FIELD_NAME == 'WW3__UBR') THEN
@@ -217,12 +254,21 @@
             CALL CPL_OASIS_SND(IB_DO, ID_OASIS_TIME, RLA_OASIS_SND, LL_ACTION)
          ENDIF
          !
-         ! Wave-to-ocean TKE flux (phioc in W.m-2)
+         ! x component of the near-bottom rms wave velocity (in m.s-1)
          ! ---------------------------------------------------------------------
-         IF (SND_FLD(IB_DO)%CL_FIELD_NAME == 'WW3__FOC') THEN
+         IF (SND_FLD(IB_DO)%CL_FIELD_NAME == 'WW3_UBRX') THEN
             TMP(1:NSEAL) = 0.0
-            WHERE(PHIOC /= UNDEF) TMP(:)=PHIOC(:)
-            RLA_OASIS_SND(:,1) = DBLE(TMP(1:NSEAL))
+            WHERE(UBA(:) /= UNDEF) TMP=UBA(:)*COS(UBD(:))
+            RLA_OASIS_SND(:,1) = TMP(1:NSEAL)
+            CALL CPL_OASIS_SND(IB_DO, ID_OASIS_TIME, RLA_OASIS_SND, LL_ACTION)
+         ENDIF
+         !
+         ! y component of the near-bottom rms wave velocity (in m.s-1)
+         ! ---------------------------------------------------------------------
+         IF (SND_FLD(IB_DO)%CL_FIELD_NAME == 'WW3_UBRY') THEN
+            TMP(1:NSEAL) = 0.0
+            WHERE(UBA(:) /= UNDEF) TMP=UBA(:)*SIN(UBD(:))
+            RLA_OASIS_SND(:,1) = TMP(1:NSEAL)
             CALL CPL_OASIS_SND(IB_DO, ID_OASIS_TIME, RLA_OASIS_SND, LL_ACTION)
          ENDIF
          !
@@ -240,6 +286,42 @@
          IF (SND_FLD(IB_DO)%CL_FIELD_NAME == 'WW3_TAWY') THEN
             TMP(1:NSEAL) = 0.0
             WHERE(TAUWIY /= UNDEF) TMP(:)=TAUWIY(:)
+            RLA_OASIS_SND(:,1) = DBLE(TMP(1:NSEAL))
+            CALL CPL_OASIS_SND(IB_DO, ID_OASIS_TIME, RLA_OASIS_SND, LL_ACTION)
+         ENDIF
+         !
+         ! Volume transport associated to Stokes drift, u component (tusx in m2.s-1)
+         ! ---------------------------------------------------------------------
+         IF (SND_FLD(IB_DO)%CL_FIELD_NAME == 'WW3_TUSX') THEN
+            TMP(1:NSEAL) = 0.0
+            WHERE(TUSX /= UNDEF) TMP(:)=TUSX(:)
+            RLA_OASIS_SND(:,1) = DBLE(TMP(1:NSEAL))
+            CALL CPL_OASIS_SND(IB_DO, ID_OASIS_TIME, RLA_OASIS_SND, LL_ACTION)
+         ENDIF
+         !
+         ! Volume transport associated to Stokes drift, v component (tusy in m2.s-1)
+         ! ---------------------------------------------------------------------
+         IF (SND_FLD(IB_DO)%CL_FIELD_NAME == 'WW3_TUSY') THEN
+            TMP(1:NSEAL) = 0.0
+            WHERE(TUSY /= UNDEF) TMP(:)=TUSY(:)
+            RLA_OASIS_SND(:,1) = DBLE(TMP(1:NSEAL))
+            CALL CPL_OASIS_SND(IB_DO, ID_OASIS_TIME, RLA_OASIS_SND, LL_ACTION)
+         ENDIF
+         !
+         ! Surface Stokes drift, u component (ussx in m.s-1)
+         ! ---------------------------------------------------------------------
+         IF (SND_FLD(IB_DO)%CL_FIELD_NAME == 'WW3_USSX') THEN
+            TMP(1:NSEAL) = 0.0
+            WHERE(USSX /= UNDEF) TMP(:)=USSX(:)
+            RLA_OASIS_SND(:,1) = DBLE(TMP(1:NSEAL))
+            CALL CPL_OASIS_SND(IB_DO, ID_OASIS_TIME, RLA_OASIS_SND, LL_ACTION)
+         ENDIF
+         !
+         ! Surface Stokes drift, v component (ussy in m.s-1)
+         ! ---------------------------------------------------------------------
+         IF (SND_FLD(IB_DO)%CL_FIELD_NAME == 'WW3_USSY') THEN
+            TMP(1:NSEAL) = 0.0
+            WHERE(USSY /= UNDEF) TMP(:)=USSY(:)
             RLA_OASIS_SND(:,1) = DBLE(TMP(1:NSEAL))
             CALL CPL_OASIS_SND(IB_DO, ID_OASIS_TIME, RLA_OASIS_SND, LL_ACTION)
          ENDIF
@@ -351,6 +433,8 @@
 ! For the same coupling time, W3FLDG is called for the level and current variables.
 ! As RCV_FIELDS_FROM_OCEAN is called from W3FLDG, the following test prevents to 
 ! exchange the wet-dry variables more than once per coupling time.
+!cval well but it cannot work because MASKT,MASKU,MASKV variable are not global variable
+!cval Anyway we will give up the exchange of mask, it is not a good idea at all
 
       IF (ID_OASIS_TIME > ID_OASIS_TIME_WETDRYONLYONCE) THEN
          !

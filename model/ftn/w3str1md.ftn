@@ -113,6 +113,7 @@
 !/                  +-----------------------------------+
 !/
 !/    13 Jan-2013 : Origination, based on SWAN v40.91 code ( version 4.08 )
+!/    05 Oct-2016 : Avoiding divide by zero for EMEAN      ( version 5.15 )
 !/
 !  1. Purpose :
 !
@@ -290,7 +291,7 @@
 !
 !/S      INTEGER, SAVE           :: IENT = 0
       LOGICAL, SAVE           :: FIRST = .TRUE.
-      INTEGER I1, I2, ID, IDDUM, IENT, II, IS, ISM, ISM1, ISMAX, &
+      INTEGER I1, I2, ID, IDDUM, II, IS, ISM, ISM1, ISMAX, &
               ISP, ISP1, ITH, IK
       REAL    AUX1, AUX2, BIPH, C0, CM, DEP, DEP_2, DEP_3, E0, EM, HS, &
               FT, RINT, SIGPICG, SINBPH, STRI, WISM, WISM1, WISP, & 
@@ -353,7 +354,7 @@
 !
 ! 4.  Final processing
 !
-      SIGM01 = MAX ( 1.E-7 , SIGM01 ) / EMEAN
+      SIGM01 = MAX ( 1.E-7 , SIGM01 ) / MAX(EMEAN,0.001)
 
 !---- Temporary parameters (to be replaced by namelists) -----
       PTRIAD(1) = 0.05
@@ -549,7 +550,7 @@
 !/ ------------------------------------------------------------------- /
 !      USE W3ODATMD, ONLY: NDSE
 !      USE W3SERVMD, ONLY: EXTCDE
-!/S      USE W3SERVMD, ONLY: STRACE
+!!/S      USE W3SERVMD, ONLY: STRACE
 !/
 !      IMPLICIT NONE
 !/
@@ -560,11 +561,11 @@
 !/ ------------------------------------------------------------------- /
 !/ Local parameters
 !/
-!/S      INTEGER, SAVE           :: IENT = 0
+!!/S      INTEGER, SAVE           :: IENT = 0
 !/
 !/ ------------------------------------------------------------------- /
 !/
-!/S      CALL STRACE (IENT, 'INSTRX')
+!!/S      CALL STRACE (IENT, 'INSTRX')
 !
 ! 1.  .... ----------------------------------------------------------- *
 !

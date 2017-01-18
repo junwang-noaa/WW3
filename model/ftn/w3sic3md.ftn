@@ -513,11 +513,6 @@
          DO IK=1, NK
             !            recall that D=S/E=-2*Cg*k_i
             D1D(IK)= -2.0 * CG_TMP(IK) * WN_I(IK)
-! reminder: delete temporary lines (lower case "write") before public release
-!           freq=sig(ik)/tpi
-!           write(*,*)freq,wn_i(ik),(CG_tmp(IK)/CG(IK)),' % freq,k_i,CG_IC3/CG'
-!           write(*,*)freq,wn_i(ik),ix,iy,' % freq,k_i,ix,iy'
-
          END DO
          !
 
@@ -544,9 +539,6 @@
          DO IK=1, NK
             !            recall that D=S/E=-2*Cg*k_i
             D1D(IK)= -2.0 * CG_TMP(IK) * WN_I(IK)
-
-! reminder: delete temporary lines (lower case "write")
-!           write(*,*)'V1 WN_I(',IK,') = ',WN_I(IK)
          END DO
          !
       ELSE ! .. e.g. if ice thickness is .gt. 10 cm
@@ -889,7 +881,7 @@
 !     student, it is very fast to find roots. I suggest that perhaps you
 !     try the pure viscous case by setting G=0 to start with. nu can be
 !     set at 0.05*ice concentration (m^2/s) to begin with, because for
-!     grease ice Newyear’s data showed nu to be about 0.02-0.03 m^2/s.
+!     grease ice Newyear's data showed nu to be about 0.02-0.03 m^2/s.
 !     By setting G=0 in you get exactly the Keller model for pure 
 !     viscous layer. 
 !

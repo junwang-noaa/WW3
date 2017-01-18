@@ -103,6 +103,12 @@
 !      THS       R.A.  Public   Mean directional spread.
 !      THP0      R.A.  Public   Peak direction.
 !      HSIG      R.A.  Public   Height of infragravity waves
+!      STMAXE    R.A.  Public   Expected maximum surface elevation (crest)
+!      STMAXD    R.A.  Public   STD of maximum surface elevation
+!      HMAXE     R.A.  Public   Expected maximum wave height (from covariance)
+!      HMAXD     R.A.  Public   Std of HMAXE
+!      HCMAXE    R.A.  Public   Expected maximum wave height (from crest)
+!      HCMAXD    R.A.  Public   STD of HCMAXE
 !
 !      CHARN     R.A.  Public   Charnock parameter for air-sea friction.
 !      CGE       R.A.  Public   Energy flux.
@@ -124,6 +130,7 @@
 !      PHICE     R.A.  Public   Waves to ice energy flux.
 !
 !      US3D      R.A.  Public   3D Stokes drift.
+!      USSP      R.A.  Public   Partitioned Surface Stokes drift
 !
 !      ABA       R.A.  Public   Near-bottom rms wave ex. amplitude.
 !      ABD       R.A.  Public   Corresponding direction.
@@ -331,14 +338,19 @@
 !
 ! Output fields group 2)
 !
-        REAL, POINTER         ::  HS(:),  WLM(:),  T02(:), T0M1(:),   &
-                                  T01 (:),  FP0(:),  THM(:),          &
-                                  THS(:),  THP0(:),  FP1(:), THP1(:), &
-                                  HSIG(:)
+        REAL, POINTER         :: HS(:),  WLM(:),  T02(:), T0M1(:),   &
+                                 T01 (:),  FP0(:),  THM(:),          &
+                                 THS(:),  THP0(:),  FP1(:), THP1(:), &
+                                 HSIG(:), STMAXE(:), STMAXD(:),      &
+                                 HMAXE(:), HCMAXE(:), HMAXD(:),      &
+                                 HCMAXD(:)
         REAL, POINTER         :: XHS(:), XWLM(:), XT02(:), XT0M1(:),  &
                                  XT01 (:), XFP0(:), XTHM(:),          &
                                  XTHS(:), XTHP0(:), XFP1(:), XTHP1(:),&
-                                 XHSIG(:)
+                                 XHSIG(:), XSTMAXE(:), XSTMAXD(:),    &
+                                 XHMAXE(:), XHCMAXE(:), XHMAXD(:),    &
+                                 XHCMAXD(:)
+ 
 !
 ! Output fields group 3)
 !
@@ -372,13 +384,13 @@
                                   TUSX(:),  TUSY(:),  USSX(:),        &
                                   USSY(:),  PRMS(:),  TPMS(:),        &
                                   PHICE(:), TAUICE(:,:)
-        REAL, POINTER         ::  P2SMS(:,:),  US3D(:,:)
+        REAL, POINTER         ::  P2SMS(:,:),  US3D(:,:), USSP(:,:)
         REAL, POINTER         :: XSXX(:), XSYY(:), XSXY(:), XTAUOX(:),&
                                  XTAUOY(:), XBHD(:), XPHIOC(:),       &
                                  XTUSX(:), XTUSY(:), XUSSX(:),        &
                                  XUSSY(:), XPRMS(:), XTPMS(:),        &
                                  XPHICE(:), XTAUICE(:,:)
-        REAL, POINTER         :: XP2SMS(:,:), XUS3D(:,:)
+        REAL, POINTER         :: XP2SMS(:,:), XUS3D(:,:), XUSSP(:,:)
 !
 ! Output fields group 7)
 !
@@ -391,8 +403,9 @@
 !
 ! Output fields group 8)
 !
-        REAL, POINTER         ::  MSSX(:),  MSSY(:),  MSCX(:),  MSCY(:)
-        REAL, POINTER         :: XMSSX(:), XMSSY(:), XMSCX(:), XMSCY(:)
+        REAL, POINTER         ::  MSSX(:), MSSY(:), MSCX(:), MSCY(:)
+        REAL, POINTER         :: XMSSX(:), XMSSY(:), XMSCX(:),        &
+                                 XMSCY(:)
 !
 ! Output fields group 9)
 !
@@ -485,7 +498,9 @@
 !
       REAL, POINTER           :: HS(:), WLM(:),  T02(:), T0M1(:),     &
                                  T01 (:), FP0(:), THM(:), THS(:),     &
-                                 THP0(:), FP1(:), THP1(:), HSIG(:)
+                                 THP0(:), FP1(:), THP1(:), HSIG(:),   &
+                                 STMAXE(:), STMAXD(:), HMAXE(:),      &
+                                 HCMAXE(:), HMAXD(:), HCMAXD(:)
 !
       REAL, POINTER           :: EF(:,:), TH1M(:,:), STH1M(:,:),      &
                                  TH2M(:,:), STH2M(:,:)
@@ -503,7 +518,7 @@
                                  TUSX(:), TUSY(:), USSX(:), USSY(:),  &
                                  PRMS(:), TPMS(:), PHICE(:),          &
                                  TAUICE(:,:)
-      REAL, POINTER           :: P2SMS(:,:), US3D(:,:)
+      REAL, POINTER           :: P2SMS(:,:), US3D(:,:), USSP(:,:)
 !
       REAL, POINTER           :: ABA(:), ABD(:), UBA(:), UBD(:),      &
                                  BEDFORMS(:,:), PHIBBL(:), TAUBBL(:,:)
@@ -771,7 +786,8 @@
 !
 !/ ------------------------------------------------------------------- /
       USE W3GDATMD, ONLY: NGRIDS, IGRID, W3SETG, NK, NX, NY, NSEA,    &
-                          NSEAL, NSPEC, NTH, E3DF, P2MSF, US3DF, GTYPE, UNGTYPE
+                          NSEAL, NSPEC, NTH, E3DF, P2MSF, US3DF,      &
+                          USSPF, GTYPE, UNGTYPE
       USE W3ODATMD, ONLY: IAPROC, NAPROC, NTPROC, NAPFLD,             &
                           NOSWLL, NOEXTR, UNDEF, FLOGRD, FLOGR2
       USE W3IDATMD, ONLY: FLCUR, FLWIND
@@ -869,7 +885,11 @@
                  WADATS(IMOD)%THM  (NSEALM), WADATS(IMOD)%THS (NSEALM), &
                  WADATS(IMOD)%THP0 (NSEALM), WADATS(IMOD)%FP1 (NSEALM), &
                  WADATS(IMOD)%THP1 (NSEALM), WADATS(IMOD)%HSIG(NSEALM), &
-                 STAT=ISTAT )
+                 WADATS(IMOD)%STMAXE (NSEALM),                          &
+                 WADATS(IMOD)%STMAXD(NSEALM),                           &
+                 WADATS(IMOD)%HMAXE(NSEALM), WADATS(IMOD)%HMAXD(NSEALM),&
+                 WADATS(IMOD)%HCMAXE(NSEALM),                           &
+                 WADATS(IMOD)%HCMAXD(NSEALM), STAT=ISTAT )
       CHECK_ALLOC_STATUS ( ISTAT )
 !
       WADATS(IMOD)%HS     = UNDEF
@@ -884,6 +904,12 @@
       WADATS(IMOD)%FP1    = UNDEF
       WADATS(IMOD)%THP1   = UNDEF
       WADATS(IMOD)%HSIG   = UNDEF
+      WADATS(IMOD)%STMAXE = UNDEF
+      WADATS(IMOD)%STMAXD= UNDEF
+      WADATS(IMOD)%HMAXE = UNDEF
+      WADATS(IMOD)%HMAXD = UNDEF
+      WADATS(IMOD)%HCMAXE= UNDEF
+      WADATS(IMOD)%HCMAXD= UNDEF
 !
 ! 3) Frequency-dependent standard parameters
 !
@@ -1002,6 +1028,11 @@
                    STAT=ISTAT )
           CHECK_ALLOC_STATUS ( ISTAT )
         END IF
+      IF ( USSPF(1).GT.0 ) THEN
+          ALLOCATE(WADATS(IMOD)%USSP(NSEALM,NK*2), &
+                   STAT=ISTAT )
+          CHECK_ALLOC_STATUS ( ISTAT )
+        END IF
 !
       WADATS(IMOD)%SXX    = UNDEF
       WADATS(IMOD)%SYY    = UNDEF
@@ -1020,6 +1051,7 @@
       WADATS(IMOD)%TAUICE = UNDEF
       IF (  P2MSF(1).GT.0 ) WADATS(IMOD)%P2SMS  = UNDEF
       IF (  US3DF(1).GT.0 ) WADATS(IMOD)%US3D   = UNDEF
+      IF (  USSPF(1).GT.0 ) WADATS(IMOD)%USSP   = UNDEF
 !
 ! 7) Wave-bottom layer
 !
@@ -1041,8 +1073,8 @@
 ! 8) Spectrum parameters
 !
       ALLOCATE ( WADATS(IMOD)%MSSX(NSEALM), WADATS(IMOD)%MSSY(NSEALM), &
-                 WADATS(IMOD)%MSCX(NSEALM), WADATS(IMOD)%MSCY(NSEALM), &
-                 STAT=ISTAT )
+                WADATS(IMOD)%MSCX(NSEALM), WADATS(IMOD)%MSCY(NSEALM),  &
+                STAT=ISTAT )
       CHECK_ALLOC_STATUS ( ISTAT )
 !
       WADATS(IMOD)%MSSX   = UNDEF
@@ -1240,7 +1272,8 @@
 !
 !/ ------------------------------------------------------------------- /
       USE W3GDATMD, ONLY: NGRIDS, IGRID, W3SETG, NK, NX, NY, NSEA,    &
-                          NSEAL, NSPEC, NTH, E3DF, P2MSF, US3DF, GTYPE, UNGTYPE
+                          NSEAL, NSPEC, NTH, E3DF, P2MSF, US3DF,      &
+                          USSPF, GTYPE, UNGTYPE
       USE W3ODATMD, ONLY: IAPROC, NAPROC, NTPROC, NAPFLD,             &
                           NOSWLL, NOEXTR, UNDEF, FLOGRD, FLOGR2,      &
                           NOGRP, NGRPP
@@ -1374,6 +1407,43 @@
           CHECK_ALLOC_STATUS ( ISTAT )
         END IF
 !
+      IF ( OUTFLAGS( 2, 11) ) THEN
+          ALLOCATE ( WADATS(IMOD)%XSTMAXE(NXXX) )
+        ELSE
+          ALLOCATE ( WADATS(IMOD)%XSTMAXE(1) )
+        END IF
+!
+      IF ( OUTFLAGS( 2, 12) ) THEN
+          ALLOCATE ( WADATS(IMOD)%XSTMAXD(NXXX) )
+        ELSE
+          ALLOCATE ( WADATS(IMOD)%XSTMAXD(1) )
+        END IF
+!
+      IF ( OUTFLAGS( 2, 13) ) THEN
+          ALLOCATE ( WADATS(IMOD)%XHMAXE(NXXX) )
+        ELSE
+          ALLOCATE ( WADATS(IMOD)%XHMAXE(1) )
+        END IF
+!
+      IF ( OUTFLAGS( 2, 14) ) THEN
+          ALLOCATE ( WADATS(IMOD)%XHCMAXE(NXXX) )
+        ELSE
+          ALLOCATE ( WADATS(IMOD)%XHCMAXE(1) )
+        END IF
+!
+!
+      IF ( OUTFLAGS( 2, 15) ) THEN
+          ALLOCATE ( WADATS(IMOD)%XHMAXD(NXXX) )
+        ELSE
+          ALLOCATE ( WADATS(IMOD)%XHMAXD(1) )
+        END IF
+!
+      IF ( OUTFLAGS( 2, 16) ) THEN
+          ALLOCATE ( WADATS(IMOD)%XHCMAXD(NXXX) )
+        ELSE
+          ALLOCATE ( WADATS(IMOD)%XHCMAXD(1) )
+        END IF
+!
 !     IF ( OUTFLAGS( 2,xx) ) THEN
 !         ALLOCATE ( WADATS(IMOD)%XFP1(NXXX), STAT=ISTAT )
 !         CHECK_ALLOC_STATUS ( ISTAT )
@@ -1400,6 +1470,12 @@
       WADATS(IMOD)%XTHS   = UNDEF
       WADATS(IMOD)%XTHP0  = UNDEF
       WADATS(IMOD)%XHSIG  = UNDEF
+      WADATS(IMOD)%XSTMAXE= UNDEF
+      WADATS(IMOD)%XSTMAXD= UNDEF
+      WADATS(IMOD)%XHMAXE = UNDEF
+      WADATS(IMOD)%XHMAXD = UNDEF
+      WADATS(IMOD)%XHCMAXE= UNDEF
+      WADATS(IMOD)%XHCMAXD= UNDEF
 !     WADATS(IMOD)%XFP1   = UNDEF
 !     WADATS(IMOD)%XTHP1  = UNDEF
 !
@@ -1699,6 +1775,15 @@
           ALLOCATE ( WADATS(IMOD)%XPHICE(1), STAT=ISTAT )
           CHECK_ALLOC_STATUS ( ISTAT )
         END IF
+!                                                                               
+      IF ( OUTFLAGS( 6, 12) ) THEN
+          ALLOCATE ( WADATS(IMOD)%XUSSP(NXXX,2*NK), STAT=ISTAT )
+          CHECK_ALLOC_STATUS ( ISTAT )
+        ELSE
+          ALLOCATE ( WADATS(IMOD)%XUSSP(1,1), STAT=ISTAT )
+          CHECK_ALLOC_STATUS ( ISTAT )
+        END IF
+
 !
       WADATS(IMOD)%XSXX    = UNDEF
       WADATS(IMOD)%XSYY    = UNDEF
@@ -1717,6 +1802,7 @@
       WADATS(IMOD)%XP2SMS  = UNDEF
       WADATS(IMOD)%XPHICE  = UNDEF
       WADATS(IMOD)%XTAUICE = UNDEF
+      WADATS(IMOD)%XUSSP   = UNDEF
 !
       IF ( OUTFLAGS( 7, 1) ) THEN
           ALLOCATE ( WADATS(IMOD)%XABA(NXXX), STAT=ISTAT )
@@ -2140,7 +2226,7 @@
 !/ ------------------------------------------------------------------- /
 !
       USE W3IDATMD, ONLY: INPUTS
-      USE W3GDATMD, ONLY: E3DF, P2MSF, US3DF, GTYPE, UNGTYPE
+      USE W3GDATMD, ONLY: E3DF, P2MSF, US3DF, USSPF, GTYPE, UNGTYPE
 !
       USE W3SERVMD, ONLY: EXTCDE
 !/S      USE W3SERVMD, ONLY: STRACE
@@ -2280,6 +2366,12 @@
           FP1    => WADATS(IMOD)%FP1
           THP1   => WADATS(IMOD)%THP1
           HSIG   => WADATS(IMOD)%HSIG
+          STMAXE => WADATS(IMOD)%STMAXE
+          STMAXD => WADATS(IMOD)%STMAXD
+          HMAXE  => WADATS(IMOD)%HMAXE
+          HMAXD  => WADATS(IMOD)%HMAXD
+          HCMAXE => WADATS(IMOD)%HCMAXE
+          HCMAXD => WADATS(IMOD)%HCMAXD
 !
           EF     => WADATS(IMOD)%EF
           TH1M   => WADATS(IMOD)%TH1M
@@ -2321,7 +2413,8 @@
           P2SMS  => WADATS(IMOD)%P2SMS
           US3D   => WADATS(IMOD)%US3D
           PHICE  => WADATS(IMOD)%PHICE
-          TAUICE  => WADATS(IMOD)%TAUICE
+          TAUICE => WADATS(IMOD)%TAUICE
+          USSP   => WADATS(IMOD)%USSP
 !
           ABA    => WADATS(IMOD)%ABA
           ABD    => WADATS(IMOD)%ABD
@@ -2504,7 +2597,7 @@
 !/ ------------------------------------------------------------------- /
 !
       USE W3IDATMD, ONLY: INPUTS
-      USE W3GDATMD, ONLY: E3DF, P2MSF, US3DF, GTYPE, UNGTYPE
+      USE W3GDATMD, ONLY: E3DF, P2MSF, US3DF, USSPF, GTYPE, UNGTYPE
 !
       USE W3SERVMD, ONLY: EXTCDE
 !/S      USE W3SERVMD, ONLY: STRACE
@@ -2558,6 +2651,12 @@
           THS    => WADATS(IMOD)%XTHS
           THP0   => WADATS(IMOD)%XTHP0
           HSIG   => WADATS(IMOD)%XHSIG
+          STMAXE => WADATS(IMOD)%XSTMAXE
+          STMAXD => WADATS(IMOD)%XSTMAXD
+          HMAXE  => WADATS(IMOD)%XHMAXE
+          HMAXD  => WADATS(IMOD)%XHMAXD
+          HCMAXE => WADATS(IMOD)%XHCMAXE
+          HCMAXD => WADATS(IMOD)%XHCMAXD
 !         FP1    => WADATS(IMOD)%XFP1
 !         THP1   => WADATS(IMOD)%XTHP1
 !
@@ -2584,7 +2683,7 @@
           TAUWNX   => WADATS(IMOD)%XTAUWNX
           TAUWNY   => WADATS(IMOD)%XTAUWNY
           WHITECAP => WADATS(IMOD)%XWHITECAP
-!	  
+!         
           SXX    => WADATS(IMOD)%XSXX
           SYY    => WADATS(IMOD)%XSYY
           SXY    => WADATS(IMOD)%XSXY
@@ -2602,7 +2701,7 @@
           US3D   => WADATS(IMOD)%XUS3D
           PHICE  => WADATS(IMOD)%XPHICE
           TAUICE => WADATS(IMOD)%XTAUICE
-!	  
+          USSP   => WADATS(IMOD)%XUSSP
           ABA    => WADATS(IMOD)%XABA
           ABD    => WADATS(IMOD)%XABD
           UBA    => WADATS(IMOD)%XUBA
@@ -2623,7 +2722,7 @@
           CFLKMAX =>  WADATS(IMOD)%XCFLKMAX
 !
           USERO  => WADATS(IMOD)%XUSERO
-!	  
+!         
         END IF
 !
       RETURN

@@ -93,6 +93,7 @@
 !/    10-Mar-2014 : Adding namelist for IC2             ( version 5.01 )
 !/    29-May-2014 : Adding namelist for IC3             ( version 5.01 )
 !/    15 Oct-2015 : Change SMC grid input files. JGLi   ( version 5.09 )
+!/    10-Jan-2017 : Changes for US3D and USSP           ( version 6.01 )
 !/
 !/    Copyright 2009-2013 National Weather Service (NWS),
 !/       National Oceanic and Atmospheric Administration.  All rights
@@ -420,6 +421,7 @@
 !     !/NL1   Discrete interaction approximation (DIA).
 !     !/NL2   Exact interactions (WRT).
 !     !/NL3   Generalized Multiple DIA (GMD).
+!     !/NL4   Two Scale Approximation
 !     !/NLX   Open slot.
 !     !/NLS   Snl based HF filter.
 !
@@ -496,7 +498,9 @@
       USE W3ODATMD, ONLY: NDSE, NDST, NDSO
       USE W3ODATMD, ONLY: NBI, NBI2, NFBPO, NBO, NBO2, FLBPI, FLBPO,  &
                           IPBPO, ISBPO, XBPO, YBPO, RDBPO, FNMPRE,    &
-                          IHMAX, HSPMIN, WSMULT, WSCUT, FLCOMB, NOSWLL
+                          IHMAX, HSPMIN, WSMULT, WSCUT, FLCOMB,       &
+                          NOSWLL
+      USE W3TIMEMD, ONLY: NOLEAP
 !
 !/NL3      USE W3SNL3MD, ONLY: LAMMAX, DELTHM
 !/NLS      USE W3SNLSMD, ONLY: ABMAX
@@ -552,10 +556,14 @@
       INTEGER                 :: P2SF,I1P2SF,I2P2SF
       INTEGER                 :: E3D,I1E3D,I2E3D
       INTEGER                 :: US3D,I1US3D,I2US3D,                  &
+                                 USSP, IUSSP,                         &
                                  TH1MF, I1TH1M, I2TH1M,               &
                                  STH1MF, I1STH1M, I2STH1M,            &
                                  TH2MF, I1TH2M, I2TH2M,               &
                                  STH2MF, I1STH2M, I2STH2M
+      ! STK_WN are the decays for Stokes drift partitions
+      REAL                    :: STK_WN(25)
+
 !
 !/LN1      REAL                    :: CLIN, RFPM, RFHF
 !/ST1      REAL                    :: CINP, CDIS, APM
@@ -609,9 +617,9 @@
 !/REF1                                 REFICEBERG, REFCOSP_STRAIGHT,  &
 !/REF1                                 REFFREQPOW
 !
-!/IG1  LOGICAL                 :: IGSWELLMAX
+!/IG1  LOGICAL                 :: IGSWELLMAX, IGBCOVERWRITE
 !/IG1  INTEGER                 :: IGMETHOD, IGADDOUTP, IGSOURCE,      &
-!/IG1                             IGSOURCEATBP, IGBCOVERWRITE, IGSTERMS
+!/IG1                             IGSOURCEATBP, IGSTERMS
 !/IG1  REAL                    :: IGMAXFREQ, IGMINDEP, IGMAXDEP,      &
 !/IG1                             IGKDMIN, IGFIXEDDEPTH, IGEMPIRICAL
 !
@@ -638,9 +646,9 @@
 !/ Namelists
 !/
       INTEGER                 :: FLAGTR, IHM
-      REAL                    :: CFLTM, CICE0, CICEN, PMOVE, XFILT,   &
-                                 LICE, ICEHMIN, ICEHINIT, ICEWIND,    &
-                                 XSEED, XR, HSPM, WSM, WSC
+      REAL                    :: CFLTM, CICE0, CICEN, PMOVE, XFILT,    &
+                                 LICE, XSEED, XR, HSPM, WSM, WSC, STDX,&
+                                 STDY, STDT, ICEHMIN, ICEHINIT, ICEWIND
       REAL(8)                 :: GSHIFT ! see notes in WMGHGH
       LOGICAL                 :: FLC, ICEDISP
 !/FLD1      INTEGER                 :: TAILTYPE
@@ -687,6 +695,7 @@
 !/NL2      REAL                    :: TAILNL
 !/NL3      INTEGER                 :: NQDEF
 !/NL3      REAL                    :: MSC, NSC, KDFD, KDFS
+!/NL4      INTEGER                 :: INDTSA, ALTLP
 !/DB1      REAL                    :: BJALFA, BJGAM
 !/DB1      LOGICAL                 :: BJFLAG
 !/PR2      REAL                    :: DTIME
@@ -729,6 +738,7 @@
 !/NL2      NAMELIST /ANL2/ DEPTHS
 !/NL3      NAMELIST /SNL3/ NQDEF, MSC, NSC, KDFD, KDFS
 !/NL3      NAMELIST /ANL3/ QPARMS
+!/NL4      NAMELIST /SNL4/ INDTSA, ALTLP
 !/NLS      NAMELIST /SNLS/ A34, FHFC, DNM, FC1, FC2, FC3
 !/ST1      NAMELIST /SDS1/ CDIS, APM
 !/ST2      NAMELIST /SDS2/ SDSA0, SDSA1, SDSA2, SDSB0, SDSB1, PHIMIN
@@ -759,12 +769,14 @@
            NAMELIST /UNST/ UGOBCAUTO, UGOBCDEPTH,                     &
                            EXPFSN, EXPFSPSI, EXPFSFCT,                &
                            IMPFSN
-           NAMELIST /MISC/ CICE0, CICEN, LICE, ICEHMIN, XSEED, FLAGTR,&
-                      XP, XR, XFILT, PMOVE, IHM, HSPM, WSM, WSC, FLC, &
-                      FMICHE, RWNDC, FACBERG, NOSW, GSHIFT,           &
-                      ICEHINIT, WCOR1, WCOR2, ICEDISP, ICEWIND
+           NAMELIST /MISC/ CICE0, CICEN, LICE, XSEED, FLAGTR, XP, XR, & 
+                      XFILT, PMOVE, IHM, HSPM, WSM, WSC, FLC, FMICHE, &
+                      RWNDC, FACBERG, NOSW, GSHIFT, WCOR1, WCOR2,     &
+                      STDX, STDY, STDT, ICEHMIN, ICEHINIT, ICEDISP,   &
+                      ICEWIND, NOLEAP
            NAMELIST /OUTS/ P2SF, I1P2SF, I2P2SF,                      &
                              US3D, I1US3D, I2US3D,                    &
+                             USSP, IUSSP, STK_WN,                     &
                              E3D, I1E3D, I2E3D,                       &
                              TH1MF, I1TH1M, I2TH1M,                   &
                              STH1MF, I1STH1M, I2STH1M,                &
@@ -1015,6 +1027,7 @@
 !/NL1      NRNL   = NRNL + 1
 !/NL2      NRNL   = NRNL + 1
 !/NL3      NRNL   = NRNL + 1
+!/NL4      NRNL   = NRNL + 1
 !/NLX      NRNL   = NRNL + 1
 !
 !/BT0      NRBT   = NRBT + 1
@@ -1220,17 +1233,17 @@
 !/ST4      ALPHA0 = 0.0095
 !/ST4      Z0MAX = 0.0    
 !/ST4      Z0RAT = 0.04 
-!/ST4      BETAMAX   = 1.52     
+!/ST4      BETAMAX   = 1.43     
 !/ST4      SINTHP    = 2.     
-!/ST4      SWELLF    = 0.8     
+!/ST4      SWELLF    = 0.66     
 !/ST4      SWELLFPAR = 1
 !/ST4      SWELLF2 = -0.018
-!/ST4      SWELLF3 = 0.015
-!/ST4      SWELLF4 = 1.E5
+!/ST4      SWELLF3 = 0.022
+!/ST4      SWELLF4 = 1.5E5
 !/ST4      SWELLF5 = 1.2
 !/ST4      SWELLF6 = 0.
-!/ST4      SWELLF7 = 230000. 
-!/ST4      TAUWSHELTER = 1.
+!/ST4      SWELLF7 = 360000. 
+!/ST4      TAUWSHELTER = 0.3
 !/ST4      ZALP   = 0.006
 !/ST4      SINBR   = 0.
 !
@@ -1356,6 +1369,8 @@
 !/NL3      NSC    = -3.5
 !/NL3      KDFD   =  0.20
 !/NL3      KDFS   =  5.00
+!/NL4      INDTSA =  1
+!/NL4      ALTLP  =  2
 !/NLS      A34    =  0.05
 !/NLS      FHFC   =  1.E10
 !/NLS      DNM    =  0.25
@@ -1451,6 +1466,12 @@
 !/NL3      SNLCS  => MPARS(1)%SNLPS%SNLCS
 !/NL3      SNLCS  = QPARMS(5:NQDEF*5:5)
 !
+!/NL4      CALL READNL ( NDSS, 'SNL4', STATUS )
+!/NL4      WRITE (NDSO,922) STATUS
+!/NL4      WRITE (NDSO,923) INDTSA, ALTLP
+!/NL4      ITSA = INDTSA
+!/NL4      IALT = ALTLP
+!
 !/NLS      CALL READNL ( NDSS, 'SNLS', STATUS )
 !/NLS      WRITE (NDSO,9922) STATUS
 !/NLS      A34    = MAX ( 0. , MIN ( A34 , ABMAX ) )
@@ -1489,7 +1510,7 @@
 !
 !/ST4      SDSC1  = 0.0     ! not used in ST4, should be cleaned up                                                             
 !/ST4      WNMEANP = 0.5    ! taken from Bidlot et al. 2005
-!/ST4      FXFM3 = 9.9 
+!/ST4      FXFM3 = 2.5 
 !/ST4      FXFMAGE = 0. 
 !/ST4      FXINCUT = 0. 
 !/ST4      FXDSCUT = 0. 
@@ -1903,7 +1924,13 @@
       RWNDC  = 1.
       WCOR1  = 99. 
       WCOR2  = 0.
+! Variables for Space-Time Extremes
+!  Default negative values make w3iogomd use local grid size
+      STDX = -1. 
+      STDY = -1. 
+      STDT = -1. 
       ICEDISP = .FALSE.
+      NOLEAP = .FALSE.
 ! Variables for 3D array output
       E3D=0 
       I1E3D=1
@@ -1914,6 +1941,10 @@
       US3D=0 
       I1US3D=1
       I2US3D=NK
+      USSP=0
+      IUSSP=1
+      STK_WN(:)=0.0
+      STK_WN(1)=TPI/100. !Set default decay of 100 m for Stokes drift
       TH1MF=0 
       I1TH1M=1
       I2TH1M=NK
@@ -1979,7 +2010,7 @@
 !/IG1       IGSTERMS = 0
 !/IG1       IGMAXFREQ=0.03
 !/IG1       IGSOURCEATBP = 0
-!/IG1       IGBCOVERWRITE = 1
+!/IG1       IGBCOVERWRITE = .TRUE.
 !/IG1       IGSWELLMAX = .TRUE.
 !/IG1       IGKDMIN = 1.1
 !/IG1       IGFIXEDDEPTH = 0.
@@ -2005,13 +2036,15 @@
 !/IC3       IC2SMOOTH = 7.0E4
 !/IC3       IC2VISC = 2.0
 !/IC3       IC3CHENG = .TRUE.
-!/IC3       USECGICE = .TRUE.
+!/IC3       USECGICE = .FALSE.
 !/IC3       IC3HILIM = 100.0
 !/IC3       IC3KILIM = 100.0
 !/IC3       IC3HICE = -1.0
 !/IC3       IC3VISC = -2.0
 !/IC3       IC3DENS = -3.0
 !/IC3       IC3ELAS = -4.0
+!fixme: if USECGICE = .TRUE., don't allow use of IC3MAXTHK<100.0
+
 !/IC4       IC4METHOD = 1 !switch for methods within IC4
 !/IC4       IC4KI=0.0
 !/IC4       IC4FC=0.0
@@ -2057,13 +2090,33 @@
 ! output of Stokes drift profile
 !
       US3DF(1) = US3D
-      US3DF(2) = I1US3D
-      US3DF(3) = I2US3D
-      US3DF(2) = MAX( 1 , MIN(NK,US3DF(2)) )
-      US3DF(3) = MAX( 1 , MIN(NK,US3DF(3)) )
+      US3DF(2) = MAX( 1 , MIN( NK, I1US3D) )
+      US3DF(3) = MAX( 1 , MIN( NK, I2US3D) )
+!
+! output of Stokes drift partitions
+!
+      USSPF(1) = USSP
+      USSPF(2) = MAX( 1 , MIN(25, IUSSP ) )
+      if (iussp.gt.25) then
+         write(*,*) "  Stokes drift partition outputs not    "
+         write(*,*) "   intended for use with more than 25   "
+         write(*,*) "   partitions.  Please reduce IUSSP     "
+         write(*,*) "   specified in ww3_grid.inp to proceed "
+         STOP !Replace with an extcde
+      endif
+
+      do J=1,USSPF(2)
+         USSP_WN(j) = STK_WN(J)
+      enddo
+      
+!
       WRITE (NDSO,4971) P2MSF(1:3)
       WRITE (NDSO,4972) US3DF(1:3)
       WRITE (NDSO,4973) E3DF(1:3,1)
+      WRITE (NDSO,4974) USSPF(1:2)
+      DO J=1,USSPF(2)
+         WRITE(NDSO,4975) J,USSP_WN(J)
+      ENDDO
 !
       CALL READNL ( NDSS, 'MISC', STATUS )
       WRITE (NDSO,960) STATUS
@@ -2085,16 +2138,33 @@
 ! Notes: Presently, if we select CICE0.ne.CICEN requires an obstruction
 !     grid, that is initialized with zeros as default.
       IF ( FLAGTR .LT. 3 ) THEN
-         IF (CICE0.NE.CICEN) THEN
-            CICE0 = CICEN
-            IF (STATUS=='(user def. values) :')  WRITE (NDSO,2961)
-         END IF
-      END IF
+        IF (CICE0.NE.CICEN) THEN
+          CICE0 = CICEN
+          IF (STATUS=='(user def. values) :')  WRITE (NDSO,2961)
+          END IF
+        END IF
 !/IC0      IF ( CICE0.EQ.CICEN .AND. FLAGTR.GE.3 ) FLAGTR = FLAGTR - 2
       WRITE (NDSO,961) CICE0, CICEN
       WRITE (NDSO,8972) ICEWIND
       FICE0  = CICE0
-
+! Variables for Space-Time Extremes
+      STEXU = STDX
+      IF ( STDY .LE. 0. ) THEN
+        STDY = STDX
+      END IF
+      STEYU = STDY
+      STEDU = STDT
+      IF ( STDX .GT. 0 ) THEN
+         WRITE (NDSO,1040) STDX
+         WRITE (NDSO,1041) STDY
+      ELSE
+         WRITE (NDSO,1042)
+      END IF
+      IF ( STDT .GT. 0 ) THEN
+         WRITE (NDSO,1043) STDT 
+      ELSE
+         WRITE (NDSO,1044)
+      END IF
 !/MGG      WRITE (NDSO,962) PMOVE
 !
 !/SEED      XSEED  =  MAX ( 1. , XSEED )
@@ -2203,6 +2273,7 @@
 !/NL3                END DO
 !/NL3              WRITE (NDSO,6923) QPARMS((NQDEF-1)*5+1:NQDEF*5)
 !/NL3            END IF
+!/NL4          WRITE (NDSO,2922) INDTSA, ALTLP
 !/NLS          WRITE (NDSO,8922) A34, FHFC, DNM, FC1, FC2, FC3
 !/ST1          WRITE (NDSO,2924) CDIS, APM
 !/ST2          WRITE (NDSO,2924) SDSA0, SDSA1, SDSA2, SDSB0, SDSB1, PHIMIN
@@ -2240,7 +2311,9 @@
         WRITE (NDSO,2956) UGOBCAUTO, UGOBCDEPTH,                      &
                           EXPFSN, EXPFSPSI, EXPFSFCT, IMPFSN
 !
-        WRITE (NDSO,2976)    P2SF, I1P2SF, I2P2SF, US3D, I1US3D, I2US3D,  & 
+        WRITE (NDSO,2976)    P2SF, I1P2SF, I2P2SF,                    &
+                             US3D, I1US3D, I2US3D,                    & 
+                             USSP, IUSSP,                             &
                              E3D, I1E3D, I2E3D,                       &
                              TH1MF, I1TH1M, I2TH1M,                   &
                              STH1MF, I1STH1M, I2STH1M,                &
@@ -2264,22 +2337,23 @@
 !/IC3                          USECGICE, IC3HILIM, IC3KILIM,          &
 !/IC3                          IC3HICE, IC3VISC, IC3DENS, IC3ELAS
 
-!/IC4         WRITE(NDSO,2980) IC4METHOD,(IC4KI(JJ),JJ=1,NIC4),       &
-!/IC4                          (IC4FC(JJ),JJ=1,NIC4)
+!/IC4         WRITE(NDSO,NML=SIC4)
 
 !
         IF ( FLCOMB ) THEN
-          WRITE (NDSO,2966) CICE0, CICEN, LICE, ICEHMIN, PMOVE, XSEED,&
-                                FLAGTR, XP, XR, XFILT, IHMAX, HSPMIN, &
-                                WSMULT, WSCUT, '.TRUE.', NOSWLL,FHMAX,&
+          WRITE (NDSO,2966) CICE0, CICEN, LICE, PMOVE, XSEED, FLAGTR, &
+                                XP, XR, XFILT, IHMAX, HSPMIN, WSMULT, &
+                                WSCUT, '.TRUE.', NOSWLL, FHMAX,       &
                                 RWNDC, WCOR1, WCOR2, FACBERG, GSHIFT, &
-                                ICEHINIT, ICEDISP, ICEWIND
+                                STDX, STDY, STDT, ICEHMIN, ICEHINIT,  &
+                                ICEDISP, ICEWIND, NOLEAP
         ELSE
-          WRITE (NDSO,2966) CICE0, CICEN, LICE, ICEHMIN, PMOVE, XSEED,&
-                                FLAGTR, XP, XR, XFILT, IHMAX, HSPMIN, &
-                                WSMULT, WSCUT, '.FALSE.',NOSWLL,FHMAX,&
+          WRITE (NDSO,2966) CICE0, CICEN, LICE, PMOVE, XSEED, FLAGTR, &
+                                XP, XR, XFILT, IHMAX, HSPMIN, WSMULT, &
+                                WSCUT, '.FALSE.', NOSWLL, FHMAX,      &
                                 RWNDC, WCOR1, WCOR2, FACBERG, GSHIFT, &
-                                ICEHINIT, ICEDISP, ICEWIND
+                                STDX, STDY, STDT, ICEHMIN, ICEHINIT,  &
+                                ICEDISP, ICEWIND, NOLEAP
 
           END IF
 !
@@ -3796,7 +3870,8 @@
 !/IG1       IGPARS(1)=IGMETHOD
 !/IG1       IGPARS(2)=IGADDOUTP
 !/IG1       IGPARS(3)=IGSOURCE
-!/IG1       IGPARS(4)=IGBCOVERWRITE
+!/IG1       IGPARS(4)=0
+!/IG1       IF (IGBCOVERWRITE) IGPARS(4)=IGPARS(4)+1
 !/IG1       IF (IGSWELLMAX) IGPARS(4)=IGPARS(4)+2
 !/IG1       IGPARS(5)=1
 !/IG1       DO IK=1,NK
@@ -4523,6 +4598,13 @@
 !/NL3 6923 FORMAT ( '                 ',2(F5.3,', '),F5.1,', ',E10.4, &
 !/NL3               ', ',E10.4,' /')
 !
+!/NL4  922 FORMAT (/'  Nonlinear interactions (TSA) ',A/              &
+!/NL4        ' --------------------------------------------------')
+!/NL4  923 FORMAT ( '   Source term computation (1=TSA,0=FBI) : ',I2/ &
+!/NL4               '   Alternate loops (1=no,2=yes)          : ',I2/ &
+!/NL4               '   (To speed up computation) ')
+!/NL4 2922 FORMAT ( '  &SNL4 ITSA =',I2,', IALT =',I2 )
+!
 !/NLX  922 FORMAT (/'  Experimental nonlinear interactions.'/)
 !
 !/NLS 9922 FORMAT (/'  HF filter based on Snl ',A/                    &
@@ -4672,7 +4754,7 @@
 !/IS2 947 FORMAT  (/'  Ice scattering ',A,/ &
 !/IS2              ' --------------------------------------------------')
 !/IS2 948 FORMAT  ('  IS2 Scattering ... '/&
-!/IS2              '        scattering coefficient       : ',F5.2/ &
+!/IS2              '        scattering coefficient       : ',F6.2/ &
 !/IS2              '        0: no back-scattering        : ',F5.2/ &
 !/IS2              '     TRUE: update of ICEDMAX         : ',L3/ &
 !/IS2              '     TRUE: keeps updated ICEDMAX     : ',L3/ &
@@ -4795,13 +4877,16 @@
  4971 FORMAT ( '       Second order pressure at K=0:',3I4)
  4972 FORMAT ( '       Spectrum of Uss             :',3I4)
  4973 FORMAT ( '       Frequency spectrum          :',3I4)
+ 4974 FORMAT ( '       Partions of Uss             :',2I4)
+ 4975 FORMAT ( '       Partition wavenumber #',I02,'   : ',1F6.3)
+
 !
  4980 FORMAT (/'  Coastal / iceberg reflection  ',A/                   &
                ' --------------------------------------------------')
  4981 FORMAT ( '       Coefficient for shorelines  :',F6.4)
  4989 FORMAT ( '          *** CURVLINEAR GRID: REFLECTION NOT IMPLEMENTED YET ***')
- 2977 FORMAT ( '  &IG1  IGMETHOD =',I2,', IGADDOUTP =',I2,', IGSOURCE =',I2, &
-               ', IGSTERMS = ',I2,', IGBCOVERWRITE =', I2,','/        & 
+ 2977 FORMAT ( '  &SIG1  IGMETHOD =',I2,', IGADDOUTP =',I2,', IGSOURCE =',I2, &
+               ', IGSTERMS = ',I2,', IGBCOVERWRITE =', L3,','/        & 
                '        IGSWELLMAX =', L3,', IGMAXFREQ =',F6.4,       &
                ', IGSOURCEATBP = ',I2,', IGKDMIN = ',F6.4,','/        &
                '        IGFIXEDDEPTH = ',F6.2', IGEMPIRICAL = ',F8.6,' /')
@@ -4822,23 +4907,23 @@
                ', IC3VISC = ',E9.2,','/                               &
                '        IC3DENS = ',E9.2,', IC3ELAS = ',E9.2,' /')
 !
- 2980 FORMAT ( '  &SIC4  IC4METHOD = ',I1,','/'         IC4KI = ',10(1X,E10.2,',')/'         IC4FC = ',8(1X,F8.3,','), F8.3/' /')
-!
  2966 FORMAT ( '  &MISC CICE0 =',F6.3,', CICEN =',F6.3,               &
-                     ', LICE = ',F8.1, ', ICEHMIN = ',F5.2,           &
-                     ', PMOVE =',F6.3,','/                            &
+                     ', LICE = ',F8.1,', PMOVE =',F6.3,','/           &
                '        XSEED =',F6.3,', FLAGTR = ', I1,              &
                      ', XP =',F6.3,', XR =',F6.3,', XFILT =', F6.3 /  &
                '        IHM =',I5,', HSPM =',F6.3,', WSM =',F6.3,     &
                      ', WSC =',F6.3,', FLC = ',A/                     &
                '        NOSW =',I3,', FMICHE =',F6.3,', RWNDC =' ,    &
                         F6.3,', WCOR1 =',F6.2,', WCOR2 =',F6.2,','/   &
-               '        FACBERG =',F4.1,', GSHIFT = ',E11.3,          &
-                     ', ICEHINIT = ',F5.2,', ICEDISP = ',L3/,         &
-                     ', ICEWIND = ',F6.2,' /')
+               '        FACBERG =',F4.1,', GSHIFT = ',E11.3,','/      &
+               '        STDX =',F7.2,', STDY =',F7.2,', STDT =', F8.2,&
+                     ', ICEHMIN = ',F5.2,', ICEHINIT = ',F5.2,','/    &
+               '        ICEDISP = ',L3,', ICEWIND = ',F6.2,	      &
+	       '     ,  NOLEAP = ',L3, ' /')
 !
  2976 FORMAT ( '  &OUTS P2SF  =',I2,', I1P2SF =',I2,', I2P2SF =',I3,','/&    
                '        US3D  =',I2,', I1US3D =',I3,', I2US3D =',I3,','/&  
+               '        USSP  =',I2,', IUSSP  =',I3,','/&
                '        E3D   =',I2,', I1E3D  =',I3,', I2E3D  =',I3,','/&  
                '        TH1MF =',I2,', I1TH1M =',I3,', I2TH1M =',I3,','/&  
                '        STH1MF=',I2,', I1STH1M=',I3,', I2STH1M=',I3,','/&  
@@ -5098,6 +5183,12 @@
  1036 FORMAT (/' *** WAVEWATCH III ERROR IN W3GRID :'/                &
                '     ILLEGAL NUMBER OF !/ISn SWITCHES :',I3)
 !
+ 1040 FORMAT ( '       Space-time extremes DX      :',F10.2)
+ 1041 FORMAT ( '       Space-time extremes DX      :',F10.2)
+ 1042 FORMAT ( '       Space-time extremes DX-Y set to default 1000 m')
+ 1043 FORMAT ( '       Space-time extremes Dt      :',F8.2)
+ 1044 FORMAT ( '       Space-time extremes Dt set to default 1200 s')
+!
  1100 FORMAT (/'  Status map, printed in',I3,' part(s) '/             &
                ' -----------------------------------'/)
  1101 FORMAT (2X,180I2)
@@ -5268,6 +5359,8 @@
 !/NL3                        CASE('ANL3')
 !/NL3                          IF ( NQDEF .GT. 100 ) GOTO 804
 !/NL3                          READ (NDS,NML=ANL3,END=801,ERR=802,IOSTAT=J)
+!/NL4                        CASE('SNL4')
+!/NL4                          READ (NDS,NML=SNL4,END=801,ERR=802,IOSTAT=J)
 !/NLS                        CASE('SNLS')
 !/NLS                          READ (NDS,NML=SNLS,END=801,ERR=802,IOSTAT=J)
 !/ST1                        CASE('SDS1')

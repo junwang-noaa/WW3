@@ -294,6 +294,7 @@
 !     !/NL1   Discrete interaction approximation.
 !     !/NL2   Exact nonlinear interactions.
 !     !/NL3   Generalized Multiple DIA.
+!     !/NL4   Two Scale Approximation
 !     !/NLX   User-defined nonlinear interactions.
 !     !/NLS   Nonlinear HF smoother.
 !
@@ -350,7 +351,7 @@
       USE W3WDATMD, ONLY: TIME
       USE W3ODATMD, ONLY: NDSE, NDST, IAPROC
       USE W3IDATMD, ONLY: INFLAGS1, INFLAGS2, ICEP2
-      USE W3DISPMD 	
+      USE W3DISPMD      
 !/NNT      USE W3ODATMD, ONLY: IAPROC, SCREEN, FNMPRE
 !/FLD1      USE W3FLD1MD, ONLY: W3FLD1
 !/FLD2      USE W3FLD2MD, ONLY: W3FLD2
@@ -376,6 +377,7 @@
 !/NL1      USE W3SNL1MD
 !/NL2      USE W3SNL2MD
 !/NL3      USE W3SNL3MD
+!/NL4      USE W3SNL4MD
 !/NLX      USE W3SNLXMD
 !/NLS      USE W3SNLSMD
 !/BT1      USE W3SBT1MD
@@ -702,9 +704,10 @@
 !
 ! 2.b Nonlinear interactions.
 !
-!/NL1        CALL W3SNL1 ( SPEC, CG1, WNMEAN*DEPTH,          VSNL, VDNL )
-!/NL2        CALL W3SNL2 ( SPEC, CG1, DEPTH,                 VSNL, VDNL )
-!/NL3        CALL W3SNL3 ( SPEC, CG1, WN1, DEPTH,            VSNL, VDNL )
+!/NL1        CALL W3SNL1 ( SPEC, CG1, WNMEAN*DEPTH,        VSNL, VDNL )
+!/NL2        CALL W3SNL2 ( SPEC, CG1, DEPTH,               VSNL, VDNL )
+!/NL3        CALL W3SNL3 ( SPEC, CG1, WN1, DEPTH,          VSNL, VDNL )
+!/NL4        CALL W3SNL4 ( SPEC, CG1, WN1, DEPTH,          VSNL, VDNL )
 !/NLX        CALL W3SNLX 
 !
 !/TR1        CALL W3STR1 ( SPEC, CG1, WN1, DEPTH, IX,        VSTR, VDTR )
@@ -908,7 +911,7 @@
        TAUWIY= TAUWIY+ TAUWY * DRAT *DT
        TAUWNX= TAUWNX+ TAUWAX * DRAT *DT
        TAUWNY= TAUWNY+ TAUWAY * DRAT *DT
-       ! MISSING: TAIL TO BE ADDED ?	  
+       ! MISSING: TAIL TO BE ADDED ?      
 !
 !/NLS      CALL W3SNLS ( SPEC, CG1, WN1, DEPTH, U10ABS, DT, AA=SPEC )
 !
