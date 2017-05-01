@@ -1919,7 +1919,7 @@
       WSM    = 1.7
       WSC    = 0.333
       FLC    = .TRUE.
-      NOSW   = 5
+      NOSW   = 2
       FMICHE = 1.6
       RWNDC  = 1.
       WCOR1  = 99. 
