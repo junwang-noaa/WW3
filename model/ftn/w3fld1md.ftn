@@ -2012,41 +2012,85 @@
       REAL, PARAMETER :: cf5 = -0.0013914681964973246
       REAL, PARAMETER :: cf6 = 0.0406766967657759
 
+      !Variables from znot_m_v6
+      REAL, PARAMETER :: p13 = -1.296521881682694e-02
+      REAL, PARAMETER :: p12 =  2.855780863283819e-01
+      REAL, PARAMETER :: p11 = -1.597898515251717e+00
+      REAL, PARAMETER :: p10 = -8.396975715683501e+00
+
+      REAL, PARAMETER :: p25 =  3.790846746036765e-10
+      REAL, PARAMETER :: p24 =  3.281964357650687e-09
+      REAL, PARAMETER :: p23 =  1.962282433562894e-07
+      REAL, PARAMETER :: p22 = -1.240239171056262e-06
+      REAL, PARAMETER :: p21 =  1.739759082358234e-07
+      REAL, PARAMETER :: p20 =  2.147264020369413e-05
+
+      REAL, PARAMETER :: p35 =  1.840430200185075e-07
+      REAL, PARAMETER :: p34 = -2.793849676757154e-05
+      REAL, PARAMETER :: p33 =  1.735308193700643e-03
+      REAL, PARAMETER :: p32 = -6.139315534216305e-02
+      REAL, PARAMETER :: p31 =  1.255457892775006e+00
+      REAL, PARAMETER :: p30 = -1.663993561652530e+01
+
+      REAL, PARAMETER :: p40 =  4.579369142033410e-04
+
       !Variables from znot_wind10m
       REAL            :: Z10, U10,AAA,TMP
 
+      !setversion 
+      INTEGER, PARAMETER ::  IVAR=217
 !/S      INTEGER, SAVE           :: IENT = 0
 !/S      CALL STRACE (IENT, 'WND2Z0M')
+
 
       !Values as set in znot_wind10m
       Z10=10.0
       U10=W10M
       if (U10 > 85.0) U10=85.0
+      if (U10 < 1.0)  U10 =1.0
 
-      !Calculation of z0 as in znot_m_v1
-      IF ( U10 .LE. 5.0 ) THEN
-        ZNOTM = (0.0185 / 9.8*(7.59e-4*U10**2+2.46e-2*U10)**2)
-      ELSEIF (U10 .GT. 5.0 .AND. U10 .LT. 10.0) THEN
-        ZNOTM =.00000235*(U10**2 - 25 ) + 3.805129199617346e-05
-      ELSEIF ( U10 .GE. 10.0  .AND. U10 .LT. 60.0) THEN
-        ZNOTM = bs6 + bs5*U10 + bs4*U10**2 + bs3*U10**3 + bs2*U10**4 +&
-              bs1*U10**5 + bs0*U10**6
-      ELSE
-        ZNOTM = cf6 + cf5*U10 + cf4*U10**2 + cf3*U10**3 + cf2*U10**4 +&
-              cf1*U10**5 + cf0*U10**6
-      END IF
 
-      !Modifications as in znot_wind10m for icoef_sf=4 
+      IF (IVAR.EQ.216) THEN
+        !HWRF 2016 
+        !Calculation of z0 as in znot_m_v1
+        IF ( U10 .LE. 5.0 ) THEN
+          ZNOTM = (0.0185 / 9.8*(7.59e-4*U10**2+2.46e-2*U10)**2)
+        ELSEIF (U10 .GT. 5.0 .AND. U10 .LT. 10.0) THEN
+          ZNOTM =.00000235*(U10**2 - 25 ) + 3.805129199617346e-05
+        ELSEIF ( U10 .GE. 10.0  .AND. U10 .LT. 60.0) THEN
+          ZNOTM = bs6 + bs5*U10 + bs4*U10**2 + bs3*U10**3 + bs2*U10**4 +&
+                bs1*U10**5 + bs0*U10**6
+        ELSE
+          ZNOTM = cf6 + cf5*U10 + cf4*U10**2 + cf3*U10**3 + cf2*U10**4 +&
+                cf1*U10**5 + cf0*U10**6
+        END IF
 
-      !for wind<20, cd similar to icoef=2 at 10m, then reduced 
-      TMP=0.4*0.4/(ALOG(10.0/ZNOTM))**2   ! cd at zlev
-      AAA=0.75
-      IF (U10 < 20) THEN
-        AAA=0.99
-      ELSEIF(U10 < 45.0) THEN
-        AAA=0.99+(U10-20)*(0.75-0.99)/(45.0-20.0)
-      END IF
-      ZNOTM=Z10/EXP( SQRT(0.4*0.4/(TMP*AAA)) )
+        !Modifications as in znot_wind10m for icoef_sf=4 
+
+        !for wind<20, cd similar to icoef=2 at 10m, then reduced 
+        TMP=0.4*0.4/(ALOG(10.0/ZNOTM))**2   ! cd at zlev
+        AAA=0.75
+        IF (U10 < 20) THEN
+          AAA=0.99
+        ELSEIF(U10 < 45.0) THEN
+          AAA=0.99+(U10-20)*(0.75-0.99)/(45.0-20.0)
+        END IF
+        ZNOTM=Z10/EXP( SQRT(0.4*0.4/(TMP*AAA)) )
+      ELSEIF (IVAR.EQ.217) THEN
+        !HWRF 2017 --icoef_sf .EQ. 6
+        if (U10 >= 0.0 .and.  U10 <= 6.5 ) then
+          ZNOTM = exp( p10 + p11*U10 + p12*U10**2 + p13*U10**3)
+        elseif (U10 > 6.5 .and. U10 <= 15.7) then
+          ZNOTM = p25*U10**5 + p24*U10**4 + p23*U10**3 + p22*U10**2+p21*U10 + p20
+        elseif (U10 > 15.7 .and. U10 <= 53.0) then
+          ZNOTM = exp( p35*U10**5 + p34*U10**4 + p33*U10**3 +p32*U10**2+ p31*U10 + p30 )
+        elseif ( U10 > 53.0) then
+          ZNOTM = p40
+        else
+          write(*,*) 'Wrong input U10 value:',U10
+        endif
+
+      ENDIF !IVAR
 
       END SUBROUTINE WND2Z0M
 !/ ------------------------------------------------------------------- /
@@ -2113,6 +2157,7 @@
 !/
         REAL, INTENT(IN) :: WND10
         REAL, INTENT(OUT) :: SAT
+        INTEGER,PARAMETER :: IVAR=217  !Version of HWRF 
 !/S      INTEGER, SAVE           :: IENT = 0
 !
 !/S      CALL STRACE (IENT, 'WND2SAT')
@@ -2125,6 +2170,20 @@
 !             0.000778467452178 * WND10**1 +&
 !             0.002962335390055
 !
+        IF (IVAR.EQ.217) THEN
+           !SAT values based on HWRF 2017 CD curve, created with 
+           !fetch limited cases with ST4 physics   
+          SAT=-0.000000000521597*WND10**5 &
+              +0.000000077217839*WND10**4 &
+              -0.000003700484247*WND10**3 &
+              +0.000044478770155*WND10**2 &
+              +0.000747322452084*WND10    &
+              -0.001641775448375
+          SAT = min(max(SAT,0.002),0.015)
+
+      ELSEIF (IVAR.EQ.216) THEN
+
+
 !     SAT values based on 
 !     HWRF 2016 CD curve, created with  fetch limited cases ST4 physics
         IF (WND10<20.0) THEN
@@ -2143,6 +2202,7 @@
         ENDIF
 
         SAT = min(max(SAT,0.002),0.014)
+      END IF !IVAR
       END SUBROUTINE WND2SAT
 !
 !/ End of module W3FLD1MD -------------------------------------------- /

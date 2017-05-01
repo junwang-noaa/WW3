@@ -628,6 +628,7 @@
         IMPLICIT NONE
         REAL, INTENT(IN) :: WND10
         REAL, INTENT(OUT) :: SAT
+        INTEGER :: IVAR=217  !Version of HWRF 
 !/S      INTEGER, SAVE           :: IENT = 0
 !
 !/S      CALL STRACE (IENT, 'WND2SAT')
@@ -642,6 +643,30 @@
 !             0.003521314236550
 !     SAT values based on 
 !     HWRF 2016 CD curve, created with  fetch limited cases ST4 physics
+
+        IF (IVAR.EQ.217) THEN
+           !SAT values based on HWRF 2017 CD curve, created with 
+           !fetch limited cases with ST4 physics 
+!           SAT=-0.000000000471161*WND10**5 &
+!               +0.000000076947261*WND10**4 &
+!               -0.000004123348387*WND10**3 &
+!               +0.000065002053465*WND10**2 &
+!               +0.000488157099634*WND10**1 &
+!               -0.001786246857679
+
+           SAT=-0.000000000385077*WND10**5 &
+               +0.000000065841357*WND10**4 &
+               -0.000003577584221*WND10**3 &
+               +0.000050586250910*WND10**2 &
+               +0.000722049256306*WND10**1 &
+               -0.003082969541620
+
+           SAT = min(max(SAT,0.001),0.014)
+
+
+
+       ELSEIF (IVAR.EQ.216) THEN
+
         IF (WND10<20) THEN 
           SAT = -0.022919753482426e-3* WND10**2 &
                 +0.960758623686446e-3* WND10    & 
@@ -657,7 +682,7 @@
                 +0.012706067280674
         ENDIF 
         SAT = min(max(SAT,0.002),0.014)
-
+      ENDIF !IVAR 
       END SUBROUTINE WND2SAT
 !/ ------------------------------------------------------------------- /
 !/
