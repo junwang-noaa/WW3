@@ -645,7 +645,6 @@
 !/NCEP2        KGDS(17) = KNINT(1000000.*SX) 
 !/NCEP2        KGDS(18) = KNINT(1000000.*SY) 
 !/NCEP2      ENDIF 
->>>>>>> .merge-right.r86705
 !
 ! ... Set GRIB2 PDS elements
 !     KPDSNUM   (0 indicates forecast at a horizontal level)
