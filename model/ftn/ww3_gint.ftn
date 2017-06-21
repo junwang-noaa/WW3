@@ -134,6 +134,8 @@
 !/S      INTEGER, SAVE           :: IENT = 0
         REAL, ALLOCATABLE       :: INT_MAP(:,:)
         LOGICAL                 :: L360=.FALSE., LPLC, INGRD, BRNCHCL, BRNCHCR, INGRID
+        LOGICAL                 :: OUTorREST
+        INTEGER                 :: INTYPE
         CHARACTER               :: COMSTR*1, IDTIME*23
 !
 !---------------------------------------------------------------------------
@@ -178,6 +180,11 @@
 !
         CALL STME21 ( TOUT , IDTIME )
         WRITE (NDSO,902) IDTIME, DTREQ, NOUT
+!
+! 3.b2 Read Flag for out_grd (True) or  restart.* (FALSE) 
+! 
+        CALL NEXTLN ( COMSTR, NDSI, NDSE )
+        READ (NDSI,*,END=2001,ERR=2002) OUTorREST
 !
 ! 3.c Read number of grids and allocate memory
 !   
@@ -652,63 +659,96 @@
           FIDOUT(IG) = 30 + (IG-1)*10
         END DO
 !
+!---- If out_grd --------------
+        IF OUTorREST THEN !OUTorREST=.TRUE.=out_grd FALSE=restart
+!
 ! 5.b Initialize and read the first set of fields for base grids
 !
-        DO IG = 1,NG-1
-          CALL W3SETO( IG, 6, 6)
-          CALL W3IOGO('READ',FIDOUT(IG),IOTST,IG)
-          IF ( IOTST .NE. 0 ) THEN
-            GO TO 2111
-          ENDIF
-        END DO
+         DO IG = 1,NG-1
+           CALL W3SETO( IG, 6, 6)
+           CALL W3IOGO('READ',FIDOUT(IG),IOTST,IG)
+           IF ( IOTST .NE. 0 ) THEN
+             GO TO 2111
+           ENDIF
+         END DO
 !
 ! 5.c Setup the output flag options for the target grid
 !
-        WRITE (NDSO,910) 
-        DO I = 1, NOGRP
-          OUTPTS(NG)%OUT1%FLOGRD(I,:) = OUTPTS(1)%OUT1%FLOGRD(I,:)
-          WRITE (NDSO,911) I
-          WRITE (NDSO, 912) (OUTPTS(NG)%OUT1%FLOGRD(I,J),J=1,NGRPP)
-        END DO
-        WRITE (NDSO, 913) 
+         WRITE (NDSO,910) 
+         DO I = 1, NOGRP
+           OUTPTS(NG)%OUT1%FLOGRD(I,:) = OUTPTS(1)%OUT1%FLOGRD(I,:)
+           WRITE (NDSO,911) I
+           WRITE (NDSO, 912) (OUTPTS(NG)%OUT1%FLOGRD(I,J),J=1,NGRPP)
+         END DO
+         WRITE (NDSO, 913) 
 !
 ! 5.d Carry out interpolation in an infinite loop till appropriate 
 !     time steps are interpolated 
 !
-        IOUT = 0
+         IOUT = 0
+! 
+         DO
+           DTEST = DSEC21 ( WDATAS(1)%TIME, TOUT )
+           IF ( DTEST .GT. 0. ) THEN
+             DO IG = 1,NG-1
+               CALL W3IOGO('READ',FIDOUT(IG),IOTST,IG)
+               IF ( IOTST .NE. 0 ) THEN
+                 GO TO 2111
+               ENDIF
+             END DO
+             CYCLE
+           ENDIF
+           IF ( DTEST .LT. 0. ) THEN
+             CALL TICK21 ( TOUT , DTREQ )
+             CYCLE
+           END IF
 !
-        DO
-          DTEST = DSEC21 ( WDATAS(1)%TIME, TOUT )
-          IF ( DTEST .GT. 0. ) THEN
-            DO IG = 1,NG-1
-              CALL W3IOGO('READ',FIDOUT(IG),IOTST,IG)
-              IF ( IOTST .NE. 0 ) THEN
-                GO TO 2111
-              ENDIF
-            END DO
-            CYCLE
-          ENDIF
-          IF ( DTEST .LT. 0. ) THEN
-            CALL TICK21 ( TOUT , DTREQ )
-            CYCLE
-          END IF
+           IOUT = IOUT + 1
+           CALL STME21 ( TOUT, IDTIME)
+           WRITE (NDSO,914) IDTIME
 !
-          IOUT = IOUT + 1
-          CALL STME21 ( TOUT, IDTIME)
-          WRITE (NDSO,914) IDTIME
+           WDATAS(NG)%TIME = WDATAS(1)%TIME
+           CALL W3SETO(NG, 6, 6)
+           CALL W3SETG(NG, 6, 6)
+           CALL W3SETA(NG, 6, 6)
+           CALL W3SETW(NG, 6, 6)
 !
-          WDATAS(NG)%TIME = WDATAS(1)%TIME
-          CALL W3SETO(NG, 6, 6)
-          CALL W3SETG(NG, 6, 6)
-          CALL W3SETA(NG, 6, 6)
-          CALL W3SETW(NG, 6, 6)
+           CALL W3EXGI ( NG-1, NSEA, NOSWLL_MIN, OUTorREST )
 !
-          CALL W3EXGI ( NG-1, NSEA, NOSWLL_MIN )
+           CALL TICK21 ( TOUT , DTREQ )
+           IF ( IOUT .GE. NOUT ) EXIT
+         END DO
+         GOTO 2222
 !
-          CALL TICK21 ( TOUT , DTREQ )
-          IF ( IOUT .GE. NOUT ) EXIT
-        END DO
-        GOTO 2222
+! --- if Restart file --------
+        ELSE !OUTorREST=.FALSE. 
+!
+! 5.b Initialize and read the first set of restarts for base grids
+!
+         DO IG = 1,NG-1
+           CALL W3SETG( IG, 6, 6 )
+           CALL W3SETW( IG, 6, 6 )
+           CALL W3SETA( IG, 6, 6 )
+           CALL W3SETO( IG, 6, 6)
+           VA(:,:) = 0.
+           CALL W3IORS ( 'READ', NDS(6), SIG(NK), INTYPE, IG )!
+           IF (INTYPE.EQ.0.OR.INTYPE.EQ.1.OR.INTYPE.EQ.4) THEN
+             GO TO 2112
+           ENDIF
+         END DO
+
+! 5.d Carry out interpolation
+        CALL W3SETO(NG, 6, 6)
+        CALL W3SETG(NG, 6, 6)
+        CALL W3SETA(NG, 6, 6)
+        CALL W3SETW(NG, 6, 6)
+!
+        CALL W3EXGI ( NG-1, NSEA, NOSWLL_MIN, OUTorREST)
+
+
+
+
+        END IF !OUTorREST
 !
 !---------------------------------------------------------------------------
 ! Escape locations read errors :
@@ -727,6 +767,8 @@
 !
  2111   CONTINUE
         WRITE(NDSO,950)
+ 2112   CONTINUE
+        WRITE(NDSO,952)
  2222   CONTINUE
         WRITE(NDSO,999)
 !
@@ -760,9 +802,12 @@
  910    FORMAT (/'  Interpolating fields .... '/)
  911    FORMAT ('     Output group   ', I5)
  912    FORMAT ('     Output variable flags are -> ',7(5L2,1X))
- 913    FORMAT ( '   --------------------------------------------------------')
+ 913    FORMAT ( '   --------------------------------------------------')
  914    FORMAT ( '        OUTPUT TIME : ',A)
  950    FORMAT (/'  End of file reached'/)
+ 952    FORMAT (/'  *** ERROR IN WAVEGRID_INTERP : '/                          &
+                 '      ERROR IN READING RESTART FILE'/)
+
  999    FORMAT (/15X,'    *** End of Grid interpolation Routine ***    '/      &
                  15X,'==============================================='/)
 !
@@ -782,7 +827,7 @@
 !/
         CONTAINS
 !/ -----------------------------------------------------------------------/
-        SUBROUTINE W3EXGI ( NGRD, NSEA, NOSWLL_MIN )
+        SUBROUTINE W3EXGI ( NGRD, NSEA, NOSWLL_MIN, OUTorRESTflag )
 !/                  +-----------------------------------+
 !/                  | WAVEWATCH-III           NOAA/NCEP |
 !/                  |             A. Chawla             |
@@ -830,7 +875,7 @@
         USE W3ADATMD
         USE W3WDATMD
         USE W3IOGOMD, ONLY: W3IOGO
-        USE W3GDATMD, ONLY: E3DF, NK
+        USE W3GDATMD, ONLY: E3DF, NK, NSPEC
 !/ -------------------------------------------------------------------------/
 !/ Parameter List
 !/
@@ -887,6 +932,11 @@
                                    SUMWTB(3)
         LOGICAL                 :: ACTIVE
         LOGICAL                 :: USEGRID(NGRD)
+! Local Restart variables JDM
+        LOGICAL                 :: OUTorRESTflag
+        REAL                    :: VAAUX(NSPEC), SUMRES(NSPEC)
+        INTEGER                 :: INTYPE 
+        REAL                    :: XXX
 !/
 !
 !-------------------------------------------------------------------
@@ -977,6 +1027,10 @@
         BEDFORMS = UNDEF
         PHIBBL   = UNDEF
         TAUBBL   = UNDEF
+!
+! Restart variables
+ 
+        VA       = UNDEF
 !
 !-------------------------------------------------------------------
 ! 2.  Loop through output points
@@ -1178,6 +1232,11 @@
                 SUMWT7      = 0
                 SUMWTB      = 0
 !
+! Restart variables 
+! 
+                VAAUX       = UNDEF 
+                SUMRES      = 0
+!
 ! Loop through the points per grid to obtain interpolated values
 !
                 DO IPTS = 1,GR_INTS(ISEA)%IND_WTS(IG)%NP
@@ -1321,7 +1380,7 @@
                       IF ( WLMAUX .EQ. UNDEF ) THEN
                         WLMAUX = WADATS(IGRID)%WLM(GSEA)*WT
                       ELSE
-                        WLMAUX = WLMAUX + WADATS(IGRID)%WLM(GSEA)*WT
+                         WLMAUX = WLMAUX + WADATS(IGRID)%WLM(GSEA)*WT
                       END IF
                     END IF
                   END IF
@@ -1833,6 +1892,21 @@
                                 WADATS(IGRID)%TAUBBL(GSEA,2)*WT
                       END IF
                     END IF
+                  END IF
+!
+! Restart variables 
+!
+                  IF ( (.NOT.OUTorRESTflag) .AND. ACTIVE ) THEN
+                    DO IK = 1,NSPEC
+                      IF ( WDATAS(IGRID)%VA(IK,GSEA) .NE. UNDEF ) THEN
+                        SUMRES(IK) = SUMRES(IK) + WT
+                        IF ( VAAUX(IK) .EQ. UNDEF ) THEN
+                          VAAUX(IK) = WDATAS(IGRID)%VA(IK,GSEA)*WT
+                        ELSE
+                          VAAUX(IK) = VAAUX(IK) +WDATAS(IGRID)%VA(IK,GSEA)*WT
+                        END IF
+                      END IF
+                    END DO
                   END IF
 !
                 END DO
@@ -2417,10 +2491,25 @@
                            TAUBBLAUX(2) / REAL( SUMGRD )
                   END IF
                 END IF
+!                
+! Restart varaibles 
 !
-              END IF
+                DO IK = 1,NSPEC
+                  IF ( VAAUX(IK) .NE. UNDEF ) THEN
+                    VAAUX(IK) = VAAUX(IK) / SUMRES(IK)
+                    IF ( WN(IK,ISEA) .EQ. UNDEF )  THEN
+                      VA(IK,ISEA) = VAAUX(IK) / REAL( SUMGRD )
+                    ELSE
+                      VA(IK,ISEA) = VA(IK,ISEA) +                     &
+                          VAAUX(IK) / REAL( SUMGRD )
+                    END IF
+                  END IF
+                END DO
 !
-            END DO
+!
+              END IF !IF ( USEGRID(IG) )
+!
+            END DO !DO IG = 1,GR_INTS(ISEA)%NGRDS
 !
 ! Convert select variables back to polar notation. This is done because just
 ! prior to writing to file the w3iogo routine converts these variables 
@@ -2461,7 +2550,11 @@
 !------------------------------------------------------------------------------
 ! 3. Write out interpolated data to target output file
 !
-        CALL W3IOGO('WRITE',FIDOUT(NG),IOTST,NG)
+        IF (OUTorRESTflag) THEN 
+          CALL W3IOGO('WRITE',FIDOUT(NG),IOTST,NG)
+        ELSE 
+          CALL W3IORS ( 'HOT', 55, XXX, INTYPE,NG) 
+        END IF 
 !
         RETURN
 !
