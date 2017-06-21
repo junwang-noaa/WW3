@@ -97,6 +97,8 @@
         USE W3ARRYMD, ONLY : PRTBLK
         USE W3GSRUMD
         USE W3TRIAMD
+        USE W3WDATMD, ONLY: VA
+        USE W3IORSMD, ONLY: W3IORS
 !/
         IMPLICIT NONE
 !/
@@ -660,7 +662,7 @@
         END DO
 !
 !---- If out_grd --------------
-        IF OUTorREST THEN !OUTorREST=.TRUE.=out_grd FALSE=restart
+        IF (OUTorREST) THEN !OUTorREST=.TRUE.=out_grd FALSE=restart
 !
 ! 5.b Initialize and read the first set of fields for base grids
 !
@@ -731,7 +733,7 @@
            CALL W3SETA( IG, 6, 6 )
            CALL W3SETO( IG, 6, 6)
            VA(:,:) = 0.
-           CALL W3IORS ( 'READ', NDS(6), SIG(NK), INTYPE, IG )!
+           CALL W3IORS ( 'READ', 56, SIG(NK), INTYPE, IG )!
            IF (INTYPE.EQ.0.OR.INTYPE.EQ.1.OR.INTYPE.EQ.4) THEN
              GO TO 2112
            ENDIF
@@ -876,6 +878,7 @@
         USE W3WDATMD
         USE W3IOGOMD, ONLY: W3IOGO
         USE W3GDATMD, ONLY: E3DF, NK, NSPEC
+        USE W3IORSMD, ONLY: W3IORS
 !/ -------------------------------------------------------------------------/
 !/ Parameter List
 !/

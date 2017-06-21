@@ -981,7 +981,7 @@
                  IO='w3iogrmd w3iogomd'
                prop=
              source="$st $nl $is"
-                aux='constants w3triamd w3servmd  w3arrymd w3dispmd w3timemd w3gsrumd'
+                aux='constants w3triamd w3servmd w3iorsmd w3arrymd w3dispmd w3timemd w3gsrumd'
                 aux="$aux w3namlmd" ;;
       gx_outf) IDstring='GrADS input file generation (gridded fields)'
                core=
