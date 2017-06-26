@@ -98,7 +98,7 @@
         USE W3GSRUMD
         USE W3TRIAMD
         USE W3WDATMD, ONLY: VA
-        USE W3IORSMD, ONLY: W3IORS
+        USE W3IORSMDOLD, ONLY: W3IORSOLD
 !/
         IMPLICIT NONE
 !/
@@ -132,7 +132,7 @@
         REAL                    :: DTREQ, DTEST
         INTEGER                 :: IS(4), JS(4)
         INTEGER                 :: MAPINT
-        REAL                    :: RW(4), SUMWT
+        REAL                    :: RW(4), SUMWT,XXX
 !/S      INTEGER, SAVE           :: IENT = 0
         REAL, ALLOCATABLE       :: INT_MAP(:,:)
         LOGICAL                 :: L360=.FALSE., LPLC, INGRD, BRNCHCL, BRNCHCR, INGRID
@@ -157,7 +157,7 @@
 !
 !
         J      = LEN_TRIM(FNMPRE)
-        OPEN(NDSI,FILE=FNMPRE(:J)//'ww3_gint.inp',STATUS='OLD', ERR=2000,      &
+        OPEN(NDSI,FILE=FNMPRE(:J)//'ww3_gint.inp',STATUS='OLD',ERR=2000,      &
              IOSTAT=IERR)
         WRITE (NDSO,900)
 !
@@ -229,6 +229,8 @@
 !
         END DO
 !
+        CLOSE(NDSI)
+!
         IF ( NOSWLL_MIN .NE. OUTPTS(NG)%NOSWLL ) THEN
            WRITE (NDSO,907) NOSWLL_MIN, OUTPTS(NG)%NOSWLL
            NOSWLL_MIN = MIN (NOSWLL_MIN,OUTPTS(NG)%NOSWLL)
@@ -256,6 +258,7 @@
         CALL W3SETG( NG, 6, 6)
         DAREA = SX*SY
         WRITE (NDSO,908) NSEA
+        NSEAL=NSEA
 !
         ALLOCATE ( GR_INTS(NSEA) )
 !
@@ -655,7 +658,8 @@
 !
         CALL W3SETA(NG, 6, 6)
         CALL W3DIMA(NG, 6, 6, .TRUE. )
-        CALL W3DIMW(NG, 6, 6, .TRUE. )
+        !CALL W3DIMW(NG, 6, 6, .TRUE. )
+        CALL W3DIMW(NG, 6, 6) 
         ALLOCATE(FIDOUT(NG))
         DO IG = 1,NG
           FIDOUT(IG) = 30 + (IG-1)*10
@@ -727,27 +731,31 @@
 !
 ! 5.b Initialize and read the first set of restarts for base grids
 !
-         DO IG = 1,NG-1
-           CALL W3SETG( IG, 6, 6 )
-           CALL W3SETW( IG, 6, 6 )
-           CALL W3SETA( IG, 6, 6 )
-           CALL W3SETO( IG, 6, 6)
-           VA(:,:) = 0.
-           CALL W3IORS ( 'READ', 56, SIG(NK), INTYPE, IG )!
-           IF (INTYPE.EQ.0.OR.INTYPE.EQ.1.OR.INTYPE.EQ.4) THEN
-             GO TO 2112
-           ENDIF
-         END DO
+          DO IG = 1,NG-1
+            WDATAS(IG)%TIME = TOUT
+            CALL W3SETG( IG, 6, 6 )
+            CALL W3SETW( IG, 6, 6 )
+            CALL W3SETA( IG, 6, 6 )
+            CALL W3SETO( IG, 6, 6)
+            CALL W3IORSOLD ( 'READ', 56, XXX, INTYPE, IG )!
+            IF (INTYPE.EQ.0.OR.INTYPE.EQ.1.OR.INTYPE.EQ.4) THEN
+              GO TO 2112
+            ENDIF
+            write(*,*) 'SUM of VA for IG', NSEA
+          END DO
 
 ! 5.d Carry out interpolation
-        CALL W3SETO(NG, 6, 6)
-        CALL W3SETG(NG, 6, 6)
-        CALL W3SETA(NG, 6, 6)
-        CALL W3SETW(NG, 6, 6)
+          write(*,*) 'JDM', NG 
+          CALL W3SETO(NG, 6, 6)
+          CALL W3SETG(NG, 6, 6)
+          CALL W3SETA(NG, 6, 6)
+          CALL W3SETW(NG, 6, 6 )
 !
-        CALL W3EXGI ( NG-1, NSEA, NOSWLL_MIN, OUTorREST)
+          write(*,*) 'NG NSEA', NG, NSEA
+          WDATAS(NG)%TIME = TOUT
+          CALL W3EXGI ( NG-1, NSEA, NOSWLL_MIN, OUTorREST)
 
-
+          GOTO 2222
 
 
         END IF !OUTorREST
@@ -945,6 +953,7 @@
 !-------------------------------------------------------------------
 ! 1.  Preparations
 !
+        write(*,*) 'first of routine JDM', NSEA
 ! Group 1 Variables
 !
         DW       = UNDEF
@@ -1084,17 +1093,28 @@
                 IF ( LMAPDRY .EQ. 1 ) NMAPDRY = NMAPDRY + 1
                 IF ( LMAPLND .EQ. 1 ) NMAPLND = NMAPLND + 1
                 IF ( LMAPMSK .EQ. 1 ) NMAPMSK = NMAPMSK + 1
-              END DO 
+              END DO
+              IF (GR_INTS(ISEA)%IND_WTS(IG)%NP <1) THEN 
+                write(*,*)'JDMNMPAS', GR_INTS(ISEA)%IND_WTS(IG)%NP
+                write(*,*)'JDMNMPAS',IG ,GR_INTS(ISEA)%NGRDS 
+                write(*,*) 'IGRDS,ISEA',ISEA,IX,IY
+                write(*,*) 'ACTIVE',ACTIVE
+              END IF
+              IF (GR_INTS(ISEA)%IND_WTS(IG)%NP>0) THEN 
               NMAPICE = NMAPICE*100/GR_INTS(ISEA)%IND_WTS(IG)%NP
               NMAPDRY = NMAPDRY*100/GR_INTS(ISEA)%IND_WTS(IG)%NP
               NMAPLND = NMAPLND*100/GR_INTS(ISEA)%IND_WTS(IG)%NP
               NMAPMSK = NMAPMSK*100/GR_INTS(ISEA)%IND_WTS(IG)%NP
+              ENDIF
               IF ( NMAPICE .GT. 50 ) MAPICET = 1
               IF ( NMAPDRY .GT. 50 ) MAPDRYT = 1
               IF ( NMAPLND .GT. 50 ) MAPLNDT = 1
               IF ( NMAPMSK .GT. 50 ) MAPMSKT = 1
               ACTIVE =  (MAPICET .NE. 1 .AND. MAPDRYT .NE. 1 .AND.             &
                          MAPLNDT .NE. 1 .AND. MAPMSKT .NE. 1)
+              IF (GR_INTS(ISEA)%IND_WTS(IG)%NP <1) THEN
+                 write(*,*) 'ACTIVE2',ACTIVE
+              ENDIF
               IF ( ACTIVE ) THEN
                 USEGRID(IG) = .TRUE.
                 SUMGRD = SUMGRD+1
@@ -1239,6 +1259,13 @@
 ! 
                 VAAUX       = UNDEF 
                 SUMRES      = 0
+                IF (.NOT.(OUTorRESTflag)) THEN 
+                   !If restarts, set all FLOGRD 
+                   !to false to avoid unneeded 
+                   !computations 
+                   FLOGRD=.FALSE. 
+                END IF 
+
 !
 ! Loop through the points per grid to obtain interpolated values
 !
@@ -2499,8 +2526,11 @@
 !
                 DO IK = 1,NSPEC
                   IF ( VAAUX(IK) .NE. UNDEF ) THEN
+                    IF (SUMRES(IK).EQ.0.) THEN 
+                       write(*,*) 'divide by zero sumres'
+                    END IF 
                     VAAUX(IK) = VAAUX(IK) / SUMRES(IK)
-                    IF ( WN(IK,ISEA) .EQ. UNDEF )  THEN
+                    IF ( VA(IK,ISEA) .EQ. UNDEF )  THEN
                       VA(IK,ISEA) = VAAUX(IK) / REAL( SUMGRD )
                     ELSE
                       VA(IK,ISEA) = VA(IK,ISEA) +                     &
@@ -2549,6 +2579,25 @@
           END IF 
 !
         END DO
+!
+! Check to make sure VA is positive for restart file 
+!
+        XXX=0.
+        IF (.NOT.(OUTorRESTflag)) THEN 
+          DO ISEA = 1, NSEA
+            DO IK = 1,NSPEC
+              IF ( VA(IK,ISEA) .EQ. UNDEF )  THEN
+                !WRITE(*,*) 'VA is UNDEF at ISEA,IK', ISEA,IK
+              ELSEIF ( VA(IK,ISEA) < 0. ) THEN 
+                 WRITE(*,*) 'VA=',VA,' < 0, setting to 0 at ISEA,IK',ISEA,IK
+                 VA(IK,ISEA) = 0.
+              ELSE 
+                  XXX=XXX+VA(IK,ISEA)
+              END IF
+            END DO
+          END DO 
+        END IF 
+        write(*,*) 'UNDEF and sum', UNDEF, sum(sum(VA,dim=1)),XXX
 !
 !------------------------------------------------------------------------------
 ! 3. Write out interpolated data to target output file

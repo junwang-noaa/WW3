@@ -981,7 +981,7 @@
                  IO='w3iogrmd w3iogomd'
                prop=
              source="$st $nl $is"
-                aux='constants w3triamd w3servmd w3iorsmd w3arrymd w3dispmd w3timemd w3gsrumd'
+                aux='constants w3triamd w3servmd w3iorsmd w3iorsmdold w3arrymd w3dispmd w3timemd w3gsrumd'
                 aux="$aux w3namlmd" ;;
       gx_outf) IDstring='GrADS input file generation (gridded fields)'
                core=
@@ -1097,7 +1097,7 @@
                W3GDATMD W3WDATMD W3ADATMD W3ODATMD W3IDATMD W3CDATMD \
                W3FLD1MD  W3FLD2MD \
                W3IOGRMD W3IOGOMD W3IOPOMD W3IOTRMD W3IORSMD W3IOBCMD \
-                        W3IOSFMD W3PARTMD W3BULLMD \
+                        W3IOSFMD W3PARTMD W3BULLMD W3IORSMDOLD\
                W3TIDEMD W3CANOMD W3GIG1MD W3STRKMD \
                W3PRO1MD W3PRO2MD W3PRO3MD W3PROXMD \
                         W3UQCKMD W3UNO2MD W3PSMCMD W3PROFSMD \
@@ -1141,6 +1141,7 @@
          'W3IOPOMD'     ) modtest=w3iopomd.o ;;
          'W3IOTRMD'     ) modtest=w3iotrmd.o ;;
          'W3IORSMD'     ) modtest=w3iorsmd.o ;;
+         'W3IORSMDOLD'     ) modtest=w3iorsmdold.o ;;
          'W3IOBCMD'     ) modtest=w3iobcmd.o ;;
          'W3IOSFMD'     ) modtest=w3iosfmd.o ;;
          'W3PARTMD'     ) modtest=w3partmd.o ;;

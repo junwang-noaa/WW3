@@ -5,6 +5,11 @@ $ Time, time increment and number of outputs
 $
   19680606 060000 10800. 1
 $
+$ ww3_gint now has the option for creating a restart file from multiple
+$ other grids.  Note that the input and output grids MUST have the same
+$ spectral output.  
+$ Flag: True (out_grd) or False (restart file) 
+  .TRUE.
 $ Total number of grids (NGR). The code assumes that the first NGR-1  
 $ grids are the input grids and the last grid is the target grid in 
 $ which the output fields are to be interpolated. It also assumes
