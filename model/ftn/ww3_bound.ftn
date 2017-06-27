@@ -419,7 +419,7 @@
             !JDM: NEED TO ADD LONGERTERM FIX HERE!!!! This is a fix
             !because the lon from the spec points is (0-360) while grid
             !uses -180:180 
-            LONS(IP)=LONS(IP)-360.0
+            IF (LONS(IP)>180.0) LONS(IP)=LONS(IP)-360.0
             READ(200+IP,*,IOSTAT=IERR) SPEC2D 
               IF (IFMIN2.GT.1) THEN 
 !

@@ -344,7 +344,6 @@
 ! -------------------------------------------------------------------- /
 ! 1.  Test input and module status
 !
-      write(*,*) 'JDM', IMOD
       IF ( PRESENT(F_ONLY) ) THEN
           FL_ALL = .NOT. F_ONLY
         ELSE
@@ -377,9 +376,7 @@
       NSEALM = 1 + (NSEA-1)/NAPROC
       NSEATM = NSEALM * NAPROC
 !
-      write(*,*) 'FL_ALL', IMOD, FL_ALL
       IF ( FL_ALL ) THEN
-          write(*,*) 'Allocating VA', IMOD, NSPEC, NSEALM
           ALLOCATE ( WDATAS(IMOD)%VA(NSPEC,0:NSEALM), STAT=ISTAT )
           CHECK_ALLOC_STATUS ( ISTAT )
           IF ( NSEAL .NE. NSEALM ) WDATAS(IMOD)%VA(:,NSEALM) = 0.
