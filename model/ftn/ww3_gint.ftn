@@ -2646,8 +2646,9 @@
 
           DO ISEA = 1, NSEA
             DO IK = 1,NSPEC
-              IF ( VA(IK,ISEA) .EQ. UNDEF )  THEN
-              ELSEIF ( VA(IK,ISEA) < 0. ) THEN 
+!              IF ( VA(IK,ISEA) .EQ. UNDEF )  THEN
+!              ELSEIF ( VA(IK,ISEA) < 0. ) THEN 
+              IF ( VA(IK,ISEA) < 0. ) THEN 
                  VA(IK,ISEA) = 0.
               END IF
             END DO
