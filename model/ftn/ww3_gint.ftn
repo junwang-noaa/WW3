@@ -139,6 +139,9 @@
         LOGICAL                 :: OUTorREST
         INTEGER                 :: INTYPE
         CHARACTER               :: COMSTR*1, IDTIME*23
+        INTEGER, ALLOCATABLE    :: MAPSTA_NG(:,:),MAPST2_NG(:,:)
+        INTEGER, ALLOCATABLE    :: NOINT(:),NOINT2(:),MAPSTATMP(:,:)
+        INTEGER                 :: iNOINT,iNOINT2,JSEA,iloops
 !
 !---------------------------------------------------------------------------
 ! 1. Initialization
@@ -227,6 +230,12 @@
              NOSWLL_MIN = OUTPTS(IG)%NOSWLL
           END IF
 !
+          IF ( IG .EQ. NG) THEN 
+            ALLOCATE(MAPSTA_NG(NY,NX),MAPST2_NG(NY,NX)) 
+            MAPSTA_NG=MAPSTA
+            MAPST2_NG=MAPST2
+          END IF 
+!
         END DO
 !
         CLOSE(NDSI)
@@ -266,6 +275,11 @@
           IF ( MINVAL ( XGRD ) .LT. 0 .OR.                                     &
                MAXVAL ( XGRD ) .GT. 180.0 ) L360 = .TRUE. 
         END IF
+!
+        ALLOCATE ( NOINT(NSEA) )           
+        iNOINT=0
+
+
 !
 ! 4.b Loop through the wet points
 !
@@ -637,12 +651,16 @@
 !
           IF ( GR_INTS(ISEA)%NGRDS .EQ. 0 ) THEN
 !/T            WRITE (NDSO,909)IX, IY
+!JDM 
+            iNOINT=iNOINT+1 
+            NOINT(iNOINT)=ISEA 
             MAPINT = 1
             MAPST2(IY,IX) = MAPST2(IY,IX) + MAPINT*16 
             MAPSTA(IY,IX) = -ABS ( MAPSTA(IY,IX) )
           END IF
 !
         END DO       ! End of loop through all wet points
+
 !
 ! 4.c Print Interpolation grids map
 !
@@ -719,7 +737,7 @@
            CALL W3SETA(NG, 6, 6)
            CALL W3SETW(NG, 6, 6)
 !
-           CALL W3EXGI ( NG-1, NSEA, NOSWLL_MIN, OUTorREST )
+           CALL W3EXGI ( NG-1, NSEA, NOSWLL_MIN,OUTorREST,MAPSTA_NG,MAPST2_NG )
 !
            CALL TICK21 ( TOUT , DTREQ )
            IF ( IOUT .GE. NOUT ) EXIT
@@ -750,7 +768,7 @@
           CALL W3SETW(NG, 6, 6 )
 !
           WDATAS(NG)%TIME = TOUT
-          CALL W3EXGI ( NG-1, NSEA, NOSWLL_MIN, OUTorREST)
+          CALL W3EXGI ( NG-1, NSEA, NOSWLL_MIN, OUTorREST,MAPSTA_NG,MAPST2_NG )
 
           GOTO 2222
 
@@ -834,7 +852,8 @@
 !/
         CONTAINS
 !/ -----------------------------------------------------------------------/
-        SUBROUTINE W3EXGI ( NGRD, NSEA, NOSWLL_MIN, OUTorRESTflag )
+        SUBROUTINE W3EXGI ( NGRD, NSEA, NOSWLL_MIN,OUTorRESTflag,              & 
+                  MAPSTA_NG,MAPST2_NG )
 !/                  +-----------------------------------+
 !/                  | WAVEWATCH-III           NOAA/NCEP |
 !/                  |             A. Chawla             |
@@ -945,6 +964,8 @@
         REAL                    :: VAAUX(NSPEC), SUMRES(NSPEC)
         INTEGER                 :: INTYPE 
         REAL                    :: XXX
+        INTEGER                 :: MAPSTA_NG(NY,NX),MAPST2_NG(NY,NX)
+
 !/
 !
 !-------------------------------------------------------------------
@@ -1250,7 +1271,7 @@
                    !If restarts, set all FLOGRD 
                    !to false to avoid unneeded 
                    !computations 
-                   FLOGRD=.FALSE. 
+                   FLOGRD=.FALSE.
                 END IF 
 
 !
@@ -2565,8 +2586,64 @@
         END DO
 !
 ! Check to make sure VA is positive for restart file 
+! and do nearest neighbor for points w/out interpolation
 !
-        IF (.NOT.(OUTorRESTflag)) THEN 
+     
+        IF (.NOT.(OUTorRESTflag)) THEN
+          ALLOCATE( MAPSTATMP(0:(NY+1),0:(NX+1)))
+          ALLOCATE( NOINT2(iNOINT) )
+          MAPSTATMP=0
+          MAPSTATMP(1:NY,1:NX)=MAPSTA          
+
+         iloops=0
+         DO WHILE ( iloops < 6 .AND. iNOINT > 0 ) 
+          iNOINT2=0
+          DO JSEA=1,iNOINT 
+
+            ISEA=NOINT(JSEA) 
+            !look in the box surrounding the point for a 
+            !neighboring point 
+            IX = MAPSF(ISEA,1)
+            IY = MAPSF(ISEA,2)
+            
+            IF     ( MAPSTATMP(IY+1,IX)   .EQ. 1 ) THEN 
+              VA(:,ISEA)=VA(:,MAPFS(IY+1,IX))
+              MAPSTATMP(IY,IX)=1
+            ELSEIF ( MAPSTATMP(IY,IX+1)   .EQ. 1 ) THEN
+              VA(:,ISEA)=VA(:,MAPFS(IY+1,IX)) 
+              MAPSTATMP(IY,IX)=1
+            ELSEIF ( MAPSTATMP(IY-1,IX)   .EQ. 1 ) THEN
+              VA(:,ISEA)=VA(:,MAPFS(IY-1,IX))
+              MAPSTATMP(IY,IX)=1
+            ELSEIF ( MAPSTATMP(IY,IX-1)   .EQ. 1 ) THEN
+              VA(:,ISEA)=VA(:,MAPFS(IY,IX-1))
+              MAPSTATMP(IY,IX)=1
+            ELSEIF ( MAPSTATMP(IY+1,IX+1) .EQ. 1 ) THEN
+              VA(:,ISEA)=VA(:,MAPFS(IY+1,IX+1))
+              MAPSTATMP(IY,IX)=1
+            ELSEIF ( MAPSTATMP(IY-1,IX+1) .EQ. 1 ) THEN
+              VA(:,ISEA)=VA(:,MAPFS(IY+1,IX-1))
+              MAPSTATMP(IY,IX)=1
+            ELSEIF ( MAPSTATMP(IY-1,IX-1) .EQ. 1 ) THEN
+              VA(:,ISEA)=VA(:,MAPFS(IY-1,IX-1))
+              MAPSTATMP(IY,IX)=1
+            ELSEIF ( MAPSTATMP(IY+1,IX-1) .EQ. 1 ) THEN
+              VA(:,ISEA)=VA(:,MAPFS(IY+1,IX-1))
+              MAPSTATMP(IY,IX)=1
+            ELSE 
+              !The immediate box surrounding the point 
+              !has no active sea point
+              iNOINT2=iNOINT2+1
+              NOINT2(iNOINT2)=ISEA
+            ENDIF
+          END DO 
+          iNOINT=iNOINT2
+          NOINT(1:iNOINT2)=NOINT2(1:iNOINT2)
+          iloops=iloops+1 
+         END DO
+
+         DEALLOCATE (NOINT,NOINT2,MAPSTATMP)  
+
           DO ISEA = 1, NSEA
             DO IK = 1,NSPEC
               IF ( VA(IK,ISEA) .EQ. UNDEF )  THEN
@@ -2575,14 +2652,29 @@
               END IF
             END DO
           END DO 
-        END IF 
+
+          MAPST2=MAPST2_NG
+          MAPSTA=MAPSTA_NG
+
+        END IF
+
 !
 !------------------------------------------------------------------------------
 ! 3. Write out interpolated data to target output file
 !
         IF (OUTorRESTflag) THEN 
           CALL W3IOGO('WRITE',FIDOUT(NG),IOTST,NG)
-        ELSE 
+        ELSE
+          TICE(1)=-1
+          TICE(2)=0
+          TLEV(1)=-1
+          TLEV(2)=0
+          WLV=0.
+          ICE=0.
+          UST=0.
+          USTDIR=0.
+          ASF=0.
+          FPIS=0. 
           CALL W3IORS ( 'HOT', 55, XXX, INTYPE,NG) 
         END IF 
 !
