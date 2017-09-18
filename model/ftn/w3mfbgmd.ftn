@@ -436,25 +436,41 @@
          IY     = MAPSF(ISEA,2)
          IF (MAPSTA(IY,IX).NE.0) THEN
               FCOR=2*OMEGA*(SQRT(1.-CLATS(IY)**2))
-              IF (MAPSTA(IY,IX+1).EQ.0) THEN
+              IF (IX<NX) THEN 
+                IF (MAPSTA(IY,IX+1).EQ.0) THEN
                  IXP = IX
-              ELSE
+                ELSE
                  IXP = IX+1
-              ENDIF
-              IF (MAPSTA(IY,IX-1).EQ.0) THEN
+                ENDIF
+              ELSE 
+                IXP = IX
+              ENDIF 
+              IF (IX>1) THEN 
+                IF (MAPSTA(IY,IX-1).EQ.0) THEN
                  IXM = IX
-              ELSE
+                ELSE
                  IXM = IX-1
+                ENDIF
+              ELSE
+                 IXM = IX
               ENDIF
-              IF (MAPSTA(IY+1,IX).EQ.0)THEN
+              IF (IY< NY) THEN 
+                IF (MAPSTA(IY+1,IX).EQ.0)THEN
                  IYP = IY
-              ELSE
+                ELSE
                  IYP = IY+1
-              ENDIF
-              IF (MAPSTA(IY-1,IX).EQ.0) THEN
-                 IYM = IY
+                ENDIF
               ELSE
+                 IYP = IY
+              ENDIF
+              IF (IY>1) THEN 
+                IF (MAPSTA(IY-1,IX).EQ.0) THEN
+                 IYM = IY
+                ELSE
                  IYM = IY-1
+                ENDIF
+              ELSE 
+                IYM = IY
               ENDIF
               aMX = 0.0
               aMX0 = 0.0
@@ -486,39 +502,59 @@
 !-3. Calculate spatial derivatives of momentum flux (central diff
 !-   if possible)
 !-
-     DX0=SX*DERA*RADIUS
-     DY0=SY*DERA*RADIUS
-     DO JSEA = 1 , NSEAL
+      DX0=SX*DERA*RADIUS
+      DY0=SY*DERA*RADIUS
+      DO JSEA = 1 , NSEAL
         ISEA = IAPROC + (JSEA-1) * NAPROC
         IX     = MAPSF(ISEA,1)
         IY     = MAPSF(ISEA,2)
         IF (MAPSTA(IY,IX) .NE. 0) THEN
            STX=2.0
-           IF (MAPSTA(IY,IX+1).EQ.0) THEN
+           IF (IX < NX) THEN 
+             IF (MAPSTA(IY,IX+1).EQ.0) THEN
+               IXP = IX
+               STX=1.0
+             ELSE
+               IXP=IX+1
+             ENDIF
+           ELSE 
              IXP = IX
-              STX=1.0
-           ELSE
-              IXP=IX+1
+             STX=1.0
            ENDIF
-           IF (MAPSTA(IY,IX-1).EQ.0) THEN
-              IXM=IX
-              STX=1.0
-           ELSE
-              IXM=IX-1
-           ENDIF
+           IF (IX > 1) THEN 
+             IF (MAPSTA(IY,IX-1).EQ.0) THEN
+               IXM=IX
+               STX=1.0
+             ELSE
+               IXM=IX-1
+             ENDIF
+           ELSE 
+             IXM=IX
+             STX=1.0
+           ENDIF 
            STY=2.0
-           IF (MAPSTA(IY+1,IX).EQ.0)THEN
-              IYP = IY
-              STY=1.0
-           ELSE
-              IYP=IY+1
+           IF (IY < NY) THEN 
+             IF (MAPSTA(IY+1,IX).EQ.0)THEN
+               IYP = IY
+               STY=1.0
+             ELSE
+               IYP=IY+1
+             ENDIF 
+           ELSE 
+             IYP = IY
+             STY=1.0
            ENDIF
-           IF (MAPSTA(IY-1,IX).EQ.0) THEN
-              IYM=IY
-              STX=1.0
+           IF (IY > 1) THEN 
+             IF (MAPSTA(IY-1,IX).EQ.0) THEN
+               IYM=IY
+               STX=1.0
+             ELSE
+               IYM=IY-1
+             ENDIF
            ELSE
-              IYM=IY-1
-           ENDIF
+             IYM=IY
+             STX=1.0
+           ENDIF 
            DX=DX0*STX*CLATS(IY)
            DY=DY0*STY
            TAU_DX(IY,IX)=TAU_DX(IY,IX)+(MFXX(IY,IXP)-MFXX(IY,IXM))/DX + &
@@ -552,9 +588,9 @@
               DENER(IY,IX)=0.0
            ENDIF
         ENDIF
-     ENDDO
-     ITIME0=ITIME
-   END SUBROUTINE WMBG
- END MODULE W3MFBGMD
+      ENDDO
+      ITIME0=ITIME
+      END SUBROUTINE WMBG
+      END MODULE W3MFBGMD
 
 
