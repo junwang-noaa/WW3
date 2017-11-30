@@ -499,7 +499,7 @@
 
     cd svn
 
-    for dir in model manual guide regtests cases smc_docs
+    for dir in model manual guide regtests
     do
       if [ ! -d $dir ]
       then
