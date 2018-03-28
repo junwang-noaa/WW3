@@ -3,7 +3,7 @@
 !/ ------------------------------------------------------------------- /
 !/ Macros for enabling test output
 !/
-#define TEST_W3GDATMD___disabled
+#define TEST_W3GDATMD!___disabled
 #define TEST_W3GDATMD_W3NMOD___disabled
 #define TEST_W3GDATMD_W3DIMX___disabled
 #define TEST_W3GDATMD_W3DIMS___disabled
@@ -570,6 +570,9 @@
 !/ Specify default accessibility
 !/
       PUBLIC
+!{
+      LOGICAL, private, allocatable, dimension (:,:) :: MASK
+!}
 !/
 !/ Module private variable for checking error returns
 !/
@@ -1348,6 +1351,9 @@
 !
 ! NB: Some array start at 0 because MAPFS(IY,IX)=0 for missing points 
 !
+!{
+      allocate(MASK(NY,NX))
+!}
       ALLOCATE ( GRIDS(IMOD)%MAPSTA(MY,MX),  &
                  GRIDS(IMOD)%MAPST2(MY,MX),  &
                  GRIDS(IMOD)%MAPFS(MY,MX),   &
@@ -2340,10 +2346,12 @@
       LOGICAL, PARAMETER :: PTILED = .FALSE.
       LOGICAL, PARAMETER :: QTILED = .FALSE.
       LOGICAL, PARAMETER :: IJG    = .FALSE.
-      LOGICAL, PARAMETER :: SPHERE = .FALSE.
+!BGR      LOGICAL, PARAMETER :: SPHERE = .FALSE.
+      LOGICAL, PARAMETER :: SPHERE = .TRUE.
       INTEGER :: PRANGE(2), QRANGE(2)
       INTEGER :: LBI(2), UBI(2), LBO(2), UBO(2), ISTAT
       REAL   , ALLOCATABLE :: COSA(:,:)
+      integer i,j
 !/S      INTEGER, SAVE      :: IENT = 0
 !/
 !/S      CALL STRACE (IENT, 'W3GNTX')
@@ -2351,6 +2359,17 @@
 ! -------------------------------------------------------------------- /
 ! 1.  Test input and module status
 !
+!{
+      do i=1,nx
+         do j=1,ny
+            if (MAPSTA(j,i)==1) then
+               MASK(j,i)=.false.
+            else
+               MASK(j,i)=.true.
+            end if
+         enddo
+      enddo
+!}
       IF ( NGRIDS .EQ. -1 ) THEN
           WRITE (NDSE,1001)
           CALL EXTCDE (1)
@@ -2409,7 +2428,7 @@
         CASE ( RLGTYPE )
           CALL W3CGDM( IJG, FLAGLL, ICLOSE, PTILED, QTILED,            &
                        PRANGE, QRANGE, LBI, UBI, LBO, UBO, XGRD, YGRD, &
-                       NFD=NFD, SPHERE=SPHERE, DX=SX, DY=SY,           &
+                       MASK=MASK,NFD=NFD, SPHERE=SPHERE, DX=SX, DY=SY,           &
                        DXDP=DXDP, DYDP=DYDP, DXDQ=DXDQ, DYDQ=DYDQ,     &
                        DPDX=DPDX, DPDY=DPDY, DQDX=DQDX, DQDY=DQDY,     &
                        HPFC=HPFAC, HQFC=HQFAC, GSQR=GSQRT,             &
@@ -2424,7 +2443,7 @@
         CASE ( CLGTYPE )
           CALL W3CGDM( IJG, FLAGLL, ICLOSE, PTILED, QTILED,            &
                        PRANGE, QRANGE, LBI, UBI, LBO, UBO, XGRD, YGRD, &
-                       NFD=NFD, SPHERE=SPHERE,                         &
+                       MASK=MASK, NFD=NFD, SPHERE=SPHERE,                         &
                        DXDP=DXDP, DYDP=DYDP, DXDQ=DXDQ, DYDQ=DYDQ,     &
                        DPDX=DPDX, DPDY=DPDY, DQDX=DQDX, DQDY=DQDY,     &
                        HPFC=HPFAC, HQFC=HQFAC, GSQR=GSQRT,             &
