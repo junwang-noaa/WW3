@@ -407,7 +407,8 @@
       INTEGER                 :: TCALC(2), IT, IT0, NT, ITEST,        &
                                  ITLOC, ITLOCH, NTLOC, ISEA, JSEA,    &
                                  IX, IY, ISPEC, J, TOUT(2), TLST(2),  &
-                                 REFLED(6), IK, NKCFL, ISPECROT
+                                 REFLED(6), IK, NKCFL,                & 
+                                 ITH, ISPECROT, ITHROT
 !/SEC1      INTEGER                 :: ISEC1
 !/SBS      INTEGER                 :: JJ, NDSOFLG
 !/MPI      INTEGER                 :: IERR_MPI, NRQMAX
@@ -1236,10 +1237,10 @@
                   IF( RGLGRD .AND. (ICLOSE.EQ.ICLOSE_TRPL) ) THEN 
                      !For Tripolar grid, we need ghost nodes for the
                      !fold that are rotated 180 deg
-                     ITH    = 1 + MOD(ISPEC-1,NTH)
-                     IK     = 1 + (ISPEC-1)/NTH
-                     ITHROT = 1 + MOD(ITH+NTH/2-1,NTH) 
-                     ISPECROT = ITHROT+(IK-1)*NTH 
+                     ITH       = 1 + MOD(ISPEC-1,NTH)
+                     IK        = 1 + (ISPEC-1)/NTH
+                     ITHROT    = 1 + MOD(ITH+NTH/2-1,NTH) 
+                     ISPECROT  = ITHROT+(IK-1)*NTH 
                      CALL W3GATH ( ISPECROT, FIELDGHOST )
                   ENDIF 
 !/SMC !!Li   Otherwise use SMC sub to gether field
