@@ -254,7 +254,7 @@
 !/
       END SUBROUTINE W3MAP1
 !/ ------------------------------------------------------------------- /
-      SUBROUTINE W3XYP1 ( ISP, DTG, MAPSTA, FIELD, VGX, VGY )
+      SUBROUTINE W3XYP1 ( ISP, DTG, MAPSTA, FIELD, FIELDGHOST, VGX, VGY )
 !/
 !/                  +-----------------------------------+
 !/                  | WAVEWATCH III           NOAA/NCEP |
@@ -406,6 +406,7 @@
       INTEGER, INTENT(IN)     :: ISP, MAPSTA(NY*NX)
       REAL, INTENT(IN)        :: DTG, VGX, VGY
       REAL, INTENT(INOUT)     :: FIELD(1-NY:NY*(NX+2))
+      REAL, INTENT(IN)        :: FIELDGHOST(1-NY:NY*(NX+2))
 !/
 !/ ------------------------------------------------------------------ /
 !/ Local parameters
@@ -426,6 +427,7 @@
       REAL                    :: CXTOT2D(NY,NX)
       REAL                    :: CYTOT2D(NY,NX)
       REAL                    :: FLD2D(NY+1,NX+1)
+      REAL                    :: FLD2DGHOST(NY+1,NX+1)
       REAL                    :: VCX2D(NY,NX+1)
       REAL                    :: VCY2D(NY+1,NX)
       REAL                    :: VFLX2D(1:NY,0:NX)
@@ -464,7 +466,7 @@
       NTLOC  = 1 + INT(DTG/(DTCFL*CG0/CGN))
       DTLOC  = DTG / REAL(NTLOC)
       DTRAD  = DTLOC
-      IF ( FLAGLL.and.(.not.(iclose.eq.iclose_trpl ) DTRAD=DTRAD/(DERA*RADIUS)
+      IF ( FLAGLL.and.(.not.(iclose.eq.iclose_trpl ))) DTRAD=DTRAD/(DERA*RADIUS)
 
 !
 !/T      WRITE (NDST,9000) NTLOC
@@ -483,6 +485,7 @@
         CXTOT2D  = 0.
         CYTOT2D  = 0.
         FLD2D  = 0.
+        FLD2DGHOST = 0.
         VFLX2D  = 0.
         VFLY2D  = 0.
 !
@@ -503,11 +506,14 @@
 
           if (.not.(iclose.eq.iclose_trpl)) then
              FLD2D(IY,IX) = FIELD(IXY) / CG(IK,ISEA) * CLATS(ISEA)
+             FLD2DGHOST(IY,IX) = FIELDGHOST(IXY) / CG(IK,ISEA) * CLATS(ISEA)      
              CXTOT2D(IY,IX) = ECOS(ITH) * CG(IK,ISEA) / CLATS(ISEA)
           else
              FLD2D(IY,IX) = FIELD(IXY) / CG(IK,ISEA)
+             FLD2DGHOST(IY,IX) = FIELDGHOST(IXY) / CG(IK,ISEA) * CLATS(ISEA)      
              CXTOT2D(IY,IX) = ECOS(ITH) * CG(IK,ISEA)
           endif
+
           CYTOT2D(IY,IX) = ESIN(ITH) * CG(IK,ISEA)
 !/MGP          CXTOT2D(IY,IX) = CXTOT2D(IY,IX) - VGX/CLATS(ISEA)
 !/MGP          CYTOT2D(IY,IX) = CYTOT2D(IY,IX) - VGY
@@ -569,8 +575,10 @@
 !   grids, so it did not apply to any test case that existed w/v4.18)
         if (iclose.eq.ICLOSE_TRPL) then
            FLD2D(1:NY,1:NX)=FLD2D(1:NY,1:NX)*GSQRTtp(1:NY,1:NX)
+           FLD2DGHOST(1:NY,1:NX)=FLD2DGHOST(1:NY,1:NX)*GSQRTtp(1:NY,1:NX)
         else
            FLD2D(1:NY,1:NX)=FLD2D(1:NY,1:NX)*GSQRT(1:NY,1:NX)
+           FLD2DGHOST(1:NY,1:NX)=FLD2DGHOST(1:NY,1:NX)*GSQRT(1:NY,1:NX)
         endif
 !
 ! Deal with longitude closure by duplicating one row *to the right*
@@ -581,6 +589,7 @@
 !/NEC/!CDIR NODEP
             DO IY=1, NY
               FLD2D(IY,NX+1)=FLD2D(IY,1)
+              FLD2DGHOST(IY,NX+1)=FLD2DGHOST(IY,1)
               VCX2D(IY,NX+1)=VCX2D(IY,1)
 !/T1              WRITE (NDST,9025) IY, FLD2D(IY,NX+1), VCX2D(IY,NX+1)
             END DO
@@ -591,7 +600,7 @@
         IF ( ICLOSE.EQ.ICLOSE_TRPL ) THEN
             DO IX=1,NX
 !...........next point: j+1: tripole: j==>j+1==>j and i==>ni-i+1
-              FLD2D(NY+1,IX)=FLD2D(NY,NX-IX+1)
+              FLD2D(NY+1,IX)=FLD2DGHOST(NY,NX-IX+1)
               VCY2D(NY+1,IX)=VCY2D(NY,NX-IX+1)
             END DO
         END IF

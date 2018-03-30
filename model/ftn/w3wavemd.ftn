@@ -407,7 +407,8 @@
       INTEGER                 :: TCALC(2), IT, IT0, NT, ITEST,        &
                                  ITLOC, ITLOCH, NTLOC, ISEA, JSEA,    &
                                  IX, IY, ISPEC, J, TOUT(2), TLST(2),  &
-                                 REFLED(6), IK, NKCFL
+                                 REFLED(6), IK, NKCFL,                & 
+                                 ITH, ISPECROT, ITHROT
 !/SEC1      INTEGER                 :: ISEC1
 !/SBS      INTEGER                 :: JJ, NDSOFLG
 !/MPI      INTEGER                 :: IERR_MPI, NRQMAX
@@ -420,7 +421,7 @@
                                  DELX, DELY, DELA, DEPTH, D50, PSIC
 !/SEC1     REAL                    :: DTGTEMP
 !
-      REAL, ALLOCATABLE       :: FIELD(:)
+      REAL, ALLOCATABLE       :: FIELD(:),FIELDGHOST(:)
       REAL                    :: TMP1(4), TMP2(3), TMP3(2), TMP4(2)
 !/IC3 REAL, ALLOCATABLE       :: WN_I(:)
 !/REFRX REAL, ALLOCATABLE       :: CIK(:)
@@ -539,7 +540,10 @@
         END IF
 !
 !!Li  ALLOCATE ( FIELD(1-NY:NY*(NX+2)) )
-      IF( RGLGRD .AND. .NOT. FLOMP ) ALLOCATE ( FIELD(1-NY:NY*(NX+2)) )
+      IF( RGLGRD .AND. .NOT. FLOMP ) THEN 
+         ALLOCATE ( FIELD(1-NY:NY*(NX+2)) )     
+         ALLOCATE ( FIELDGHOST(1-NY:NY*(NX+2)) )
+      ENDIF
 !
 !/SMC !!Li   Otherwise use sea point only field
 !/SMC       ALLOCATE ( FIELD(NCel) )
@@ -1213,7 +1217,8 @@
 !
           IF ( FLCX .OR. FLCY ) THEN
 !
-!/MPI              IF ( NRQSG1 .GT. 0 ) THEN
+!/MPI              IF ( NRQSG1 .GT. 0 ) THEN   !
+!      NRQSG1    Int. Public   Number of handles in IRQSG1.
 !/MPI                  CALL MPI_STARTALL (NRQSG1, IRQSG1(1,1), IERR_MPI)
 !/MPI                  CALL MPI_STARTALL (NRQSG1, IRQSG1(1,2), IERR_MPI)
 !/MPI                END IF
@@ -1221,6 +1226,7 @@
 !/OMPX/!$OMP PARALLEL PRIVATE (ISPEC,FIELD)
 !
               IF ( FLOMP ) ALLOCATE ( FIELD(1-NY:NY*(NX+2)) )
+              IF ( FLOMP ) ALLOCATE ( FIELDGHOST(1-NY:NY*(NX+2)) )
 !
 !/OMPX/!$OMP DO SCHEDULE (DYNAMIC,1)
 !
@@ -1228,11 +1234,20 @@
                 IF ( IAPPRO(ISPEC) .EQ. IAPROC ) THEN
 !!Li              CALL W3GATH ( ISPEC, FIELD )
                   IF( RGLGRD ) CALL W3GATH ( ISPEC, FIELD )
+                  IF( RGLGRD .AND. (ICLOSE.EQ.ICLOSE_TRPL) ) THEN 
+                     !For Tripolar grid, we need ghost nodes for the
+                     !fold that are rotated 180 deg
+                     ITH       = 1 + MOD(ISPEC-1,NTH)
+                     IK        = 1 + (ISPEC-1)/NTH
+                     ITHROT    = 1 + MOD(ITH+NTH/2-1,NTH) 
+                     ISPECROT  = ITHROT+(IK-1)*NTH 
+                     CALL W3GATH ( ISPECROT, FIELDGHOST )
+                  ENDIF 
 !/SMC !!Li   Otherwise use SMC sub to gether field
 !/SMC                    CALL W3GATHSMC ( ISPEC, FIELD )
 !
                   IF (GTYPE .NE. UNGTYPE) THEN
-!/PR1               CALL W3XYP1 ( ISPEC, DTG, MAPSTA, FIELD, VGX, VGY )
+!/PR1               CALL W3XYP1 ( ISPEC, DTG, MAPSTA, FIELD, FIELDGHOST, VGX, VGY )
 !/PR2               CALL W3XYP2 ( ISPEC, DTG, MAPSTA, MAPFS, FIELD, VGX, VGY )
 !/PR3               CALL W3XYP3 ( ISPEC, DTG, MAPSTA, MAPFS, FIELD, VGX, VGY )
 !/PRX               CALL W3XYPX

@@ -822,14 +822,14 @@
                data='w3wdatmd w3gdatmd w3adatmd w3idatmd w3odatmd'
                prop=
              source="w3triamd $stx $nlx $btx $is"
-                 IO='w3iogrmd'
+                 IO='w3iogrmd w3tripmd'
                 aux='constants w3servmd w3arrymd w3dispmd w3gsrumd w3timemd' ;;
      ww3_strt) IDstring='Initial conditions program'
                core=
                data='w3gdatmd w3wdatmd w3adatmd w3idatmd w3odatmd'
                prop=
              source="$stx $nlx $btx $is"
-                 IO='w3iogrmd w3iorsmd'
+                 IO='w3iogrmd w3iorsmd w3tripmd'
                 aux='constants w3triamd w3servmd w3arrymd w3dispmd w3gsrumd w3timemd' ;;
      ww3_bound) IDstring='boundary conditions program'
                core=
@@ -870,7 +870,7 @@
                core='w3fldsmd w3initmd w3wavemd w3wdasmd w3updtmd'
                data='wmmdatmd w3gdatmd w3wdatmd w3adatmd w3idatmd w3odatmd'
                prop="$pr"
-             source="w3triamd w3srcemd $dsx $flx $ln $st $nl $bt $ic $is $db $tr $bs $xx $refcode $igcode"
+             source="w3triamd w3srcemd $dsx $flx $ln $st $nl $bt $ic $is $db $tr $bs $xx $refcode $igcode w3tripmd"
                  IO="w3iogrmd w3iogomd w3iopomd w3iotrmd w3iorsmd w3iobcmd $couplmd $agcmmd $ogcmmd $igcmmd"
                  IO="$IO w3iosfmd w3partmd"
                 aux="constants w3servmd w3timemd $tidecode w3arrymd w3dispmd w3cspcmd w3gsrumd $cplcode"
@@ -936,7 +936,7 @@
                data='wmmdatmd w3gdatmd w3wdatmd w3adatmd w3idatmd w3odatmd'
                prop=
              source="w3triamd $stx $nlx $btx  $is"
-                 IO='w3iogrmd w3iogomd w3iorsmd w3iopomd'
+                 IO='w3iogrmd w3iogomd w3iorsmd w3iopomd w3tripmd'
                 aux='constants w3servmd w3timemd w3arrymd w3dispmd w3gsrumd'
                 aux="$aux w3namlmd" ;;
      ww3_outp) IDstring='Point output'
@@ -1180,9 +1180,9 @@
                W3REF1MD \
                W3SXXXMD \
               CONSTANTS W3SERVMD W3TIMEMD W3ARRYMD W3DISPMD W3GSRUMD W3TRIAMD \
-               WMINITMD WMWAVEMD WMFINLMD WMMDATMD WMGRIDMD WMUPDTMD \
+               WMINITMD WMWAVEMD WMFINLMD WMMDATMD WMGRIDMD WMUPDTMD W3TRIPMD \
                WMUNITMD WMINIOMD WMIOPOMD WMSCRPMD WMESMFMD \
-               w3getmem WW_cc CMP_COMM W3OACPMD W3AGCMMD W3OGCMMD W3IGCMMD  W3NAMLMD
+               w3getmem WW_cc CMP_COMM W3OACPMD W3AGCMMD W3OGCMMD W3IGCMMD  W3NAMLMD 
       do
       case $mod in
          'W3INITMD'     ) modtest=w3initmd.o ;;
@@ -1290,6 +1290,7 @@
          'W3OGCMMD'     ) modtest=w3ogcmmd.o ;;
          'W3IGCMMD'     ) modtest=w3igcmmd.o ;;
          'W3NAMLMD'     ) modtest=w3namlmd.o ;;
+	 'W3TRIPMD'     ) modtest=w3tripmd.o ;;
       esac
       nr=`grep $mod check_file | wc -c | awk '{ print $1 }'`
       if [ "$nr" -gt '8' ]
