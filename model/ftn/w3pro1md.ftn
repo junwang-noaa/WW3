@@ -555,7 +555,7 @@
 !   row will be in index space (bug applied only to global, irregular
 !   grids, so it did not apply to any test case that existed w/v4.18)
         FLD2D(1:NY,1:NX)=FLD2D(1:NY,1:NX)*GSQRT(1:NY,1:NX)
-        FLD2DGHOST(1:NY,11:NX)=FLD2DGHOST(1:NY,1:NX)*GSQRT(1:NY,1:NX)
+        FLD2DGHOST(1:NY,1:NX)=FLD2DGHOST(1:NY,1:NX)*GSQRT(1:NY,1:NX)
 !
 ! Deal with longitude closure by duplicating one row *to the right*
 !   in FIELD/FLD2D, VCX
