@@ -3,7 +3,7 @@
 !/ ------------------------------------------------------------------- /
 !/ Macros for enabling test output
 !/
-#define TEST_W3GDATMD!___disabled
+#define TEST_W3GDATMD___disabled
 #define TEST_W3GDATMD_W3NMOD___disabled
 #define TEST_W3GDATMD_W3DIMX___disabled
 #define TEST_W3GDATMD_W3DIMS___disabled
@@ -641,6 +641,9 @@
         REAL   , POINTER :: DPDX(:,:), DPDY(:,:) ! DP/DX & DP/DY DEFINED ON IX,IY
         REAL   , POINTER :: DQDX(:,:), DQDY(:,:) ! DQ/DX & DQ/DY DEFINED ON IX,IY
         REAL   , POINTER :: GSQRT(:,:) ! SQRT(G) DEFINED ON IX,IY
+        REAL   , POINTER :: DPDXtp(:,:), DPDYtp(:,:) ! DP/DX & DP/DY DEFINED ON IX,IY
+        REAL   , POINTER :: DQDXtp(:,:), DQDYtp(:,:) ! DQ/DX & DQ/DY DEFINED ON IX,IY
+        REAL   , POINTER :: GSQRTtp(:,:) ! SQRT(G) DEFINED ON IX,IY
         REAL   , POINTER :: HPFAC(:,:) ! H_P = SQRT(G_PP) DEFINED ON IX,IY
         REAL   , POINTER :: HQFAC(:,:) ! H_Q = SQRT(G_QQ) DEFINED ON IX,IY
 
@@ -942,6 +945,9 @@
       REAL   , POINTER :: DPDX(:,:), DPDY(:,:) ! DP/DX & DP/DY DEFINED ON IX,IY
       REAL   , POINTER :: DQDX(:,:), DQDY(:,:) ! DQ/DX & DQ/DY DEFINED ON IX,IY
       REAL   , POINTER :: GSQRT(:,:) ! SQRT(G) DEFINED ON IX,IY
+      REAL   , POINTER :: DPDXtp(:,:), DPDYtp(:,:) ! DP/DX & DP/DY DEFINED ON IX,IY
+      REAL   , POINTER :: DQDXtp(:,:), DQDYtp(:,:) ! DQ/DX & DQ/DY DEFINED ON IX,IY
+      REAL   , POINTER :: GSQRTtp(:,:) ! SQRT(G) DEFINED ON IX,IY
       REAL   , POINTER :: HPFAC(:,:) ! H_P = SQRT(G_PP) DEFINED ON IX,IY
       REAL   , POINTER :: HQFAC(:,:) ! H_Q = SQRT(G_QQ) DEFINED ON IX,IY
 !/BT4        REAL, POINTER         :: SED_D50(:), SED_PSIC(:)
@@ -1377,6 +1383,11 @@
                  GRIDS(IMOD)%DQDX(MY,MX),    &
                  GRIDS(IMOD)%DQDY(MY,MX),    &
                  GRIDS(IMOD)%GSQRT(MY,MX),   &
+                 GRIDS(IMOD)%DPDXtp(MY,MX),    &
+                 GRIDS(IMOD)%DPDYtp(MY,MX),    &
+                 GRIDS(IMOD)%DQDXtp(MY,MX),    &
+                 GRIDS(IMOD)%DQDYtp(MY,MX),    &
+                 GRIDS(IMOD)%GSQRTtp(MY,MX),   &
                  GRIDS(IMOD)%HPFAC(MY,MX),   &
                  GRIDS(IMOD)%HQFAC(MY,MX),   &
                  STAT=ISTAT                  )
@@ -1950,6 +1961,11 @@
           DQDX   => GRIDS(IMOD)%DQDX
           DQDY   => GRIDS(IMOD)%DQDY
           GSQRT  => GRIDS(IMOD)%GSQRT
+          DPDXtp   => GRIDS(IMOD)%DPDXtp
+          DPDYtp   => GRIDS(IMOD)%DPDYtp
+          DQDXtp   => GRIDS(IMOD)%DQDXtp
+          DQDYtp   => GRIDS(IMOD)%DQDYtp
+          GSQRTtp  => GRIDS(IMOD)%GSQRTtp
           HPFAC  => GRIDS(IMOD)%HPFAC
           HQFAC  => GRIDS(IMOD)%HQFAC
 !
@@ -2330,6 +2346,7 @@
 !
 !/ ------------------------------------------------------------------- /
       USE W3SERVMD, ONLY: EXTCDE
+      USE W3TRIPMD, ONLY: ReadTriPolFile
 !/S      USE W3SERVMD, ONLY: STRACE
 !
       IMPLICIT NONE
@@ -2346,8 +2363,7 @@
       LOGICAL, PARAMETER :: PTILED = .FALSE.
       LOGICAL, PARAMETER :: QTILED = .FALSE.
       LOGICAL, PARAMETER :: IJG    = .FALSE.
-!BGR      LOGICAL, PARAMETER :: SPHERE = .FALSE.
-      LOGICAL, PARAMETER :: SPHERE = .TRUE.
+      LOGICAL, PARAMETER :: SPHERE = .FALSE.
       INTEGER :: PRANGE(2), QRANGE(2)
       INTEGER :: LBI(2), UBI(2), LBO(2), UBO(2), ISTAT
       REAL   , ALLOCATABLE :: COSA(:,:)
@@ -2424,6 +2440,7 @@
       UBI = (/NY,NX/)
       LBO = (/ 1, 1/)
       UBO = (/NY,NX/)
+
       SELECT CASE ( GTYPE )
         CASE ( RLGTYPE )
           CALL W3CGDM( IJG, FLAGLL, ICLOSE, PTILED, QTILED,            &
@@ -2455,6 +2472,11 @@
               WRITE (NDSE,1004) GTYPE
               CALL EXTCDE (4)
             END IF
+            call ReadTriPolFile(XGRD,YGRD,LBI,UBI,LBO,UBO, &
+                                MASK=MASK, DPDX=DPDXtp, &
+                                DPDY=DPDYtp, DQDX=DQDXtp, DQDY=DQDYtp, &
+                                GSQR=GSQRTtp)
+            
         END SELECT
 !
 #if defined(TEST_W3GDATMD) || defined(TEST_W3GDATMD_W3GNTX)

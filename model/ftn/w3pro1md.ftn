@@ -388,7 +388,8 @@
       USE W3GDATMD, ONLY: NK, NTH, SIG, ECOS, ESIN, NX, NY, NSEA,     &
                           MAPSF, DTCFL, ICLOSE, CLATS, FLCX, FLCY,    &
                           ICLOSE_NONE, ICLOSE_SMPL, ICLOSE_TRPL,      &
-                          FLAGLL, DPDX, DPDY, DQDX, DQDY, GSQRT
+                          FLAGLL, DPDX, DPDY, DQDX, DQDY, GSQRT, &
+                          DPDXtp, DPDYtp, DQDXtp, DQDYtp, GSQRTtp
       USE W3WDATMD, ONLY: TIME
       USE W3ADATMD, ONLY: CG, CX, CY, ATRNX, ATRNY, FACVX, FACVY
       USE W3IDATMD, ONLY: FLCUR
@@ -463,7 +464,7 @@
       NTLOC  = 1 + INT(DTG/(DTCFL*CG0/CGN))
       DTLOC  = DTG / REAL(NTLOC)
       DTRAD  = DTLOC
-      IF ( FLAGLL ) DTRAD=DTRAD/(DERA*RADIUS)
+      IF ( FLAGLL.and.(.not.(iclose.eq.iclose_trpl ) DTRAD=DTRAD/(DERA*RADIUS)
 
 !
 !/T      WRITE (NDST,9000) NTLOC
@@ -500,9 +501,13 @@
           IY     = MAPSF(ISEA,2)
           IXY    = MAPSF(ISEA,3)
 
-          FLD2D(IY,IX) = FIELD(IXY) / CG(IK,ISEA) * CLATS(ISEA)
-
-          CXTOT2D(IY,IX) = ECOS(ITH) * CG(IK,ISEA) / CLATS(ISEA)
+          if (.not.(iclose.eq.iclose_trpl)) then
+             FLD2D(IY,IX) = FIELD(IXY) / CG(IK,ISEA) * CLATS(ISEA)
+             CXTOT2D(IY,IX) = ECOS(ITH) * CG(IK,ISEA) / CLATS(ISEA)
+          else
+             FLD2D(IY,IX) = FIELD(IXY) / CG(IK,ISEA)
+             CXTOT2D(IY,IX) = ECOS(ITH) * CG(IK,ISEA)
+          endif
           CYTOT2D(IY,IX) = ESIN(ITH) * CG(IK,ISEA)
 !/MGP          CXTOT2D(IY,IX) = CXTOT2D(IY,IX) - VGX/CLATS(ISEA)
 !/MGP          CYTOT2D(IY,IX) = CYTOT2D(IY,IX) - VGY
@@ -518,7 +523,11 @@
               IX     = MAPSF(ISEA,1)
               IY     = MAPSF(ISEA,2)
 
-              CXTOT2D(IY,IX) = CXTOT2D(IY,IX) + CX(ISEA)/CLATS(ISEA)
+              if (.not.(iclose.eq.iclose_trpl)) then
+                 CXTOT2D(IY,IX) = CXTOT2D(IY,IX) + CX(ISEA)/CLATS(ISEA)
+              else
+                 CXTOT2D(IY,IX) = CXTOT2D(IY,IX) + CX(ISEA)
+              endif
               CYTOT2D(IY,IX) = CYTOT2D(IY,IX) + CY(ISEA)
 
             END DO
@@ -528,7 +537,11 @@
            DO ISEA=1, NSEA
               IX     = MAPSF(ISEA,1)
               IY     = MAPSF(ISEA,2)
-              CP=CXTOT2D(IY,IX)*DPDX(IY,IX)+CYTOT2D(IY,IX)*DPDY(IY,IX)
+              if (iclose.eq.iclose_trpl) then
+                 CP=CXTOT2D(IY,IX)*(DPDXtp(IY,IX))+CYTOT2D(IY,IX)*(DPDYtp(IY,IX))
+              else
+                 CP=CXTOT2D(IY,IX)*(DPDX(IY,IX))+CYTOT2D(IY,IX)*(DPDY(IY,IX))
+              endif
               VCX2D(IY,IX) = CP*DTRAD
            END DO
         ELSE
@@ -539,7 +552,11 @@
            DO ISEA=1, NSEA
               IX     = MAPSF(ISEA,1)
               IY     = MAPSF(ISEA,2)
-              CQ=CXTOT2D(IY,IX)*DQDX(IY,IX)+CYTOT2D(IY,IX)*DQDY(IY,IX)
+              if (iclose.eq.iclose_trpl) then
+                 CQ=CXTOT2D(IY,IX)*DQDXtp(IY,IX)+CYTOT2D(IY,IX)*DQDYtp(IY,IX)
+              else
+                 CQ=CXTOT2D(IY,IX)*DQDX(IY,IX)+CYTOT2D(IY,IX)*DQDY(IY,IX)
+              endif
               VCY2D(IY,IX) = CQ*DTRAD
            END DO
         ELSE
@@ -550,8 +567,11 @@
 ! Bugfix: This is now done *before* adding the ghost row, so that ghost
 !   row will be in index space (bug applied only to global, irregular
 !   grids, so it did not apply to any test case that existed w/v4.18)
-        FLD2D(1:NY,1:NX)=FLD2D(1:NY,1:NX)*GSQRT(1:NY,1:NX)
-
+        if (iclose.eq.ICLOSE_TRPL) then
+           FLD2D(1:NY,1:NX)=FLD2D(1:NY,1:NX)*GSQRTtp(1:NY,1:NX)
+        else
+           FLD2D(1:NY,1:NX)=FLD2D(1:NY,1:NX)*GSQRT(1:NY,1:NX)
+        endif
 !
 ! Deal with longitude closure by duplicating one row *to the right*
 !   in FIELD/FLD2D, VCX
@@ -694,15 +714,22 @@
 !
           END IF !  IF (MAPSTA(IXY).EQ.1) THEN
 
-          FLD2D(IY,IX) = CG(IK,ISEA) / CLATS(ISEA) * FLD2D(IY,IX)
-
+          if (.not.(iclose.eq.iclose_trpl)) then
+             FLD2D(IY,IX) = CG(IK,ISEA) / CLATS(ISEA) * FLD2D(IY,IX)
+          else
+             FLD2D(IY,IX) = CG(IK,ISEA) * FLD2D(IY,IX)
+          endif
         END DO !  DO ISEA=1, NSEA
 !
 !/OMPH/!$OMP END PARALLEL DO
 !
 
 ! Transform FIELD back to physical space, i.e. may be curvilinear
-        FLD2D(1:NY,1:NX)=FLD2D(1:NY,1:NX)/GSQRT(1:NY,1:NX)
+        if (iclose.eq.iclose_trpl) then
+           FLD2D(1:NY,1:NX)=FLD2D(1:NY,1:NX)/GSQRTtp(1:NY,1:NX)
+        else
+           FLD2D(1:NY,1:NX)=FLD2D(1:NY,1:NX)/GSQRT(1:NY,1:NX)
+        endif
 !
 ! 5.  Update boundary conditions ------------------------------------- *
 !
