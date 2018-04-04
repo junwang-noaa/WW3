@@ -510,7 +510,7 @@
              CXTOT2D(IY,IX) = ECOS(ITH) * CG(IK,ISEA) / CLATS(ISEA)
           else
              FLD2D(IY,IX) = FIELD(IXY) / CG(IK,ISEA)
-             FLD2DGHOST(IY,IX) = FIELDGHOST(IXY) / CG(IK,ISEA) * CLATS(ISEA)      
+             FLD2DGHOST(IY,IX) = FIELDGHOST(IXY) / CG(IK,ISEA)
              CXTOT2D(IY,IX) = ECOS(ITH) * CG(IK,ISEA)
           endif
 
@@ -659,7 +659,10 @@
 !
            DO IX=1, NX
               IXY    = IY +(IX-1)*NY
-              VCB       = FACVY(IXY) * ( VCY2D(IY,IX) - VCY2D(IY+1,IX) )
+!              VCB       = FACVY(IXY) * ( VCY2D(IY,IX) - VCY2D(IY+1,IX) )
+!BGR this special case isn't needed with grid-local closure.  We need to add new flag to work
+! with both existing tripolar closure and new tripolar closure.
+              VCB       = FACVY(IXY) * ( VCY2D(IY,IX) + VCY2D(IY+1,IX) )
               VFLY2D(IY,IX) = MAX ( VCB , 0. ) * FLD2D(IY,IX)          &
                             + MIN ( VCB , 0. ) * FLD2D(IY+1,IX)
            END DO
