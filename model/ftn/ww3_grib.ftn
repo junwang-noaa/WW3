@@ -381,35 +381,6 @@
       WRITE (NDSO,948) IDTIME, CID, PID, GID, GDS
 !
 !--- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-! 4.  Read general data and first fields from file
-! 4.a Read file.
-!
-      CALL W3IOGO ( 'READ', NDSOG, IOTEST )
-!
-! 4.b Output fields in file
-!
-!
-      WRITE (NDSO,930)
-      DO I=1, NOGRP
-       DO J=1, NGRPP
-        IF ( FLOGRD(I,J) ) WRITE (NDSO,931) IDOUT(I,J)
-        END DO
-        END DO
-!
-! 4.c Flip MAPSF
-!
-      DO ISEA=1, NSEA
-        IX            = MAPSF(ISEA,1)
-        IY            = MAPSF(ISEA,2)
-        MAPSF(ISEA,2) = NY + 1 - IY
-        MAPSF(ISEA,3) = IY +( IX-1)*NY
-        END DO
-!
-!--- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-! 5. Set grib encoding parameter Sections
-!
-! 
-!--- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
 ! 4.  Read general data and first fields from file 
 ! 4.a Read file. 
 ! 
@@ -604,15 +575,6 @@
 !/NCEP2      KGDS( 1) = 6
 !/NCEP2      KGDS( 8) = NX
 !/NCEP2      KGDS( 9) = NY
-!/NCEP2      KGDS(12) = NINT(1000000._8*(Y0+(REAL(NY-1)*SY)))
-!/NCEP2      X0 = MOD(X0 + 360.,360.)
-!/NCEP2      KGDS(13) = NINT(1000000._8*X0)
-!/NCEP2      KGDS(14) = 48
-!/NCEP2      KGDS(15) = NINT(1000000._8*Y0)
-!/NCEP2      XN = MOD(X0+REAL(NX-1)*SX + 360., 360.)
-!/NCEP2      KGDS(16) = NINT(1000000._8*XN)
-!/NCEP2      KGDS(17) = NINT(1000000._8*SX)
-!/NCEP2      KGDS(18) = NINT(1000000._8*SY)
 !/NCEP2      IF ( GDTN .EQ. 30 ) THEN 
 !/NCEP2! Using here the Lambert conformal NDFD grid for NCEP/GLW model use only 
 !/NCEP2        X0 = MOD(XGRD(1,1) + 360.,360.) 
@@ -634,7 +596,7 @@
 !/NCEP2        KGDS(20)=DBLE(1000000.*LATIN2) 
 !/NCEP2        KGDS(21)=DBLE(1000000.*LATSP) 
 !/NCEP2        KGDS(22)=DBLE(1000000.*LONSP)
-!/NCEP2      ELSEIF (GDTN .EQ. 0 ) THEN 
+!/NCEP2      ELSEIF (GDTN .EQ. 0 ) THEN
 !/NCEP2        KGDS(12) = KNINT(1000000.*(Y0+(REAL(NY-1)*SY))) 
 !/NCEP2        X0 = MOD(X0 + 360.,360.) 
 !/NCEP2        KGDS(13) = KNINT(1000000.*X0) 
