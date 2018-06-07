@@ -2327,7 +2327,7 @@
       character(ESMF_MAXSTR) :: cname
       integer, parameter :: iwt=8
       real(8) :: wstime, wftime
-      integer :: i1, i2, i3
+      integer :: i1, i2, i3, i4, i5, i6 
       logical :: flpart = .false., floutg = .false., floutg2 = .true.
 #if defined(TEST_WMESMFMD) || defined(TEST_WMESMFMD_SETEXPORT)
       type(ESMF_State) :: dumpState
@@ -2412,7 +2412,7 @@
            expFieldActive(i4) .and. &
            expFieldActive(i5) .and. &
            expFieldActive(i6)  ) then
-        call CalcPStokes( va, expField(i1), expField(i2), expField(i3)  &
+        call CalcPStokes( va, expField(i1), expField(i2), expField(i3), &
                         expField(i4), expField(i5), expField(i6), rc )
         if (ESMF_LogFoundError(rc, PASSTHRU)) return
       endif
@@ -5322,8 +5322,8 @@
 !/ Parameter list
 !/
       real             :: a(nth,nk,0:nseal)
-      type(ESMF_Field) :: usxField
-      type(ESMF_Field) :: usyField
+      type(ESMF_Field) :: p1xField,p2xField,p3xField
+      type(ESMF_Field) :: p1yField,p2yField,p3yField
       integer          :: rc
 !/
 !/ ------------------------------------------------------------------- /
