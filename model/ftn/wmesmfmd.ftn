@@ -5316,8 +5316,9 @@
 !
 !/ ------------------------------------------------------------------- /
 !/
-      USE W3ADATMD,  ONLY: USSP
-      implicit none
+      USE W3ADATMD, ONLY: USSP
+      USE W3IOGOMD, ONLY: CALC_U3STOKES
+      IMPLICIT NONE
 !/ ------------------------------------------------------------------- /
 !/ Parameter list
 !/
