@@ -151,11 +151,10 @@
     esac
   fi
 
-  case $prog in
-    'ww3_grib'  ) libs="${G2_LIB4} ${W3NCO_LIB4} ${BACIO_LIB4} ${JASPER_LIB} ${PNG_LIB} ${Z_LIB}" ;;
-       *        ) libs= ;;
-  esac
-
+  if [ "$prog" = 'ww3_grib' ]
+  then
+    libs="$libs ${G2_LIB4} ${W3NCO_LIB4} ${BACIO_LIB4} ${JASPER_LIB} ${PNG_LIB} ${Z_LIB}"
+  fi
 
   # parmetis library 
   if [ "$prog" = 'ww3_shel' ] || [ "$prog" = 'ww3_multi' ] || [ "$prog" = 'ww3_sbs1' ] 
