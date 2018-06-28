@@ -1,4 +1,5 @@
 #include "w3macros.h"
+!
 !/ ------------------------------------------------------------------- /
       MODULE WMMDATMD
 !/
@@ -6,7 +7,7 @@
 !/                  | WAVEWATCH III           NOAA/NCEP |
 !/                  |           H. L. Tolman            |
 !/                  |                        FORTRAN 90 |
-!/                  | Last update :         28-Sep-2016 |
+!/                  | Last update :         06-Jun-2018 |
 !/                  +-----------------------------------+
 !/
 !/    13-Jun-2005 : Origination.                       ( version 3.07 )
@@ -28,6 +29,8 @@
 !/    10-Dec-2014 : Add checks for allocate status     ( version 5.04 )
 !/    28-Sep-2016 : Adjust MTAG? values so that MPI tags used fit
 !/                  within allowed bounds.             ( version 5.15 )
+!/    06-Jun-2018 : add subroutine INIT_GET_JSEA_ISPROC_GLOB/add PDLIB 
+!/                                                     ( version 6.04 )
 !/
 !/    Copyright 2009-2012 National Weather Service (NWS),
 !/       National Oceanic and Atmospheric Administration.  All rights
@@ -288,7 +291,7 @@
 !/ Conventional declarations
 !/
       INTEGER                 :: NMDATA = -1, IMDATA = -1
-      INTEGER                 :: MDSI, MDSO = 6, MDSS = 6, MDST = 6,  &
+      INTEGER                 :: MDSI = 8, MDSO = 9, MDSS = 6, MDST = 6,  &
                                  MDSE = 6, MDSUP, NMPROC = 1,         &
                                  IMPROC = 1, NMPLOG = 1, NMPSCR = 1,  &
                                  NMPTST = 1, NMPERR = 1, NMPUPT = 1,  &
@@ -328,6 +331,7 @@
         REAL, POINTER         :: DATA0(:,:), DATA1(:,:), DATA2(:,:),  &
                                  AMV(:,:), DMV(:,:)
         REAL, POINTER         :: MAPBDI(:,:), MAPODI(:,:)
+!/PDLIB     INTEGER, POINTER    :: SEA_IPGL(:), SEA_IPGL_TO_PROC(:)
         LOGICAL               :: MINIT, MSKINI, FLLSTL, FLLSTI,       &
                                  FLDAT0, FLDAT1, FLDAT2
 !/MPI        LOGICAL               :: FBCAST
@@ -381,6 +385,7 @@
       REAL, POINTER           :: DATA0(:,:), DATA1(:,:), DATA2(:,:),  &
                                  AMV(:,:), DMV(:,:)
       REAL, POINTER           :: MAPBDI(:,:), MAPODI(:,:)
+!/PDLIB      INTEGER, POINTER    :: SEA_IPGL(:), SEA_IPGL_TO_PROC(:)
       LOGICAL, POINTER        :: MINIT, FLLSTL, FLLSTI,               &
                                  FLDAT0, FLDAT1, FLDAT2
 !/MPI      LOGICAL, POINTER        :: FBCAST
@@ -991,6 +996,8 @@
       FLLSTI => MDATAS(IMOD)%FLLSTI
       MAPBDI => MDATAS(IMOD)%MAPBDI
       MAPODI => MDATAS(IMOD)%MAPODI
+!/PDLIB      SEA_IPGL => MDATAS(IMOD)%SEA_IPGL
+!/PDLIB      SEA_IPGL_TO_PROC => MDATAS(IMOD)%SEA_IPGL_TO_PROC
       UPTMAP => MDATAS(IMOD)%UPTMAP
 !
       RETURN
@@ -1008,6 +1015,91 @@
 !/ End of WMSETM ----------------------------------------------------- /
 !/
       END SUBROUTINE WMSETM
+!**********************************************************************
+!*                                                                    *
+!**********************************************************************
+!/ ------------------------------------------------------------------- /
+      SUBROUTINE INIT_GET_JSEA_ISPROC_GLOB(ISEA, J, JSEA, ISPROC)
+!/
+!/                  +-----------------------------------+
+!/                  | WAVEWATCH III           NOAA/NCEP |
+!/                  |           Aron Roland             |
+!/                  |                        FORTRAN 90 |
+!/                  | Last update :         14-Jun-2018 |
+!/                  +-----------------------------------+
+!/
+!/    06-Jun-2018 : Origination.                        ( version 6.04 )
+!/
+!  1. Purpose :
+!  2. Method :
+!  3. Parameters :
+!
+!     Parameter list
+!     ----------------------------------------------------------------
+!     ----------------------------------------------------------------
+!
+!  4. Subroutines used :
+!
+!      Name      Type  Module   Description
+!     ----------------------------------------------------------------
+!      STRACE    Subr. W3SERVMD Subroutine tracing.
+!     ----------------------------------------------------------------
+!
+!  5. Called by :
+!
+!      Name      Type  Module   Description
+!     ----------------------------------------------------------------
+!     ----------------------------------------------------------------
+!
+!  6. Error messages :
+!  7. Remarks
+!  8. Structure :
+!  9. Switches :
+!
+!     !/S  Enable subroutine tracing.
+!
+! 10. Source code :
+!
+      USE CONSTANTS, ONLY: LPDLIB
+      USE W3ODATMD, ONLY: OUTPTS
+      USE W3GDATMD, ONLY: GTYPE, GRIDS, UNGTYPE
+!/S      USE W3SERVMD, ONLY: STRACE
+!/
+      IMPLICIT NONE
+!/ ------------------------------------------------------------------- /
+!/ Parameter list
+!/
+      integer, intent(in) :: ISEA, J
+      integer, intent(out) :: JSEA, ISPROC
+!/
+!/ ------------------------------------------------------------------- /
+!/ Local parameters
+!/
+!/S      INTEGER, SAVE           :: IENT = 0
+!/
+!/ ------------------------------------------------------------------- /
+!/
+!/S      CALL STRACE (IENT, 'INIT_GET_JSEA_ISPROC_GLOB')
+      integer nb
+      IF (.NOT. LPDLIB) THEN
+        nb=OUTPTS(J)%NAPROC
+        JSEA   = 1 + (ISEA-1)/nb
+        ISPROC=1
+!/DIST        ISPROC = MDATAS(J)%CROOT - 1 + ISEA - (JSEA-1)*nb
+      ELSE
+!/PDLIB      IF (GRIDS(J)%GTYPE .ne. UNGTYPE) THEN       
+!/PDLIB        nb=OUTPTS(J)%NAPROC
+!/PDLIB        JSEA   = 1 + (ISEA-1)/nb
+!/PDLIB        ISPROC = MDATAS(J)%CROOT - 1 + ISEA - (JSEA-1)*nb
+!/PDLIB      ELSE
+!/PDLIB        JSEA   = MDATAS(J)%SEA_IPGL(ISEA)
+!/PDLIB        ISPROC = MDATAS(J)%SEA_IPGL_TO_PROC(ISEA)
+!/PDLIB      ENDIF
+      ENDIF
+!/
+!/ End of INIT_GET_JSEA_ISPROC_GLOB  ---------------------------------- /
+!/
+      END SUBROUTINE INIT_GET_JSEA_ISPROC_GLOB
 !/
 !/ End of module WMMDATMD -------------------------------------------- /
 !/

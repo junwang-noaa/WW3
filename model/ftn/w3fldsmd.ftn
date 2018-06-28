@@ -7,7 +7,7 @@
 !/                  |           H. L. Tolman            |
 !/                  |            A. Chawla              |
 !/                  |                        FORTRAN 90 |
-!/                  | Last update :         24-Apr-2015 |
+!/                  | Last update :         05-Jun-2018 |
 !/                  +-----------------------------------+
 !/
 !/    30-Nov-1999 : Upgrade to FORTRAN 90               ( version 2.00 )
@@ -32,6 +32,7 @@
 !/    24-Apr-2015 : Adding OASIS coupling calls         ( version 5.07 )
 !/                  (M. Accensi & F. Ardhuin, IFREMER)
 !/    20-Jan-2017 : Update to new W3GSRUMD APIs         ( version 6.02 )
+!/    05-Jun-2018 : adds DEBUGFLS                       ( version 6.04 )
 !/
 !/    Copyright 2009-2012 National Weather Service (NWS),
 !/       National Oceanic and Atmospheric Administration.  All rights
@@ -194,6 +195,7 @@
 !/
 !/S      USE W3SERVMD, ONLY: STRACE
 !
+!/DEBUGFLS      USE W3ODATMD, only : IAPROC
       IMPLICIT NONE
 !/
 !/ ------------------------------------------------------------------- /
@@ -322,18 +324,24 @@
 !
 ! Open file ---------------------------------------------------------- *
 !
+!/DEBUGFLS       WRITE(740+IAPROC,*) 'W3FLDSMD 1 : WRITE=', WRITE
       IF ( WRITE ) THEN
+!/DEBUGFLS       WRITE(740+IAPROC,*) 'W3FLDSMD 2 : WRITE=', WRITE
           IF ( PRESENT(FPRE) ) THEN
+!/DEBUGFLS       WRITE(740+IAPROC,*) '1 : W3FLDSMD FNAME=', FNAME(:I)
               OPEN (NDS,FILE=FPRE//FNAME(:I),FORM=FORM,ERR=803,       &
                     IOSTAT=IERR)
-            ELSE
+          ELSE
+!/DEBUGFLS       WRITE(740+IAPROC,*) '2 : W3FLDSMD FNAME=', FNAME(:I)
               OPEN (NDS,FILE=FNAME(:I),FORM=FORM,ERR=803,IOSTAT=IERR)
             END IF
         ELSE
           IF ( PRESENT(FPRE) ) THEN
+!/DEBUGFLS       WRITE(740+IAPROC,*) '3 : W3FLDSMD FNAME=', FNAME(:I)
               OPEN (NDS,FILE=FPRE//FNAME(:I),FORM=FORM,               &
                     STATUS='OLD',ERR=803,IOSTAT=IERR)
-            ELSE
+          ELSE
+!/DEBUGFLS       WRITE(740+IAPROC,*) '4 : W3FLDSMD FNAME=', FNAME(:I)
               OPEN (NDS,FILE=FNAME(:I),FORM=FORM,                     &
                     STATUS='OLD',ERR=803,IOSTAT=IERR)
             END IF
@@ -341,6 +349,7 @@
 !
 ! Process test data -------------------------------------------------- *
 !
+!/DEBUGFLS       WRITE(740+IAPROC,*) 'WRITE=', WRITE
       IF ( WRITE ) THEN
           IF ( FDHDR ) THEN
              IF ( FORM .EQ. 'UNFORMATTED' ) THEN
@@ -359,10 +368,19 @@
           IF ( FORM .EQ. 'UNFORMATTED' ) THEN
               READ (NDS,END=806,ERR=805,IOSTAT=IERR)                  &
                     TSSTR, TSFLD, NXT, NYT, GTYPET, FILLER(1:2), TIDEFLAG
-            ELSE
+!/DEBUGFLS       WRITE(740+IAPROC,*) '1: NXT=', NXT, ' NYT=', NYT
+!/DEBUGFLS       WRITE(740+IAPROC,*)            '1: TSSTR=', TSSTR
+!/DEBUGFLS       WRITE(740+IAPROC,*)            '1: TSFLD=', TSFLD
+!/DEBUGFLS       WRITE(740+IAPROC,*)            '1: NXT=', NXT, ' NYT=', NYT
+!/DEBUGFLS       WRITE(740+IAPROC,*)            '1: GTYPET=', GTYPET
+!/DEBUGFLS       WRITE(740+IAPROC,*)            '1: FILLER=', FILLER
+!/DEBUGFLS       WRITE(740+IAPROC,*)            '1: TIDEFLAG=', TIDEFLAG
+          ELSE
               READ (NDS,900,END=806,ERR=805,IOSTAT=IERR)              &
                     TSSTR, TSFLD, NXT, NYT, GTYPET, FILLER(1:2), TIDEFLAG
-            END IF
+!/DEBUGFLS       WRITE(740+IAPROC,*) '2: NXT=', NXT, ' NYT=', NYT
+!/DEBUGFLS       WRITE(740+IAPROC,*) '2: NXT=', NXT, ' NYT=', NYT
+          END IF
           IF ((FILLER(1).NE.0.OR.FILLER(2).NE.0).AND.TIDEFLAG.GE.0) TIDEFLAG=0
           IF (TIDEFLAG.NE.0.AND.(.NOT.TIDEOK)) THEN     
             GOTO 810
@@ -377,6 +395,9 @@
           IF ( IDFLD .NE. TSFLD ) GOTO 808
           IF ( IDFLD(1:2) .NE. 'DT' ) THEN
             IF ( NX.NE.NXT .OR. NY.NE.NYT ) THEN 
+!/DEBUGFLS       WRITE(740+IAPROC,*) 'Dimension error'
+!/DEBUGFLS       WRITE(740+IAPROC,*) 'NX =', NX , ' NY =', NY
+!/DEBUGFLS       WRITE(740+IAPROC,*) 'NXT=', NXT, ' NYT=', NYT
               GOTO 809
             ELSE
               NX     = NXT
@@ -473,8 +494,8 @@
                '     ILLEGAL FIELD ID STRING >',A,'<'/          &
                '                   SHOULD BE >',A,'<'/)
  1009 FORMAT (/' *** WAVEWATCH III ERROR IN W3FLDO : '/         &
-         '     INCOMPATIBLE GRID DATA : ',3(1X,I4)/             &
-         '                  SHOULD BE : ',3(1X,I4)/)            
+         '     INCOMPATIBLE GRID DATA : ',3(1X,I10)/             &
+         '                  SHOULD BE : ',3(1X,I10)/)            
  1010 FORMAT (/' *** WAVEWATCH III ERROR IN W3FLDO : '/          &
          '     FILLER indicates use of tidal constituents',3I4, /&
          '     For this the code should be compiled with TIDE switch'/)
@@ -1988,6 +2009,7 @@
 !/    30-Nov-1999 : Upgrade to FORTRAN 90               ( version 2.00 )
 !/    04-Sep-2003 : Bug fix par. list declaration.      ( version 3.04 )
 !/    05-Jul-2005 : Correct first level/ice.            ( version 3.07 )
+!/    15-May-2018 : Allow homog ice.                    ( version 6.05 )
 !/
 !  1. Purpose :
 !
@@ -2015,6 +2037,8 @@
 !                           1 : water levels
 !                           2 : currents
 !                           3 : winds
+!                           4 : ice
+!                           8 : moving grid
 !       NDST    Int.   I   Unit number test output.
 !       NDSE    Int.   I   Unit number error messages.
 !                          (No output if NDSE < 0).
@@ -2084,9 +2108,9 @@
 !/
       INTEGER, INTENT(IN)     :: J, NDST, NDSE, MX, MY, NX, NY,       &
                                  T0(2), TN(2), NHM
-      INTEGER, INTENT(INOUT)  :: NH, THO(2,-7:4,NHM), TF0(2), TFN(2)
+      INTEGER, INTENT(INOUT)  :: NH, THO(2,-7:8,NHM), TF0(2), TFN(2)
       INTEGER, INTENT(OUT)    :: IERR
-      REAL, INTENT(INOUT)     :: HA(NHM,-7:4), HD(NHM,-7:4), HS(NHM,-7:4),  &
+      REAL, INTENT(INOUT)     :: HA(NHM,-7:8), HD(NHM,-7:8), HS(NHM,-7:8),  &
                                  FX0(MX,MY), FY0(MX,MY), FS0(MX,MY),  &
                                  FXN(MX,MY), FYN(MX,MY), FSN(MX,MY)
 !/
@@ -2112,8 +2136,7 @@
 !
 ! Test field ID number for validity
 !
-!old: IF ( J.LE.0 .OR. J .GT.3 ) GOTO 801
-      IF ( J.LT.-7 .OR. J .GT.3 ) GOTO 801
+      IF ( J.LT.-7 .OR. J .GT.8 ) GOTO 801
       FLFRST = TFN(1) .EQ. -1
 !
 !/T      WRITE (NDST,9001) FLFRST
@@ -2154,17 +2177,16 @@
         IF ( NH .NE. 0. ) THEN
             TFN(1) = THO(1,J,1)
             TFN(2) = THO(2,J,1)
-!
-            IF ( J.GE.(-7).AND.(J.LE.1)) THEN
+! ic* md* lev ice
+            IF ( ( J.LE.1 ) .OR. ( J.EQ.4) ) THEN
                 DO IX=1, NX
                   DO IY=1, NY
-                    FSN(IX,IY) = HS(1,J)
-
+                    FSN(IX,IY) = HA(1,J)
                     END DO
                   END DO
-!/T                WRITE (NDST,9050) HS(1,J)
+!/T                WRITE (NDST,9050) HA(1,J)
               END IF
-!
+! cur
             IF ( J .EQ. 2 ) THEN
                 DIR    = ( 270. - HD(1,J) ) * DERA
                 X      = HA(1,J) * COS(DIR)
@@ -2177,7 +2199,7 @@
                   END DO
 !/T                WRITE (NDST,9050) X, Y
               END IF
-!
+! wnd
             IF ( J .EQ. 3 ) THEN
                 DIR    = ( 270. - HD(1,J) ) * DERA
                 X      = HA(1,J) * COS(DIR)
@@ -2216,9 +2238,17 @@
 !
 ! Check time
 !
-        DTTST  = DSEC21 ( T0 , TFN )
-        IF ( J.GE.(-7).AND.(J.LE.1).AND.FLFRST .AND. DTTST.EQ.0. ) EXIT
-        IF ( DTTST .GT. 0. ) EXIT
+
+          DTTST  = DSEC21 ( T0 , TFN )
+
+          ! exit if field time is later than run time
+          IF ( DTTST .GT. 0. ) EXIT
+          ! exit if field is ic* or md* or lev or ice
+          ! and first forcing field has been stored 
+          ! at start run time
+          IF ( J.LE.(1).OR.(J.EQ.4) ) THEN
+            IF (FLFRST .AND. DTTST.EQ.0. ) EXIT
+          END IF
         END DO
 !
 ! Check if first field
@@ -2371,9 +2401,9 @@
 !/ Parameter list
 !/
       INTEGER, INTENT(IN)     :: J, NDST, NDSE, T0(2), TN(2), NHM
-      INTEGER, INTENT(INOUT)  :: NH, THO(2,-7:4,NHM), TF0(2), TFN(2)
+      INTEGER, INTENT(INOUT)  :: NH, THO(2,-7:8,NHM), TF0(2), TFN(2)
       INTEGER, INTENT(OUT)    :: IERR
-      REAL, INTENT(INOUT)     :: HA(NHM,-7:4), HD(NHM,-7:4), A0, AN, D0, DN
+      REAL, INTENT(INOUT)     :: HA(NHM,-7:8), HD(NHM,-7:8), A0, AN, D0, DN
 !/
 !/ ------------------------------------------------------------------- /
 !/ Local parameters
