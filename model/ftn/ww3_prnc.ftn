@@ -682,39 +682,56 @@
 !
 !--- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 ! 5. Read Input netcdf file
-!
-
+!  
+      write(*,*) "JDM 1" 
       ! open input file
       IRET=NF90_OPEN(PATH=TRIM(FNMPRE)//NAMEF,MODE=NF90_NOWRITE,NCID=NCID)
       CALL CHECK_ERR(IRET)
 
       ! instanciates time
+      write(*,*) "JDM 2 time"
       REFDATE(:)=0.
       IRET=NF90_INQ_VARID(NCID,"time",VARIDTMP)
+      write(*,*) 'JDM VARIDTMP:', VARIDTMP
       IF ( IRET/=NF90_NOERR ) IRET=NF90_INQ_VARID(NCID,"MT",VARIDTMP)
       CALL CHECK_ERR(IRET)
+      write(*,*) "JDM 3 calendar"
       IRET=NF90_GET_ATT(NCID,VARIDTMP,"calendar",CALENDAR)
+      write(*,*) 'JDM calendar=', CALENDAR
       IF ( IRET/=NF90_NOERR ) THEN 
         WRITE(NDSE,1028)
       ELSE IF ((INDEX(CALENDAR, "standard").EQ.0) .AND. &
                (INDEX(CALENDAR, "gregorian").EQ.0)) THEN
         WRITE(NDSE,1029)
       END IF
+      write(*,*) "JDM 3 units" 
       IRET=NF90_GET_ATT(NCID,VARIDTMP,"units",TIMEUNITS)
+        
+      write(*,*) "JDM 3.1 U2D TIMEUNITS=",TIMEUNITS
+          
       CALL U2D(TIMEUNITS,REFDATE,IERR)
+      write(*,*) "JDM, REFDATE=",REFDATE
+      write(*,*) "JDM 3.2 D2J" 
       CALL D2J(REFDATE,REFJULDAY,IERR)
+      write(*,*) "JDM 3.3 REFJULDAY= ",REFJULDAY 
 
       ! gets variables ids, dimensions and fillvalue
       DO I=1,NFIELDS
+        write(*,*) "JDM 4 and counting, I=", I ,' of ',NFIELDS, TRIM(FIELDSNAME(I))
         IRET = NF90_INQ_VARID(NCID,TRIM(FIELDSNAME(I)),VARIDF(I))
+        write(*,*) 'JDM VARIDF(I)=',VARIDF(I)
         CALL CHECK_ERR(IRET)
         IRET = NF90_INQUIRE_VARIABLE(NCID, VARIDF(I), ndims=NDIMSVAR)
         CALL CHECK_ERR(IRET)
         IRET = NF90_INQUIRE_VARIABLE(NCID, VARIDF(I), dimids=DIMSVAR(:NDIMSVAR))
         CALL CHECK_ERR(IRET)
+        write(*,*) 'JDM NDIMSVAR', NDIMSVAR
+        write(*,*) 'JDM DIMSVAR', DIMSVAR
         DO J=1,NDIMSVAR
+          write(*,*) 'JDM Name of Dimentions J=',J, 'of ',NDIMSVAR
           IRET=NF90_INQUIRE_DIMENSION(NCID,DIMSVAR(J),name=DIMNAME(J), len=DIMLN(J))
           CALL CHECK_ERR(IRET)
+          write(*,*) 'JDM j name=',DIMNAME(J)
         END DO
         IRET=NF90_GET_ATT(NCID,VARIDF(I),"_FillValue", FILLVALUE)
         IF ( IRET/=NF90_NOERR ) THEN 
@@ -727,14 +744,20 @@
       NXI=0
       NYI=0 
       NDIMSGRID=2
+      write(*,*) 'JDM DIMSNAME:', DIMSNAME(1),DIMSNAME(2)
       DO i=1,NDIMSVAR
+        write(*,*) 'JDM var dim i', i, ' of ', NDIMSVAR,' :', DIMNAME(i)
         IF (DIMNAME(i) .EQ. "time".OR.DIMNAME(i) .EQ."MT") NTI = DIMLN(i)
+        IF (DIMNAME(i) .EQ. "time".OR.DIMNAME(i) .EQ."MT") write(*,*) 'JDM DIMVAR PNT 1'
         IF (DIMNAME(i) .EQ. DIMSNAME(1)) NXI = DIMLN(i)
+        IF (DIMNAME(i) .EQ. DIMSNAME(1)) write(*,*) 'JDM DIMVAR PNT 2         '
         IF (DIMNAME(i) .EQ. DIMSNAME(1).AND.NIDIMS.EQ.1) THEN
+          write(*,*) 'JDM DIMVAR PNT3'
           NDIMSGRID=1
           NYI = 1
         END IF
-        IF (NIDIMS.GE.2) THEN 
+        IF (NIDIMS.GE.2) THEN
+          write(*,*) 'JDM DIMVAR PNT 4' 
           IF (DIMNAME(i) .EQ. DIMSNAME(2)) NYI = DIMLN(i)
         END IF
       END DO
@@ -757,6 +780,7 @@
         IF ( IRET/=NF90_NOERR ) IRET=NF90_INQ_VARID(NCID,"Longitude",VARIDTMP)
         IF ( IRET/=NF90_NOERR ) IRET=NF90_INQ_VARID(NCID,"x",VARIDTMP)
         IF ( IRET/=NF90_NOERR ) IRET=NF90_INQ_VARID(NCID,"X",VARIDTMP)
+        IF ( IRET/=NF90_NOERR ) IRET=NF90_INQ_VARID(NCID,"XAXIS_1",VARIDTMP)
         IRET = NF90_INQUIRE_VARIABLE(NCID, VARIDTMP, ndims = NUMDIMS)
         call CHECK_ERR(IRET)
         IF (NUMDIMS.EQ.1) THEN
@@ -783,6 +807,7 @@
         IF ( IRET/=NF90_NOERR ) IRET=NF90_INQ_VARID(NCID,"Latitude",VARIDTMP)
         IF ( IRET/=NF90_NOERR ) IRET=NF90_INQ_VARID(NCID,"y",VARIDTMP)
         IF ( IRET/=NF90_NOERR ) IRET=NF90_INQ_VARID(NCID,"Y",VARIDTMP)
+        IF ( IRET/=NF90_NOERR ) IRET=NF90_INQ_VARID(NCID,"YAXIS_1",VARIDTMP)
         IRET = NF90_INQUIRE_VARIABLE(NCID, VARIDTMP, ndims = NUMDIMS)
         CALL CHECK_ERR(IRET)
         IRET=NF90_GET_VAR(NCID,VARIDTMP,Y0I, start=(/1/))
@@ -2323,7 +2348,7 @@ END PROGRAM W3PRNC
   INTEGER IRET
 
   IF (IRET .NE. NF90_NOERR) THEN
-     WRITE(*,*) NF90_STRERROR(IRET)
+     WRITE(*,*) 'ERROR IN W3PRNC, NETCDF ERROR:', NF90_STRERROR(IRET)
      STOP
   END IF
   RETURN
