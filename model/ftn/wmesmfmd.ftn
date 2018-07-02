@@ -954,42 +954,42 @@
 
       i = i + 1
       if ( istep.eq.2 ) then
-        expFieldName(i)    = 'pstokes1x'
+        expFieldName(i)    = 'x1pstokes1x'
         expFieldStdName(i) = 'eastward_partitioned_stokes_drift_1'
         expFieldDim(i)     = 2
       endif
 
       i = i + 1
       if ( istep.eq.2 ) then
-        expFieldName(i)    = 'pstokes1y'
+        expFieldName(i)    = 'y1pstokes1y'
         expFieldStdName(i) = 'northward_partitioned_stokes_drift_1'
         expFieldDim(i)     = 2
       endif
 
       i = i + 1
       if ( istep.eq.2 ) then
-        expFieldName(i)    = 'pstokes1x'
-        expFieldStdName(i) = 'eastward_partitioned_stokes_drift_1'
+        expFieldName(i)    = 'x2pstokes2x'
+        expFieldStdName(i) = 'eastward_partitioned_stokes_drift_2'
         expFieldDim(i)     = 2
       endif
 
       i = i + 1
       if ( istep.eq.2 ) then
-        expFieldName(i)    = 'pstokes2y'
+        expFieldName(i)    = 'y2pstokes2y'
         expFieldStdName(i) = 'northward_partitioned_stokes_drift_2'
         expFieldDim(i)     = 2
       endif
 
       i = i + 1
       if ( istep.eq.2 ) then
-        expFieldName(i)    = 'pstokes3x'
+        expFieldName(i)    = 'x3pstokes3x'
         expFieldStdName(i) = 'eastward_partitioned_stokes_drift_3'
         expFieldDim(i)     = 2
       endif
 
       i = i + 1
       if ( istep.eq.2 ) then
-        expFieldName(i)    = 'pstokes3y'
+        expFieldName(i)    = 'y3pstokes3y'
         expFieldStdName(i) = 'northward_partitioned_stokes_drift_3'
         expFieldDim(i)     = 2
       endif
@@ -2394,17 +2394,17 @@
 ! -------------------------------------------------------------------- /
 ! Partitioned Stokes Drift 3 2D fields 
 !
-      i1 = FieldIndex( expFieldName, 'pstokes1x', rc )
+      i1 = FieldIndex( expFieldName, 'x1pstokes1x', rc )
       if (ESMF_LogFoundError(rc, PASSTHRU)) return
-      i2 = FieldIndex( expFieldName, 'pstokes1y', rc )
+      i2 = FieldIndex( expFieldName, 'y1pstokes1y', rc )
       if (ESMF_LogFoundError(rc, PASSTHRU)) return
-      i3 = FieldIndex( expFieldName, 'pstokes2x', rc )
+      i3 = FieldIndex( expFieldName, 'x2pstokes2x', rc )
       if (ESMF_LogFoundError(rc, PASSTHRU)) return
-      i4 = FieldIndex( expFieldName, 'pstokes2y', rc )
+      i4 = FieldIndex( expFieldName, 'y2pstokes2y', rc )
       if (ESMF_LogFoundError(rc, PASSTHRU)) return
-      i5 = FieldIndex( expFieldName, 'pstokes3x', rc )
+      i5 = FieldIndex( expFieldName, 'x3pstokes3x', rc )
       if (ESMF_LogFoundError(rc, PASSTHRU)) return
-      i6 = FieldIndex( expFieldName, 'pstokes3y', rc )
+      i6 = FieldIndex( expFieldName, 'y3pstokes3y', rc )
       if (ESMF_LogFoundError(rc, PASSTHRU)) return
       if ( expFieldActive(i1) .and. &
            expFieldActive(i2) .and. &
