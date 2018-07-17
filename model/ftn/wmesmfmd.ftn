@@ -26,9 +26,9 @@
 !/ ------------------------------------------------------------------- /
 !/ Macros for enabling test output
 !/
-#define TEST_WMESMFMD___disabled
-#define TEST_WMESMFMD_GETIMPORT___disabled
-#define TEST_WMESMFMD_SETEXPORT___disabled
+#define TEST_WMESMFMD .true. 
+#define TEST_WMESMFMD_GETIMPORT .true. 
+#define TEST_WMESMFMD_SETEXPORT .true. 
 #define TEST_WMESMFMD_CREATEIMPGRID___disabled
 #define TEST_WMESMFMD_CREATEEXPGRID___disabled
 #define TEST_WMESMFMD_SETUPIMPBMSK___disabled
@@ -37,7 +37,7 @@
 #define TEST_WMESMFMD_BOTCUR___disabled
 #define TEST_WMESMFMD_RADSTR2D___disabled
 #define TEST_WMESMFMD_STOKES3D___disabled
-#define TEST_WMESMFMD_PSTOKES___disabled
+#define TEST_WMESMFMD_PSTOKES .true. 
 !/
 !/ ------------------------------------------------------------------- /
       module WMESMFMD
@@ -5426,22 +5426,22 @@
       if (ESMF_LogFoundError(rc, PASSTHRU)) return
 
 #ifdef TEST_WMESMFMD_PSTOKES
-      call ESMF_FieldWrite( p1Field, "wmesmfmd_pstokes_1x.nc", &
+      call ESMF_FieldWrite( p1xField, "wmesmfmd_pstokes_1x.nc", &
         overwrite=.true., timeSlice=timeSlice, rc=rc )
       if (ESMF_LogFoundError(rc, PASSTHRU)) return
-      call ESMF_FieldWrite( p1Field, "wmesmfmd_pstokes_1y.nc", &
+      call ESMF_FieldWrite( p1yField, "wmesmfmd_pstokes_1y.nc", &
         overwrite=.true., timeSlice=timeSlice, rc=rc )
       if (ESMF_LogFoundError(rc, PASSTHRU)) return
-      call ESMF_FieldWrite( p2Field, "wmesmfmd_pstokes_2x.nc", &
+      call ESMF_FieldWrite( p2xField, "wmesmfmd_pstokes_2x.nc", &
         overwrite=.true., timeSlice=timeSlice, rc=rc )
       if (ESMF_LogFoundError(rc, PASSTHRU)) return
-      call ESMF_FieldWrite( p2Field, "wmesmfmd_pstokes_2y.nc", &
+      call ESMF_FieldWrite( p2yField, "wmesmfmd_pstokes_2y.nc", &
         overwrite=.true., timeSlice=timeSlice, rc=rc )
       if (ESMF_LogFoundError(rc, PASSTHRU)) return
-      call ESMF_FieldWrite( p3Field, "wmesmfmd_pstokes_3x.nc", &
+      call ESMF_FieldWrite( p3xField, "wmesmfmd_pstokes_3x.nc", &
         overwrite=.true., timeSlice=timeSlice, rc=rc )
       if (ESMF_LogFoundError(rc, PASSTHRU)) return
-      call ESMF_FieldWrite( p3Field, "wmesmfmd_pstokes_3y.nc", &
+      call ESMF_FieldWrite( p3yField, "wmesmfmd_pstokes_3y.nc", &
         overwrite=.true., timeSlice=timeSlice, rc=rc )
       if (ESMF_LogFoundError(rc, PASSTHRU)) return   
       timeSlice = timeSlice + 1
