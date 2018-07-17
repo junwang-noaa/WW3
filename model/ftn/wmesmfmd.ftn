@@ -26,8 +26,8 @@
 !/ ------------------------------------------------------------------- /
 !/ Macros for enabling test output
 !/
-#define TEST_WMESMFMD .true. 
-#define TEST_WMESMFMD_GETIMPORT .true. 
+#define TEST_WMESMFMD  .true.
+#define TEST_WMESMFMD_GETIMPORT .true.
 #define TEST_WMESMFMD_SETEXPORT .true. 
 #define TEST_WMESMFMD_CREATEIMPGRID___disabled
 #define TEST_WMESMFMD_CREATEEXPGRID___disabled
@@ -37,7 +37,7 @@
 #define TEST_WMESMFMD_BOTCUR___disabled
 #define TEST_WMESMFMD_RADSTR2D___disabled
 #define TEST_WMESMFMD_STOKES3D___disabled
-#define TEST_WMESMFMD_PSTOKES .true. 
+#define TEST_WMESMFMD_PSTOKES___disabled
 !/
 !/ ------------------------------------------------------------------- /
       module WMESMFMD
