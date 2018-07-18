@@ -26,9 +26,9 @@
 !/ ------------------------------------------------------------------- /
 !/ Macros for enabling test output
 !/
-#define TEST_WMESMFMD  .true.
-#define TEST_WMESMFMD_GETIMPORT .true.
-#define TEST_WMESMFMD_SETEXPORT .true. 
+#define TEST_WMESMFMD___disabled
+#define TEST_WMESMFMD_GETIMPORT___disabled
+#define TEST_WMESMFMD_SETEXPORT___disabled
 #define TEST_WMESMFMD_CREATEIMPGRID___disabled
 #define TEST_WMESMFMD_CREATEEXPGRID___disabled
 #define TEST_WMESMFMD_SETUPIMPBMSK___disabled
@@ -37,7 +37,7 @@
 #define TEST_WMESMFMD_BOTCUR___disabled
 #define TEST_WMESMFMD_RADSTR2D___disabled
 #define TEST_WMESMFMD_STOKES3D___disabled
-#define TEST_WMESMFMD_PSTOKES___disabled
+#define TEST_WMESMFMD_PSTOKES
 !/
 !/ ------------------------------------------------------------------- /
       module WMESMFMD
@@ -5253,7 +5253,7 @@
       call ESMF_FieldWrite( usxField, "wmesmfmd_stokes3d_usx.nc", &
         overwrite=.true., timeSlice=timeSlice, rc=rc )
       if (ESMF_LogFoundError(rc, PASSTHRU)) return
-      call ESMF_FieldWrite( usyField, "wmesmfmd_stokes3d_usy.nc", &
+      alcPStokes
         overwrite=.true., timeSlice=timeSlice, rc=rc )
       if (ESMF_LogFoundError(rc, PASSTHRU)) return
       timeSlice = timeSlice + 1
@@ -5336,11 +5336,13 @@
       real(ESMF_KIND_RX), pointer :: p1xn(:), p2xn(:), p3xn(:)
       real(ESMF_KIND_RX), pointer :: p1yn(:), p2yn(:), p3yn(:)
       integer, save :: timeSlice = 1
+      integer :: isea,jsea 
 !
 ! -------------------------------------------------------------------- /
 !
       rc = ESMF_SUCCESS
 
+      write(*,*) 'JDM WW3 PSTOKES 1'
       p1xnField = ESMF_FieldCreate( natGrid, natArraySpec2D, &
         staggerLoc=natStaggerLoc, rc=rc )
       if (ESMF_LogFoundError(rc, PASSTHRU)) return
@@ -5360,6 +5362,7 @@
         staggerLoc=natStaggerLoc, rc=rc )
       if (ESMF_LogFoundError(rc, PASSTHRU)) return
 
+      write(*,*) 'JDM WW3 PSTOKES 2'
       call FieldFill( p1xnField, zeroValue, rc=rc )
       if (ESMF_LogFoundError(rc, PASSTHRU)) return
       call FieldFill( p1ynField, zeroValue, rc=rc )
@@ -5373,7 +5376,10 @@
       call FieldFill( p3ynField, zeroValue, rc=rc )
       if (ESMF_LogFoundError(rc, PASSTHRU)) return
 
+      write(*,*) 'JDM WW3 PSTOKES 3'
       if ( natGridIsLocal ) then
+
+        write(*,*) 'JDM WW3 PSTOKES 4'
 
         call ESMF_FieldGet( p1xnField, farrayPtr=p1xn, rc=rc )
         if (ESMF_LogFoundError(rc, PASSTHRU)) return
@@ -5388,16 +5394,37 @@
         call ESMF_FieldGet( p3ynField, farrayPtr=p3yn, rc=rc )
         if (ESMF_LogFoundError(rc, PASSTHRU)) return
 
+        write(*,*) 'JDM WW3 PSTOKES 5'
         call CALC_U3STOKES ( a , 2 )
+        write(*,*) 'JDM WW3 PSTOKES 6'
+
+
+        jsea_loop: do jsea = 1,nseal
+!/DIST      isea = iaproc + (jsea-1)*naproc
+!/SHRD       isea = jsea
+
+          p1xn(jsea)=ussp(jsea,1)
+          p1yn(jsea)=ussp(jsea,nk+1)
+          p2xn(jsea)=ussp(jsea,2)
+          p2yn(jsea)=ussp(jsea,nk+2)
+          p3xn(jsea)=ussp(jsea,3)
+          p3yn(jsea)=ussp(jsea,nk+3)
+
+
+        enddo jsea_loop
+
  
-        p1xn(:)=ussp(:,1)
-        p1yn(:)=ussp(:,nk+1)
-        p2xn(:)=ussp(:,2)
-        p2yn(:)=ussp(:,nk+2)
-        p3xn(:)=ussp(:,3)
-        p3yn(:)=ussp(:,nk+3)
+        !p1xn(:)=ussp(:,1)
+        !p1yn(:)=ussp(:,nk+1)
+        !p2xn(:)=ussp(:,2)
+        !p2yn(:)=ussp(:,nk+2)
+        !p3xn(:)=ussp(:,3)
+        !p3yn(:)=ussp(:,nk+3)
          
+        write(*,*) 'JDM WW3 PSTOKES 7'
       endif !natGridIsLocal
+
+      write(*,*) 'JDM WW3 PSTOKES 8'
 
       call ESMF_FieldRedist( p1xnField, p1xField, n2eRH, rc=rc )
       if (ESMF_LogFoundError(rc, PASSTHRU)) return
@@ -5412,6 +5439,7 @@
       call ESMF_FieldRedist( p3ynField, p3yField, n2eRH, rc=rc )
       if (ESMF_LogFoundError(rc, PASSTHRU)) return
 
+      write(*,*) 'JDM WW3 PSTOKES 9'
       call ESMF_FieldDestroy( p1xnField, rc=rc )
       if (ESMF_LogFoundError(rc, PASSTHRU)) return
       call ESMF_FieldDestroy( p2xnField, rc=rc )
@@ -5424,6 +5452,7 @@
       if (ESMF_LogFoundError(rc, PASSTHRU)) return
       call ESMF_FieldDestroy( p3ynField, rc=rc )
       if (ESMF_LogFoundError(rc, PASSTHRU)) return
+      write(*,*) 'JDM WW3 PSTOKES 10'
 
 #ifdef TEST_WMESMFMD_PSTOKES
       call ESMF_FieldWrite( p1xField, "wmesmfmd_pstokes_1x.nc", &
