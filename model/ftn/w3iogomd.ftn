@@ -570,7 +570,7 @@
                FLG2D(6,8)=.TRUE.
              ELSE
                WRITE(NDSEN,1008) 'USF','US3D'
-               END IF
+             END IF
            CASE('P2L')
              FLG2D(6,9)=.TRUE.
            CASE('TWI')
@@ -578,11 +578,11 @@
            CASE('FIC')
              FLG2D(6,11)=.TRUE.
            CASE('USP')
-             IF (USSPF(1).GE.1) THEN
+             IF (USSPF(1).LE.0.OR.USSPF(2).LE.0) THEN
                FLG2D(6,12)=.TRUE.
              ELSE
                WRITE(NDSEN,1008) 'USP','USSP'
-               END IF
+             END IF
 !
 ! Group 7
 !
@@ -968,7 +968,7 @@
              FLG2D(6,8)=.TRUE.
            ELSE
              WRITE(NDSEN,1008) 'USF','US3D'
-             END IF
+           END IF
          CASE('P2L')
            FLG2D(6,9)=.TRUE.
          CASE('TWI')
@@ -980,7 +980,7 @@
              FLG2D(6,12)=.TRUE.
            ELSE
              WRITE(NDSEN,1008) 'USP','USSP'
-             END IF
+           END IF
 
 !
 ! Group 7
@@ -3455,7 +3455,7 @@
       !                    ranges for each partition can be user       |
       !                    defined at run-time.                        |
       !----------------------------------------------------------------|
-      
+     
       if (USS_SWITCH==1) then
          IKST=US3DF(2)!Start at US3DF(2)
          IKFI=US3DF(3)!End at US3DF(3)

@@ -26,9 +26,9 @@
 !/ ------------------------------------------------------------------- /
 !/ Macros for enabling test output
 !/
-#define TEST_WMESMFMD___disabled
-#define TEST_WMESMFMD_GETIMPORT___disabled
-#define TEST_WMESMFMD_SETEXPORT___disabled
+#define TEST_WMESMFMD
+#define TEST_WMESMFMD_GETIMPORT
+#define TEST_WMESMFMD_SETEXPORT
 #define TEST_WMESMFMD_CREATEIMPGRID___disabled
 #define TEST_WMESMFMD_CREATEEXPGRID___disabled
 #define TEST_WMESMFMD_SETUPIMPBMSK___disabled
@@ -954,42 +954,42 @@
 
       i = i + 1
       if ( istep.eq.2 ) then
-        expFieldName(i)    = 'x1pstokes1x'
+        expFieldName(i)    = 'x1pstk'
         expFieldStdName(i) = 'eastward_partitioned_stokes_drift_1'
         expFieldDim(i)     = 2
       endif
 
       i = i + 1
       if ( istep.eq.2 ) then
-        expFieldName(i)    = 'y1pstokes1y'
+        expFieldName(i)    = 'y1pstk'
         expFieldStdName(i) = 'northward_partitioned_stokes_drift_1'
         expFieldDim(i)     = 2
       endif
 
       i = i + 1
       if ( istep.eq.2 ) then
-        expFieldName(i)    = 'x2pstokes2x'
+        expFieldName(i)    = 'x2pstke'
         expFieldStdName(i) = 'eastward_partitioned_stokes_drift_2'
         expFieldDim(i)     = 2
       endif
 
       i = i + 1
       if ( istep.eq.2 ) then
-        expFieldName(i)    = 'y2pstokes2y'
+        expFieldName(i)    = 'y2pstk'
         expFieldStdName(i) = 'northward_partitioned_stokes_drift_2'
         expFieldDim(i)     = 2
       endif
 
       i = i + 1
       if ( istep.eq.2 ) then
-        expFieldName(i)    = 'x3pstokes3x'
+        expFieldName(i)    = 'x3pstk'
         expFieldStdName(i) = 'eastward_partitioned_stokes_drift_3'
         expFieldDim(i)     = 2
       endif
 
       i = i + 1
       if ( istep.eq.2 ) then
-        expFieldName(i)    = 'y3pstokes3y'
+        expFieldName(i)    = 'y3pstk'
         expFieldStdName(i) = 'northward_partitioned_stokes_drift_3'
         expFieldDim(i)     = 2
       endif
@@ -2394,17 +2394,17 @@
 ! -------------------------------------------------------------------- /
 ! Partitioned Stokes Drift 3 2D fields 
 !
-      i1 = FieldIndex( expFieldName, 'x1pstokes1x', rc )
+      i1 = FieldIndex( expFieldName, 'x1pstk', rc )
       if (ESMF_LogFoundError(rc, PASSTHRU)) return
-      i2 = FieldIndex( expFieldName, 'y1pstokes1y', rc )
+      i2 = FieldIndex( expFieldName, 'y1pstk', rc )
       if (ESMF_LogFoundError(rc, PASSTHRU)) return
-      i3 = FieldIndex( expFieldName, 'x2pstokes2x', rc )
+      i3 = FieldIndex( expFieldName, 'x2pstk', rc )
       if (ESMF_LogFoundError(rc, PASSTHRU)) return
-      i4 = FieldIndex( expFieldName, 'y2pstokes2y', rc )
+      i4 = FieldIndex( expFieldName, 'y2pstk', rc )
       if (ESMF_LogFoundError(rc, PASSTHRU)) return
-      i5 = FieldIndex( expFieldName, 'x3pstokes3x', rc )
+      i5 = FieldIndex( expFieldName, 'x3pstk', rc )
       if (ESMF_LogFoundError(rc, PASSTHRU)) return
-      i6 = FieldIndex( expFieldName, 'y3pstokes3y', rc )
+      i6 = FieldIndex( expFieldName, 'y3pstk', rc )
       if (ESMF_LogFoundError(rc, PASSTHRU)) return
       if ( expFieldActive(i1) .and. &
            expFieldActive(i2) .and. &
@@ -2418,7 +2418,7 @@
       endif
 !
 ! -------------------------------------------------------------------- /
-! Bottom Currents
+!! Bottom Currents
 !
       i1 = FieldIndex( expFieldName, 'wbcuru', rc )
       if (ESMF_LogFoundError(rc, PASSTHRU)) return
@@ -3161,8 +3161,8 @@
               ix = mapsf(isea,1)
               iy = mapsf(isea,2)
               ! native grid layout: dim1=Y, dim2=X
-              arbIndexList(arbIndexCount,1) = iy
-              arbIndexList(arbIndexCount,2) = ix
+              arbIndexList(arbIndexCount,1) = ix
+              arbIndexList(arbIndexCount,2) = iy
             endif
           enddo
         endif
@@ -3174,8 +3174,8 @@
               arbIndexCount = arbIndexCount+1
               if (ipass.eq.2) then
                 ! native grid layout: dim1=Y, dim2=X
-                arbIndexList(arbIndexCount,1) = iy
-                arbIndexList(arbIndexCount,2) = ix
+                arbIndexList(arbIndexCount,1) = ix
+                arbIndexList(arbIndexCount,2) = iy
               endif
             enddo
           enddo
@@ -3188,7 +3188,7 @@
         case (iclose_none)
           natGrid = ESMF_GridCreateNoPeriDim( &
             minIndex=(/ 1, 1/), &
-            maxIndex=(/ny,nx/), &
+            maxIndex=(/nx,ny/), &
             coordDep1=(/ESMF_DIM_ARB,ESMF_DIM_ARB/), &
             coordDep2=(/ESMF_DIM_ARB,ESMF_DIM_ARB/), &
             arbIndexCount=arbIndexCount, &
@@ -3199,11 +3199,11 @@
           if (ESMF_LogFoundError(rc, PASSTHRU)) return
         case (iclose_smpl)
           natGrid = ESMF_GridCreate1PeriDim( &
-            periodicDim=2, &
-            poleDim=1, &
+            periodicDim=1, &
+            poleDim=2, &
             poleKindFlag=(/ESMF_POLEKIND_NONE,ESMF_POLEKIND_NONE/), &
             minIndex=(/ 1, 1/), &
-            maxIndex=(/ny,nx/), &
+            maxIndex=(/nx,ny/), &
             coordDep1=(/ESMF_DIM_ARB,ESMF_DIM_ARB/), &
             coordDep2=(/ESMF_DIM_ARB,ESMF_DIM_ARB/), &
             arbIndexCount=arbIndexCount, &
@@ -5342,7 +5342,7 @@
 !
       rc = ESMF_SUCCESS
 
-      write(*,*) 'JDM WW3 PSTOKES 1'
+
       p1xnField = ESMF_FieldCreate( natGrid, natArraySpec2D, &
         staggerLoc=natStaggerLoc, rc=rc )
       if (ESMF_LogFoundError(rc, PASSTHRU)) return
@@ -5362,7 +5362,6 @@
         staggerLoc=natStaggerLoc, rc=rc )
       if (ESMF_LogFoundError(rc, PASSTHRU)) return
 
-      write(*,*) 'JDM WW3 PSTOKES 2'
       call FieldFill( p1xnField, zeroValue, rc=rc )
       if (ESMF_LogFoundError(rc, PASSTHRU)) return
       call FieldFill( p1ynField, zeroValue, rc=rc )
@@ -5376,10 +5375,7 @@
       call FieldFill( p3ynField, zeroValue, rc=rc )
       if (ESMF_LogFoundError(rc, PASSTHRU)) return
 
-      write(*,*) 'JDM WW3 PSTOKES 3'
       if ( natGridIsLocal ) then
-
-        write(*,*) 'JDM WW3 PSTOKES 4'
 
         call ESMF_FieldGet( p1xnField, farrayPtr=p1xn, rc=rc )
         if (ESMF_LogFoundError(rc, PASSTHRU)) return
@@ -5394,10 +5390,7 @@
         call ESMF_FieldGet( p3ynField, farrayPtr=p3yn, rc=rc )
         if (ESMF_LogFoundError(rc, PASSTHRU)) return
 
-        write(*,*) 'JDM WW3 PSTOKES 5'
         call CALC_U3STOKES ( a , 2 )
-        write(*,*) 'JDM WW3 PSTOKES 6'
-
 
         jsea_loop: do jsea = 1,nseal
 !/DIST      isea = iaproc + (jsea-1)*naproc
@@ -5409,22 +5402,10 @@
           p2yn(jsea)=ussp(jsea,nk+2)
           p3xn(jsea)=ussp(jsea,3)
           p3yn(jsea)=ussp(jsea,nk+3)
-
-
         enddo jsea_loop
 
- 
-        !p1xn(:)=ussp(:,1)
-        !p1yn(:)=ussp(:,nk+1)
-        !p2xn(:)=ussp(:,2)
-        !p2yn(:)=ussp(:,nk+2)
-        !p3xn(:)=ussp(:,3)
-        !p3yn(:)=ussp(:,nk+3)
-         
-        write(*,*) 'JDM WW3 PSTOKES 7'
       endif !natGridIsLocal
 
-      write(*,*) 'JDM WW3 PSTOKES 8'
 
       call ESMF_FieldRedist( p1xnField, p1xField, n2eRH, rc=rc )
       if (ESMF_LogFoundError(rc, PASSTHRU)) return
@@ -5439,7 +5420,6 @@
       call ESMF_FieldRedist( p3ynField, p3yField, n2eRH, rc=rc )
       if (ESMF_LogFoundError(rc, PASSTHRU)) return
 
-      write(*,*) 'JDM WW3 PSTOKES 9'
       call ESMF_FieldDestroy( p1xnField, rc=rc )
       if (ESMF_LogFoundError(rc, PASSTHRU)) return
       call ESMF_FieldDestroy( p2xnField, rc=rc )
@@ -5452,7 +5432,6 @@
       if (ESMF_LogFoundError(rc, PASSTHRU)) return
       call ESMF_FieldDestroy( p3ynField, rc=rc )
       if (ESMF_LogFoundError(rc, PASSTHRU)) return
-      write(*,*) 'JDM WW3 PSTOKES 10'
 
 #ifdef TEST_WMESMFMD_PSTOKES
       call ESMF_FieldWrite( p1xField, "wmesmfmd_pstokes_1x.nc", &

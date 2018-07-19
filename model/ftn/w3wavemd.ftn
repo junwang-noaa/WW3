@@ -1946,7 +1946,7 @@
                   IX     = MAPSF(ISEA,1)
                   IY     = MAPSF(ISEA,2)
 
-                  IF (JSEA == DEBUG_NODE) WRITE(*,*) 'W3WAVE TEST', SUM(VA(:,JSEA))
+!/DEBUGRUN                  IF (JSEA == DEBUG_NODE) WRITE(*,*) 'W3WAVE TEST', SUM(VA(:,JSEA))
 
                   DEPTH  = MAX ( DMIN , DW(ISEA) )
                   IF ( MAPSTA(IY,IX) .EQ. 1 ) THEN
