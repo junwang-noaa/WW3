@@ -3135,7 +3135,7 @@
 ! -------------------------------------------------------------------- /
 ! 4.  Create ESMF grid with arbitrary domain decomposition to match
 !     the native domain decomposition of the non-excluded points
-!     Note that the native grid layout is dim1=Y, dim2=X
+!     Note that the native grid layout is dim1=X, dim2=Y
 !     Note that coordinates and mask are not needed since this
 !     grid is only used to define fields for a redist operation
 !
@@ -3160,7 +3160,7 @@
             if (ipass.eq.2) then
               ix = mapsf(isea,1)
               iy = mapsf(isea,2)
-              ! native grid layout: dim1=Y, dim2=X
+              ! native grid layout: dim1=X, dim2=Y
               arbIndexList(arbIndexCount,1) = ix
               arbIndexList(arbIndexCount,2) = iy
             endif
@@ -3173,7 +3173,7 @@
               if ( mapsta(iy,ix).ne.0 ) cycle ! skip non-excluded point
               arbIndexCount = arbIndexCount+1
               if (ipass.eq.2) then
-                ! native grid layout: dim1=Y, dim2=X
+                ! native grid layout: dim1=X, dim2=Y
                 arbIndexList(arbIndexCount,1) = ix
                 arbIndexList(arbIndexCount,2) = iy
               endif
