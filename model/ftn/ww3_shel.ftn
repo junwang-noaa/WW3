@@ -48,6 +48,7 @@
 !/    24-Apr-2015 : Adding OASIS coupling calls         ( version 5.07 )
 !/                  (M. Accensi & F. Ardhuin, IFREMER)
 !/    11-May-2015 : Checks dates for output types       ( version 5.08 )
+!/    26-Mar-2018 : Sea-point only Wnd/Cur input. JGLi  ( version 6.02 )
 !/    15-May-2018 : Update namelist                     ( version 6.05 )
 !/    06-Jun-2018 : Add PDLIB/MEMCHECK/NETCDF_QAD/DEBUGINIT ( version 6.04 )
 !/
@@ -690,11 +691,8 @@
           END IF
           IF ( IAPROC .EQ. NAPOUT ) WRITE (NDSO,921) IDFLDS(J), YESXNO, STRNG
         END DO
-
-!/COU          IF ( (FLAGSC(1).EQV..TRUE. .AND. INFLAGS1(2).EQV..TRUE. .AND. FLAGSC(2).EQV..FALSE.) .OR. \
-!/COU               (FLAGSC(2).EQV..TRUE. .AND. INFLAGS1(1).EQV..TRUE. .AND. FLAGSC(1).EQV..FALSE.) ) THEN
-!/COU            GOTO 2102
-!/COU          END IF
+!/COU          IF (FLAGSC(1) .AND. INFLAGS1(2) .AND. .NOT. FLAGSC(2)) GOTO 2102
+!/COU          IF (FLAGSC(2) .AND. INFLAGS1(1) .AND. .NOT. FLAGSC(1)) GOTO 2102
 
         INFLAGS1(8) = .FALSE.
         FLH(8)   = .FALSE.
@@ -1099,11 +1097,8 @@
           END IF
           IF ( IAPROC .EQ. NAPOUT ) WRITE (NDSO,921) IDFLDS(J), YESXNO, STRNG
         END DO
-
-!/COU          IF ( (FLAGSC(1).EQV..TRUE. .AND. INFLAGS1(2).EQV..TRUE. .AND. FLAGSC(2).EQV..FALSE.) .OR. \
-!/COU               (FLAGSC(2).EQV..TRUE. .AND. INFLAGS1(1).EQV..TRUE. .AND. FLAGSC(1).EQV..FALSE.) ) THEN
-!/COU            GOTO 2102
-!/COU          END IF
+!/COU          IF (FLAGSC(1) .AND. INFLAGS1(2) .AND. .NOT. FLAGSC(2)) GOTO 2102
+!/COU          IF (FLAGSC(2) .AND. INFLAGS1(1) .AND. .NOT. FLAGSC(1)) GOTO 2102
 
 !/MEMCHECK       write(740+IAPROC,*) 'memcheck_____:', 'WW3_SHEL SECTION 2b'
 !/MEMCHECK       call getMallocInfo(mallinfos)
@@ -1961,6 +1956,14 @@
                 CALL W3FLDH (J, NDST, NDSEN, NX, NY, NX, NY,    &
                              TIME0, TIMEN, NH(J), NHMAX, THO, HA, HD, HS,&
                              TC0, CX0, CY0, XXX, TCN, CXN, CYN, XXX, IERR)
+!
+!/SMC !!Li  Reshape the CX0/N CY0/N space for sea-point only current. 
+!/SMC !!Li              JGLi26Jun2018. 
+!/SMC              ELSE IF( FSWND ) THEN
+!/SMC                 CALL W3FLDG ('READ', IDSTR(J), NDSF(J), NDST,    &
+!/SMC                      NDSEN, NSEA, 1, NSEA, 1, TIME0, TIMEN, TC0, &
+!/SMC                      CX0, CY0, XXX, TCN, CXN, CYN, XXX, IERR) 
+!/SMC !!Li  
               ELSE
 !/TIDE                IF ( FLCURTIDE ) THEN 
 !/TIDE                  IERR=0
@@ -1987,6 +1990,14 @@
                 CALL W3FLDH (J, NDST, NDSEN, NX, NY, NX, NY,    &
                              TIME0, TIMEN, NH(J), NHMAX, THO, HA, HD, HS,&
                              TW0, WX0, WY0, DT0, TWN, WXN, WYN, DTN, IERR)
+!
+!/SMC !!Li  Reshape the WX0/N WY0/N space for sea-point only wind. 
+!/SMC !!Li              JGLi26Jun2018. 
+!/SMC              ELSE IF( FSWND ) THEN
+!/SMC                 CALL W3FLDG ('READ', IDSTR(J), NDSF(J), NDST,    &
+!/SMC                      NDSEN, NSEA, 1, NSEA, 1, TIME0, TIMEN, TW0, &
+!/SMC                      WX0, WY0, DT0, TWN, WXN, WYN, DTN, IERR)  
+!/SMC !!Li  
               ELSE
 !/OASIS                COUPL_COMM = MPI_COMM
 !/OASACM                IF (.NOT.FLAGSC(J)) ID_OASIS_TIME = -1

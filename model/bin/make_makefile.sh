@@ -99,7 +99,7 @@
               dstress s_ice s_is reflection s_xx \
               wind windx rwind curr currx mgwind mgprop mggse \
               subsec tdyn dss0 pdif tide refrx ig rotag arctic nnt mprf \
-              cou coupl agcm ogcm igcm trknc setup pdlib memck
+              cou oasis agcm ogcm igcm trknc setup pdlib memck
   do
     case $type in
 #sort:mach:
@@ -350,8 +350,8 @@
                ID='use of the coupler'
                TS='COU'
                OK='COU' ;;
-#sort:coupl:
-      coupl  ) TY='upto1'
+#sort:oasis:
+      oasis  ) TY='upto1'
                ID='type of coupler'
                TS='OASIS'
                OK='OASIS' ;;
@@ -493,7 +493,7 @@
       arctic ) arctic=$sw ;;
       mprf   ) mprf=$sw ;;
       cou    ) cou=$sw ;;
-      coupl  ) coupl=$sw ;;
+      oasis  ) oasis=$sw ;;
       agcm   ) agcm=$sw ;;
       ogcm   ) ogcm=$sw ;;
       igcm   ) igcm=$sw ;;
@@ -776,12 +776,12 @@
    IG1) igcode='w3gig1md w3canomd'
    esac
 
-  couplmd=$NULL
-  case $coupl in
-   OASIS) couplmd='w3oacpmd'
+  oasismd=$NULL
+  case $oasis in
+   OASIS) oasismd='w3oacpmd'
    esac
 
-  if [ "$coupl" = 'OASIS' ] && [ "$str_st3" = 'no' ]
+  if [ "$oasis" = 'OASIS' ] && [ "$str_st3" = 'no' ]
   then
       echo ' '
       echo "   *** !/OASIS cannot be used in combination with !/$stress"
@@ -874,34 +874,34 @@
                prop=
              source="$pdlibcode $pdlibyow $db $bt $setupcode $tr $trx $stx $nlx $btx $is wmmdatmd w3parall w3triamd"
                  IO='w3iobcmd w3iogrmd w3dispmd w3gsrumd'
-                aux='constants w3servmd w3timemd w3cspcmd' ;;
+                aux='constants w3servmd w3timemd w3arrymd w3cspcmd' ;;
      ww3_bounc) IDstring='NetCDF boundary conditions program'
                core=
                data="w3adatmd $memcode w3gdatmd w3wdatmd w3idatmd w3odatmd"
                prop=
              source="$pdlibcode $pdlibyow $db $bt $setupcode $stx $nlx $btx $is wmmdatmd w3parall w3triamd"
                  IO='w3iobcmd w3iogrmd w3dispmd w3gsrumd'
-                aux='constants w3servmd w3timemd w3cspcmd w3nmlbouncmd' ;;
+                aux='constants w3servmd w3timemd w3arrymd w3cspcmd w3nmlbouncmd' ;;
      ww3_prep) IDstring='Field preprocessor'
                core='w3fldsmd'
                data="$memcode w3gdatmd w3adatmd w3idatmd w3odatmd w3wdatmd wmmdatmd"
                prop=
              source="$pdlibcode $pdlibyow $db $bt $setupcode w3triamd $stx $nlx $btx  $is"
-                 IO="w3iogrmd $couplmd $agcmmd $ogcmmd $igcmmd"
+                 IO="w3iogrmd $oasismd $agcmmd $ogcmmd $igcmmd"
                 aux="constants w3servmd w3timemd $tidecode w3arrymd w3dispmd w3gsrumd w3parall" ;;
      ww3_prnc) IDstring='NetCDF field preprocessor'
                core='w3fldsmd'
                data="$memcode w3gdatmd w3adatmd w3idatmd w3odatmd w3wdatmd wmmdatmd"
                prop=
              source="$pdlibcode $pdlibyow $db $bt $setupcode w3triamd $stx $nlx $btx $is w3parall"
-                 IO="w3iogrmd $couplmd $agcmmd $ogcmmd $igcmmd"
+                 IO="w3iogrmd $oasismd $agcmmd $ogcmmd $igcmmd"
                 aux="constants w3servmd w3timemd w3arrymd w3dispmd w3gsrumd $tidecode w3nmlprncmd" ;;
     ww3_prtide) IDstring='Tide prediction'
                core='w3fldsmd'
                data="wmmdatmd $memcode w3gdatmd w3wdatmd w3adatmd w3idatmd w3odatmd"
                prop="$pr"
              source="$pdlibcode $pdlibyow $db $bt $setupcode w3triamd $stx $nlx $btx $is w3parall"
-                 IO="w3iogrmd $couplmd $agcmmd $ogcmmd $igcmmd"
+                 IO="w3iogrmd $oasismd $agcmmd $ogcmmd $igcmmd"
                 aux="constants w3servmd w3timemd w3arrymd w3dispmd w3gsrumd $tidecode" ;;
      ww3_shel) IDstring='Generic shell'
                core='w3fldsmd w3initmd w3wavemd w3wdasmd w3updtmd'
@@ -909,7 +909,7 @@
                prop="$pr"
              source="$pdlibcode $setupcode w3triamd w3srcemd $dsx $flx $ln $st $nl $bt $ic"
              source="$source $is $db $tr $bs $xx $refcode $igcode w3parall"
-                 IO="w3iogrmd w3iogomd w3iopomd w3iotrmd w3iorsmd w3iobcmd $couplmd $agcmmd $ogcmmd $igcmmd"
+                 IO="w3iogrmd w3iogomd w3iopomd w3iotrmd w3iorsmd w3iobcmd $oasismd $agcmmd $ogcmmd $igcmmd"
                  IO="$IO w3iosfmd w3partmd"
                 aux="constants w3servmd w3timemd $tidecode w3arrymd w3dispmd w3cspcmd w3gsrumd $cplcode"
                 aux="$aux w3nmlshelmd $pdlibyow" ;;
@@ -928,7 +928,7 @@
                prop="$pr"
              source="$pdlibcode $pdlibyow $setupcode w3parall w3triamd w3srcemd $dsx $flx $ln $st $nl $bt $ic $is $db $tr $bs $xx $refcode $igcode"
                  IO='w3iogrmd w3iogomd w3iopomd wmiopomd'
-                 IO="$IO w3iotrmd w3iorsmd w3iobcmd w3iosfmd w3partmd $couplmd $agcmmd $ogcmmd $igcmmd"
+                 IO="$IO w3iotrmd w3iorsmd w3iobcmd w3iosfmd w3partmd $oasismd $agcmmd $ogcmmd $igcmmd"
                 aux="constants $tidecode w3servmd w3timemd w3arrymd w3dispmd w3cspcmd w3gsrumd $mprfaux"
                 aux="$aux  wmunitmd w3nmlmultimd" 
                 if [ "$scrip" = 'SCRIP' ]
@@ -948,7 +948,7 @@
                prop="$pr" 
                source="$pdlibcode $pdlibyow w3triamd w3srcemd $dsx $flx $ln $st $nl $bt $db $tr $bs $xx $refcode $igcode $is $ic" 
                  IO='w3iogrmd w3iogomd w3iopomd wmiopomd' 
-                 IO="$IO w3iotrmd w3iorsmd w3iobcmd w3iosfmd w3partmd $couplmd $agcmmd $ogcmmd $igcmmd" 
+                 IO="$IO w3iotrmd w3iorsmd w3iobcmd w3iosfmd w3partmd $oasismd $agcmmd $ogcmmd $igcmmd" 
                 aux="constants w3servmd w3timemd w3arrymd w3dispmd w3cspcmd w3gsrumd $mprfaux $tidecode" 
                 aux="$aux  wmunitmd w3nmlmultimd"  
                 if [ "$scrip" = 'SCRIP' ]
@@ -1019,7 +1019,7 @@
                data="$memcode w3gdatmd w3wdatmd w3adatmd w3idatmd w3odatmd"
                prop=
              source="$pdlibcode $pdlibyow $db $bt $setupcode wmmdatmd w3parall w3triamd $stx $nlx $btx $is"
-                 IO="w3iogrmd  $couplmd $agcmmd $ogcmmd $igcmmd"
+                 IO="w3iogrmd  $oasismd $agcmmd $ogcmmd $igcmmd"
                 aux="constants w3servmd w3timemd w3arrymd w3dispmd w3gsrumd $tidecode" ;;
      ww3_gint) IDstring='Grid Interpolation'
                core=
@@ -1050,7 +1050,7 @@
                prop=
              source="$pdlibcode $pdlibyow $db $bt $setupcode wmmdatmd w3dispmd w3triamd $ln $stx $nlx $btx $tr $bs $xx $is"
                  IO=
-                aux='constants w3servmd w3timemd w3gsrumd w3parall' ;;
+                aux='constants w3servmd w3timemd w3arrymd w3gsrumd w3parall' ;;
      libww3) IDstring='Object file archive'
                core='w3fldsmd w3initmd w3wavemd w3wdasmd w3updtmd'
                data='wmmdatmd w3gdatmd w3wdatmd w3adatmd w3idatmd w3odatmd'
@@ -1151,6 +1151,7 @@
 
     suffixes="ftn f F f90 F90 c"
     fexti=none
+    ispdlibi=no 
     for s in $suffixes
     do
       if [ -f $main_dir/ftn/$file.$s ]
@@ -1158,11 +1159,18 @@
         fexti=$s
         break
       fi
+      if [ -f $main_dir/ftn/PDLIB/$file.$s ]
+      then
+        fexti=$s
+        ispdlibi=yes
+        break
+      fi
     done
     if [ "$fexti" = 'none' ]
     then
       echo '      *** make_makefile.sh error ***'
-      echo "          Source file $main_dir/ftn/$file.* not found"
+      echo "          Source file $main_dir/ftn/$file.* "
+      echo "                   or $main_dir/ftn/PDLIB/$file.* not found"
       echo "          Source file suffixes checked: $suffixes"
       exit 2
     fi
@@ -1177,6 +1185,11 @@
     string2='	@$(aPb)/ad3'" $file"
     string3="$NULL"
 
+    if [ "$ispdlibi" = 'yes' ]
+    then 
+      string1='$(aPo)/'$file'.o : PDLIB/'$file.$fexti' '
+    fi 
+
     $main_dir/bin/ad3 $file 0 1 > ad3.out 2>&1
 
     if [ -n "`grep error ad3.out`" ]
@@ -1190,43 +1203,14 @@
     then
       touch check_file
     else
-      grep USE $file.$fexto  > check_file
-      grep use $file.$fexto >> check_file
+      check_file=`grep -i '^[[:blank:]]*use' $file.$fexto | awk '{print toupper($2)}' | \
+                     sed -e 's/,//' | sort -u`
     fi
     rm -f $file.$fexto
 
-    for mod in yowfunction W3NETCDF yowDatapool yowNodepool yowRankModule yowerr \
-               yowElementpool yowExchangeModule yowpdlibMain yowSidepool \
-               PDLIB_FIELD_VEC PDLIB_W3PROFSMD W3PARALL \
-               W3INITMD W3WAVEMD W3WDASMD W3UPDTMD W3FLDSMD W3CSPCMD \
-               MallocInfo_m W3GDATMD W3WDATMD W3ADATMD W3ODATMD W3IDATMD \
-               W3FLD1MD  W3FLD2MD \
-               W3IOGRMD W3IOGOMD W3IOPOMD W3IOTRMD W3IORSMD W3IOBCMD \
-                        W3IOSFMD W3PARTMD W3BULLMD \
-               W3TIDEMD W3CANOMD W3GIG1MD W3STRKMD \
-               W3PRO1MD W3PRO2MD W3PRO3MD W3PROXMD \
-                        W3UQCKMD W3UNO2MD W3PSMCMD W3PROFSMD \
-               W3SRCEMD W3FLX1MD W3FLX2MD W3FLX3MD W3FLX4MD W3FLXXMD \
-               W3SLN1MD W3SLNXMD \
-               W3SRC0MD W3SRC1MD W3SRC2MD W3SRC3MD W3SRC4MD \
-                        W3SRC6MD W3SRCXMD \
-               W3SNL1MD W3SNL2MD W3SNL3MD W3SNL4MD W3SNLXMD W3SNLSMD \
-                        m_xnldata serv_xnl4v5 m_fileio m_constants \
-               W3SWLDMD \
-               W3SBT1MD W3SBT4MD W3SBT8MD W3SBT9MD W3SBTXMD \
-               W3SDB1MD W3SDBXMD \
-               W3STR1MD W3STRXMD \
-               W3SBS1MD W3SBSXMD \
-               W3SIC1MD W3SIC2MD W3SIC3MD W3SIC4MD W3SIS1MD W3SIS2MD \
-               W3REF1MD \
-               W3SXXXMD \
-               CONSTANTS W3SERVMD W3TIMEMD W3ARRYMD W3DISPMD W3GSRUMD W3TRIAMD \
-               WMINITMD WMWAVEMD WMFINLMD WMMDATMD WMGRIDMD WMUPDTMD \
-               WMUNITMD WMINIOMD WMIOPOMD WMSCRPMD WMESMFMD \
-               w3getmem WW_cc CMP_COMM W3OACPMD W3AGCMMD W3OGCMMD W3IGCMMD \
-               W3NMLMULTIMD W3NMLPRNCMD W3NMLOUNFMD W3NMLOUNPMD W3NMLTRNCMD \
-               W3NMLBOUNCMD W3NMLSHELMD
+      for mod in $check_file
       do
+      modfound=yes
       case $mod in
          'W3INITMD'     ) modtest=w3initmd.o ;;
          'W3WAVEMD'     ) modtest=w3wavemd.o ;;
@@ -1234,7 +1218,7 @@
          'W3UPDTMD'     ) modtest=w3updtmd.o ;;
          'W3FLDSMD'     ) modtest=w3fldsmd.o ;;
          'W3CSPCMD'     ) modtest=w3cspcmd.o ;;
-         'MallocInfo_m' ) modtest=w3meminfo.o ;;
+         'MALLOCINFO_M' ) modtest=w3meminfo.o ;;
          'W3GDATMD'     ) modtest=w3gdatmd.o ;;
          'W3WDATMD'     ) modtest=w3wdatmd.o ;;
          'W3ADATMD'     ) modtest=w3adatmd.o ;;
@@ -1284,10 +1268,10 @@
          'W3SNL4MD'     ) modtest=w3snl4md.o ;;
          'W3SNLXMD'     ) modtest=w3snlxmd.o ;;
          'W3SNLSMD'     ) modtest=w3snlsmd.o ;;
-         'm_xnldata'    ) modtest=mod_xnl4v5.o ;;
-         'serv_xnl4v5'  ) modtest=serv_xnl4v5.o ;;
-         'm_fileio'     ) modtest=mod_fileio.o ;;
-         'm_constants'  ) modtest=mod_constants.o ;;
+         'M_XNLDATA'    ) modtest=mod_xnl4v5.o ;;
+         'SERV_XNL4V5'  ) modtest=serv_xnl4v5.o ;;
+         'M_FILEIO'     ) modtest=mod_fileio.o ;;
+         'M_CONSTANTS'  ) modtest=mod_constants.o ;;
          'W3SWLDMD'     ) modtest=w3swldmd.o ;;
          'W3SBT1MD'     ) modtest=w3sbt1md.o ;;
          'W3SBT4MD'     ) modtest=w3sbt4md.o ;;
@@ -1326,36 +1310,37 @@
          'WMIOPOMD'     ) modtest=wmiopomd.o ;;
          'WMSCRPMD'     ) modtest=wmscrpmd.o ;;
          'WMESMFMD'     ) modtest=wmesmfmd.o ;;
-         'w3getmem'     ) modtest=w3getmem.o ;;
-         'WW_cc'        ) modtest=ww.comm.o  ;;
+         'W3GETMEM'     ) modtest=w3getmem.o ;;
+         'WW_CC'        ) modtest=ww.comm.o  ;;
          'CMP_COMM'     ) modtest=cmp.comm.o  ;;
          'W3OACPMD'     ) modtest=w3oacpmd.o ;;
          'W3AGCMMD'     ) modtest=w3agcmmd.o ;;
          'W3OGCMMD'     ) modtest=w3ogcmmd.o ;;
          'W3IGCMMD'     ) modtest=w3igcmmd.o ;;
          'W3NMLMULTIMD' ) modtest=w3nmlmultimd.o ;;
-         'W3NMLPRNCMD' ) modtest=w3nmlprncmd.o ;;
-         'W3NMLOUNFMD' ) modtest=w3nmlounfmd.o ;;
-         'W3NMLOUNPMD' ) modtest=w3nmlounpmd.o ;;
-         'W3NMLTRNCMD' ) modtest=w3nmltrncmd.o ;;
+         'W3NMLPRNCMD'  ) modtest=w3nmlprncmd.o ;;
+         'W3NMLOUNFMD'  ) modtest=w3nmlounfmd.o ;;
+         'W3NMLOUNPMD'  ) modtest=w3nmlounpmd.o ;;
+         'W3NMLTRNCMD'  ) modtest=w3nmltrncmd.o ;;
          'W3NMLBOUNCMD' ) modtest=w3nmlbouncmd.o ;;
-         'W3NMLSHELMD' ) modtest=w3nmlshelmd.o ;;
+         'W3NMLSHELMD'  ) modtest=w3nmlshelmd.o ;;
          'W3NETCDF'     ) modtest=w3netcdf.o ;;
-         'yowfunction'  ) modtest=yowfunction.o ;;
-         'yowDatapool'  ) modtest=yowdatapool.o ;;
-         'yowNodepool'  ) modtest=yownodepool.o ;;
-         'yowSidepool'  ) modtest=yowsidepool.o ;;
-         'yowRankModule'     ) modtest=yowrankModule.o ;;
-         'yowerr'            ) modtest=yowerr.o ;;
-         'yowElementpool'    ) modtest=yowelementpool.o ;;
-         'yowExchangeModule' ) modtest=yowexchangeModule.o ;;
-         'yowpdlibMain'      ) modtest=yowpdlibmain.o ;;
+         'YOWFUNCTION'  ) modtest=yowfunction.o ;;
+         'YOWDATAPOOL'  ) modtest=yowdatapool.o ;;
+         'YOWNODEPOOL'  ) modtest=yownodepool.o ;;
+         'YOWSIDEPOOL'  ) modtest=yowsidepool.o ;;
+         'YOWRANKMODULE'     ) modtest=yowrankModule.o ;;
+         'YOWERR'            ) modtest=yowerr.o ;;
+         'YOWELEMENTPOOL'    ) modtest=yowelementpool.o ;;
+         'YOWEXCHANGEMODULE' ) modtest=yowexchangeModule.o ;;
+         'YOWPDLIBMAIN'      ) modtest=yowpdlibmain.o ;;
          'PDLIB_FIELD_VEC'   ) modtest=pdlib_field_vec.o ;;
-         'PDLIB_W3PROFSMD'    ) modtest=w3profsmd_pdlib.o ;;
+         'PDLIB_W3PROFSMD'   ) modtest=w3profsmd_pdlib.o ;;
          'W3PARALL'     ) modtest=w3parall.o ;;
+         *              ) modfound=no ;; 
       esac
-      nr=`grep $mod check_file | wc -c | awk '{ print $1 }'`
-      if [ "$nr" -gt '8' ]
+
+      if [ "$modfound" == "yes" ]
       then
         if [ "$modtest" != "$file.o" ]
         then
