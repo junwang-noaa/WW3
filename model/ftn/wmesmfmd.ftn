@@ -26,9 +26,9 @@
 !/ ------------------------------------------------------------------- /
 !/ Macros for enabling test output
 !/
-#define TEST_WMESMFMD
-#define TEST_WMESMFMD_GETIMPORT
-#define TEST_WMESMFMD_SETEXPORT
+#define TEST_WMESMFMD___disabled
+#define TEST_WMESMFMD_GETIMPORT___disabled
+#define TEST_WMESMFMD_SETEXPORT___disabled
 #define TEST_WMESMFMD_CREATEIMPGRID___disabled
 #define TEST_WMESMFMD_CREATEEXPGRID___disabled
 #define TEST_WMESMFMD_SETUPIMPBMSK___disabled

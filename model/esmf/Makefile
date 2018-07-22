@@ -164,7 +164,6 @@ gout:
 	$(WW3_BINDIR)/w3_make ww3_grid
 	$(WW3_BINDIR)/w3_make ww3_outf
 	$(WW3_BINDIR)/w3_make ww3_outp
-	$(WW3_BINDIR)/w3_make ww3_prnc 
 	@echo "$(SWITCHES)" > $(WW3_BINDIR)/tempswitch
 	@sed -e "s/DIST/SHRD/g"\
              -e "s/MPIT/ /g"\
