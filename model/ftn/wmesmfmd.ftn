@@ -37,7 +37,7 @@
 #define TEST_WMESMFMD_BOTCUR___disabled
 #define TEST_WMESMFMD_RADSTR2D___disabled
 #define TEST_WMESMFMD_STOKES3D___disabled
-#define TEST_WMESMFMD_PSTOKES
+#define TEST_WMESMFMD_PSTOKES___disabled
 !/
 !/ ------------------------------------------------------------------- /
       module WMESMFMD
