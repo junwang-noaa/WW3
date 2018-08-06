@@ -1027,7 +1027,7 @@
                  IO='w3iogrmd w3iogomd'
                prop=
              source="$pdlibcode $pdlibyow $db $bt $st $nl $is"
-                aux='constants w3triamd w3servmd  w3arrymd w3dispmd w3timemd w3gsrumd'
+                aux='constants w3triamd w3servmd w3iorsmd w3iorsmdold w3arrymd w3dispmd w3timemd w3gsrumd'
                 aux="$aux" ;;
       gx_outf) IDstring='GrADS input file generation (gridded fields)'
                core=
