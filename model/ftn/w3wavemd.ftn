@@ -421,7 +421,7 @@
                                  DELX, DELY, DELA, DEPTH, D50, PSIC
 !/SEC1     REAL                    :: DTGTEMP
 !
-      REAL, ALLOCATABLE       :: FIELD(:),FIELDGHOST(:)
+      REAL, ALLOCATABLE       :: FIELD(:),FIELDGHOST(:), FIELDTRY(:,:)
       REAL                    :: TMP1(4), TMP2(3), TMP3(2), TMP4(2)
 !/IC3 REAL, ALLOCATABLE       :: WN_I(:)
 !/REFRX REAL, ALLOCATABLE       :: CIK(:)
@@ -1226,7 +1226,11 @@
 !/OMPX/!$OMP PARALLEL PRIVATE (ISPEC,FIELD)
 !
               IF ( FLOMP ) ALLOCATE ( FIELD(1-NY:NY*(NX+2)) )
-              IF ( FLOMP ) ALLOCATE ( FIELDGHOST(1-NY:NY*(NX+2)) )
+              IF( RGLGRD .AND. (ICLOSE.EQ.ICLOSE_TRPL) .AND. FLOMP) THEN 
+                  ALLOCATE ( FIELDGHOST(1-NY:NY*(NX+2))  ) 
+                  ALLOCATE (   FIELDTRY(1-NY:NY*(NX+2),2))
+              ENDIF
+
 !
 !/OMPX/!$OMP DO SCHEDULE (DYNAMIC,1)
 !
@@ -1241,7 +1245,9 @@
                      IK        = 1 + (ISPEC-1)/NTH
                      ITHROT    = 1 + MOD(ITH+NTH/2-1,NTH) 
                      ISPECROT  = ITHROT+(IK-1)*NTH 
-                     CALL W3GATH ( ISPECROT, FIELDGHOST )
+                     CALL W3GATH ( ISPECROT, FIELDTRY )
+                     FIELD=FIELDTRY(:,1)
+                     FIELDGHOST=FIELDTRY(:,2)
                   ENDIF 
 !/SMC !!Li   Otherwise use SMC sub to gether field
 !/SMC                    CALL W3GATHSMC ( ISPEC, FIELD )
@@ -2124,7 +2130,7 @@
 !/ ------------------------------------------------------------------- /
 !/S      USE W3SERVMD, ONLY: STRACE
 !/
-      USE W3GDATMD, ONLY: NSPEC, NX, NY, NSEA, NSEAL, MAPSF, DMIN
+      USE W3GDATMD, ONLY: NSPEC, NX, NY, NSEA, NSEAL, MAPSF, DMIN, NTH
       USE W3WDATMD, ONLY: A => VA
 !/MPI      USE W3ADATMD, ONLY: MPIBUF, BSTAT, IBFLOC, ISPLOC, BISPL, &
 !/MPI                          NSPLOC, NRQSG2, IRQSG2, GSTORE
@@ -2138,12 +2144,14 @@
 !/ Parameter list
 !/
       INTEGER, INTENT(IN)     :: ISPEC
-      REAL, INTENT(OUT)       :: FIELD(1-NY:NY*(NX+2))
+      REAL, INTENT(OUT)       :: FIELD(1-NY:NY*(NX+2),2)
 !/
 !/ ------------------------------------------------------------------- /
 !/ Local parameters
 !/
 !/SHRD      INTEGER                 :: ISEA, IXY
+!/SHRD      INTEGER                 :: ITH, IK, ITHROT, ISPECROT
+!/MPI      INTEGER                 :: ITH, IK, ITHROT, ISPECROT
 !/MPI      INTEGER                 :: STATUS(MPI_STATUS_SIZE,NSPEC),  &
 !/MPI                                 IOFF, IERR_MPI, JSEA, ISEA,     &
 !/MPI                                 IXY, IS0, IB0, NPST, J
@@ -2158,16 +2166,27 @@
 !
 ! 1.  Shared memory version ------------------------------------------ /
 !
+!/SHRD      ITH       = 1 + MOD(ISPEC-1,NTH)
+!/SHRD      IK        = 1 + (ISPEC-1)/NTH
+!/SHRD      ITHROT    = 1 + MOD(ITH+NTH/2-1,NTH)
+!/SHRD      ISPECROT  = ITHROT+(IK-1)*NTH
 !/SHRD      DO ISEA=1, NSEA
 !/SHRD        IXY        = MAPSF(ISEA,3)
-!/SHRD        FIELD(IXY) = A(ISPEC,ISEA)
-!/SHRD        END DO
+!/SHRD        FIELD(IXY,1) = A(ISPEC,ISEA)
+!/SHRD        FIELD(IXY,2) = A(ISPECROT,ISEA)
+!/SHRD      END DO
 !
 !/SHRD      RETURN
 !
 ! 2.  Distributed memory version ( MPI ) ----------------------------- /
 ! 2.a Update counters
 !
+!  Determine ISPECROT for tripolar:
+!/MPI      ITH        = 1 + MOD(ISPEC-1,NTH)
+!/MPI      IK        = 1 + (ISPEC-1)/NTH
+!/MPI      ITHROT    = 1 + MOD(ITH+NTH/2-1,NTH)
+!/MPI      ISPECROT  = ITHROT+(IK-1)*NTH
+
 !/MPI      ISPLOC = ISPLOC + 1
 !/MPI      IBFLOC = IBFLOC + 1
 !/MPI      IF ( IBFLOC .GT. MPIBUF ) IBFLOC = 1
@@ -2201,13 +2220,14 @@
 !/MPI          IF ( NRQSG2 .GT. 0 ) CALL                              &
 !/MPI               MPI_STARTALL ( NRQSG2, IRQSG2(IOFF,1), IERR_MPI )
 !/MPIT          STRT(10:10) = 'g'
-!/MPI        END IF
+!/MPI      END IF
 !
 ! 2.c Put local spectral densities in store
 !
 !/MPI      DO JSEA=1, NSEAL
-!/MPI        GSTORE(IAPROC+(JSEA-1)*NAPROC,IBFLOC) = A(ISPEC,JSEA)
-!/MPI        END DO
+!/MPI        GSTORE(IAPROC+(JSEA-1)*NAPROC,IBFLOC,1) = A(ISPEC,JSEA)
+!/MPI        GSTORE(IAPROC+(JSEA-1)*NAPROC,IBFLOC,2) = A(ISPECROT,JSEA)
+!/MPI      END DO
 !
 ! 2.d Wait for remote spectral densities
 !
@@ -2223,8 +2243,9 @@
 !
 !/MPI      DO ISEA=1, NSEA
 !/MPI        IXY        = MAPSF(ISEA,3)
-!/MPI        FIELD(IXY) = GSTORE(ISEA,IBFLOC)
-!/MPI        END DO
+!/MPI        FIELD(IXY,1) = GSTORE(ISEA,IBFLOC,1)
+!/MPI        FIELD(IXY,2) = GSTORE(ISEA,IBFLOC,2)
+!/MPI      END DO
 !
 ! 2.f Pre-fetch data in available buffers
 !
@@ -2405,7 +2426,7 @@
 !/SHRD      DO ISEA=1, NSEA
 !/SHRD        IXY           = MAPSF(ISEA,3)
 !/SHRD        IF ( MAPSTA(IXY) .GE. 1 ) A(ISPEC,ISEA) = FIELD(IXY)
-!/SHRD        END DO
+!/SHRD      END DO
 !
 !/SHRD      RETURN
 !
@@ -2423,8 +2444,8 @@
 !
 !/MPI      DO ISEA=1, NSEA
 !/MPI        IXY    = MAPSF(ISEA,3)
-!/MPI        IF ( MAPSTA(IXY) .GE. 1 ) SSTORE(ISEA,IBFLOC) = FIELD(IXY)
-!/MPI        END DO
+!/MPI        IF ( MAPSTA(IXY) .GE. 1 ) SSTORE(ISEA,IBFLOC,1) = FIELD(IXY)
+!/MPI      END DO
 !
 ! 2.c Send spectral densities to appropriate remote
 !
@@ -2441,8 +2462,8 @@
 !/MPI      DO JSEA=1, NSEAL
 !/MPI        ISEA   = IAPROC+(JSEA-1)*NAPROC
 !/MPI        IXY    = MAPSF(ISEA,3)
-!/MPI        IF (MAPSTA(IXY) .GE. 1) A(ISPEC,JSEA) = SSTORE(ISEA,IBFLOC)
-!/MPI        END DO
+!/MPI        IF (MAPSTA(IXY) .GE. 1) A(ISPEC,JSEA) =SSTORE(ISEA,IBFLOC,1)
+!/MPI      END DO
 !
 ! 2.e Check if any sends have finished
 !

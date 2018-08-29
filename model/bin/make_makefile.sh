@@ -850,7 +850,7 @@
                data='w3gdatmd w3adatmd w3idatmd w3odatmd w3wdatmd'
                prop=
              source="w3triamd $stx $nlx $btx  $is"
-                 IO="w3iogrmd $couplmd $agcmmd $ogcmmd $igcmmd"
+                 IO="w3iogrmd w3tripmd $couplmd $agcmmd $ogcmmd $igcmmd"
                 aux="constants w3servmd w3timemd $tidecode w3arrymd w3dispmd w3gsrumd" ;;
      ww3_prnc) IDstring='NetCDF field preprocessor'
                core='w3fldsmd'

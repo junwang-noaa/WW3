@@ -477,7 +477,7 @@
 !/MPI                                 NSPLOC
 !/MPI        INTEGER               :: BSTAT(MPIBUF), BISPL(MPIBUF)
 !/MPI        INTEGER, POINTER      :: IRQSG1(:,:), IRQSG2(:,:)
-!/MPI        REAL, POINTER         :: GSTORE(:,:), SSTORE(:,:)
+!/MPI        REAL, POINTER         :: GSTORE(:,:,:), SSTORE(:,:,:)
         REAL, POINTER         :: SPPNT(:,:,:)
 !
         INTEGER               :: ITIME, IPASS, IDLAST, NSEALM
@@ -588,7 +588,7 @@
 !/MPI                                 NSPLOC
 !/MPI      INTEGER, POINTER        :: BSTAT(:), BISPL(:)
 !/MPI      INTEGER, POINTER        :: IRQSG1(:,:), IRQSG2(:,:)
-!/MPI      REAL, POINTER           :: GSTORE(:,:), SSTORE(:,:)
+!/MPI      REAL, POINTER           :: GSTORE(:,:,:), SSTORE(:,:,:)
       REAL, POINTER           :: SPPNT(:,:,:)
 !
       INTEGER, POINTER        :: ITIME, IPASS, IDLAST, NSEALM

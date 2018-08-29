@@ -158,10 +158,11 @@
 # 1.a.4 Setup program lists  - - - - - - - - - - - - - - - - - - - - - - - - - - 
 
 # reg_programs = non-NetCDF programs
-  reg_programs="ww3_grid"
-  reg_programs="$reg_programs ww3_strt"
-  reg_programs="$reg_programs ww3_bound"
-  reg_programs="$reg_programs ww3_outf"
+#  reg_programs="ww3_grid"
+#  reg_programs="$reg_programs ww3_strt"
+#  reg_programs="ww3_strt"
+#  reg_programs="$reg_programs ww3_bound"
+  reg_programs="ww3_outf"
   reg_programs="$reg_programs ww3_outp"
   reg_programs="$reg_programs ww3_trck"
   reg_programs="$reg_programs ww3_grib"
@@ -174,6 +175,10 @@
 
 # cdf_programs = NetCDF programs
   cdf_programs="ww3_prnc"
+  cdf_programs="$cdf_programs ww3_grid"
+  cdf_programs="$cdf_programs ww3_strt"
+  #cdf_programs="$cdf_programs ww3_prep"
+  cdf_programs="$cdf_programs ww3_bound"
   cdf_programs="$cdf_programs ww3_ounf"
   cdf_programs="$cdf_programs ww3_ounp"
   cdf_programs="$cdf_programs ww3_bounc"
@@ -209,16 +214,16 @@
     fi
   fi
 
-  if [ -n "`grep OASIS $switch_file`" ]
-  then
+#  if [ -n "`grep OASIS $switch_file`" ]
+#  then
     cdf_programs="$cdf_programs ww3_shel"
     cdf_programs="$cdf_programs ww3_prep"
     cdf_programs="$cdf_programs ww3_gspl"
-  else
+#  else
     reg_programs="$reg_programs ww3_shel"
     reg_programs="$reg_programs ww3_prep"
     reg_programs="$reg_programs ww3_gspl"
-  fi
+#  fi
 
 # all_programs = all possible programs
   all_programs="$reg_programs $cdf_programs"

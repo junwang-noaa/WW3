@@ -444,7 +444,7 @@ then
     errmsg "Error occured during WW3 $prog build"
     exit 1
   fi
-
+  cp $path_i/ocean_hgrid.nc $path_w/
   for g in $all_grids
   do
 

@@ -1267,7 +1267,7 @@
 !/S      USE W3SERVMD, ONLY: STRACE
 !
       USE W3GDATMD, ONLY: NSEA
-!/MPI      USE W3GDATMD, ONLY: NSPEC
+!/MPI      USE W3GDATMD, ONLY: NSPEC, NTH
 !/MPI      USE W3WDATMD, ONLY: VA
 !/MPI      USE W3ADATMD, ONLY: MPI_COMM_WAVE, WW3_FIELD_VEC,         &
 !/MPI                          WW3_SPEC_VEC, IAPPRO, WADATS,         &
@@ -1291,6 +1291,8 @@
       INTEGER                 :: NSEALM, NXXXX
 !/MPI      INTEGER                 :: IERR_MPI, ISP, IH, ITARG,       &
 !/MPI                                 IERR1, IERR2, IP
+!/MPI      INTEGER                 :: ITH, IK, ITHROT, ISPROT
+!/MPI      REAL                    :: ARRAY2RECV(2), ARRAY2SEND(2)
 !/S      INTEGER, SAVE           :: IENT = 0
 !/
 !/ ------------------------------------------------------------------- /
@@ -1303,9 +1305,9 @@
 !/DIST      NSEALM = 1 + (NSEA-1)/NAPROC
       NXXXX  = NSEALM * NAPROC
 !
-!/MPI      CALL MPI_TYPE_VECTOR ( NSEALM, 1, NAPROC, MPI_REAL,        &
+!/MPI      CALL MPI_TYPE_VECTOR ( NSEALM, 2, NAPROC, MPI_REAL,        &
 !/MPI                             WW3_FIELD_VEC, IERR_MPI )
-!/MPI      CALL MPI_TYPE_VECTOR ( NSEALM, 1, NSPEC, MPI_REAL,         &
+!/MPI      CALL MPI_TYPE_VECTOR ( NSEALM, 2, NSPEC, MPI_REAL,         &
 !/MPI                             WW3_SPEC_VEC, IERR_MPI )
 !/MPI      CALL MPI_TYPE_COMMIT ( WW3_FIELD_VEC, IERR_MPI )
 !/MPI      CALL MPI_TYPE_COMMIT ( WW3_SPEC_VEC, IERR_MPI )
@@ -1333,14 +1335,23 @@
 !/MPI      IRQSG1 => WADATS(IMOD)%IRQSG1
 !/MPI      IH     = 0
 !
+
+
 !/MPIT      WRITE (NDST,9021)
 !/MPI      DO ISP=1, NSPEC
 !/MPI        IF ( IAPPRO(ISP) .NE. IAPROC ) THEN
 !/MPI            ITARG  = IAPPRO(ISP) - 1
 !/MPI            IH     = IH + 1
-!/MPI            CALL MPI_SEND_INIT ( VA(ISP,1), 1, WW3_SPEC_VEC,     &
+!  add calculation of irot
+!/MPI            ITH       = 1 + MOD(ISP-1,NTH)
+!/MPI            IK        = 1 + (ISP-1)/NTH
+!/MPI            ITHROT    = 1 + MOD(ITH+NTH/2-1,NTH)
+!/MPI            ISPROT  = ITHROT+(IK-1)*NTH
+!/MPI            ARRAY2SEND(1)=VA(ISP,1); ARRAY2SEND(2)=VA(ISPROT,1)
+!/MPI            ARRAY2RECV(1)=VA(ISP,1); ARRAY2RECV(1)=VA(ISPROT,1)
+!/MPI            CALL MPI_SEND_INIT ( ARRAY2SEND, 2, WW3_SPEC_VEC,     &
 !/MPI                 ITARG, ISP, MPI_COMM_WAVE, IRQSG1(IH,1), IERR1 )
-!/MPI            CALL MPI_RECV_INIT ( VA(ISP,1), 1, WW3_SPEC_VEC,     &
+!/MPI            CALL MPI_RECV_INIT ( ARRAY2RECV , 2, WW3_SPEC_VEC,     &
 !/MPI                 ITARG, ISP, MPI_COMM_WAVE, IRQSG1(IH,2), IERR2 )
 !/MPIT            WRITE (NDST,9022) IH, ISP, ITARG+1,                 &
 !/MPIT                   IRQSG1(IH,1), IERR1, IRQSG1(IH,2), IERR2
@@ -1354,8 +1365,8 @@
 !
 !/MPI      NRQSG2 = MAX( 1 , NAPROC-1 )
 !/MPI      ALLOCATE ( WADATS(IMOD)%IRQSG2(NRQSG2*NSPLOC,2),           &
-!/MPI                 WADATS(IMOD)%GSTORE(NAPROC*NSEALM,MPIBUF),      &
-!/MPI                 WADATS(IMOD)%SSTORE(NAPROC*NSEALM,MPIBUF) )
+!/MPI                 WADATS(IMOD)%GSTORE(NAPROC*NSEALM,MPIBUF,2),      &
+!/MPI                 WADATS(IMOD)%SSTORE(NAPROC*NSEALM,MPIBUF,2) )
 !/MPI      NRQSG2 = NAPROC - 1
 !
 !/MPI      IRQSG2 => WADATS(IMOD)%IRQSG2
@@ -1388,11 +1399,11 @@
 !/MPI                  IH     = IH + 1
 !
 !/MPI                  CALL MPI_RECV_INIT                             &
-!/MPI                     ( WADATS(IMOD)%GSTORE(IP,IBFLOC), 1,        &
+!/MPI                     ( WADATS(IMOD)%GSTORE(IP,IBFLOC,1:2), 2,        &
 !/MPI                       WW3_FIELD_VEC, ITARG, ISP, MPI_COMM_WAVE, &
 !/MPI                       IRQSG2(IH,1), IERR2 )
 !/MPI                  CALL MPI_SEND_INIT                             &
-!/MPI                     ( WADATS(IMOD)%SSTORE(IP,IBFLOC), 1,        &
+!/MPI                     ( WADATS(IMOD)%SSTORE(IP,IBFLOC,1:2), 2,        &
 !/MPI                       WW3_FIELD_VEC, ITARG, ISP, MPI_COMM_WAVE, &
 !/MPI                       IRQSG2(IH,2), IERR2 )
 !/MPIT                  WRITE (NDST,9032) IH, ISP, ITARG+1, IBFLOC,   &
