@@ -72,7 +72,9 @@ integer:: rcode, ncid
 
 integer :: I2, I1, P, Q, p_, q_
 
+NC_filename='./../input/ocean_hgrid.nc'
 NC_filename='ocean_hgrid.nc'
+
 
 GridInfo%var1_name = 'x'
 GridInfo%var2_name = 'y'
@@ -237,6 +239,7 @@ integer, dimension(2) :: dims, dim_id, START, FINISH
 character(len=14) :: dim_name(4)
 integer :: rcode
 
+  write(*,*) 'NETCDF Filename: ', trim(NC_filename)
   rcode = NF90_OPEN(trim(NC_filename), NF90_NOWRITE, ncid)
   call CheckRcode(rcode,1)
   rcode = NF90_INQ_VARID(ncid, var, var_id)

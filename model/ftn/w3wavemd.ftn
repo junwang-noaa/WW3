@@ -1241,7 +1241,7 @@
                      IK        = 1 + (ISPEC-1)/NTH
                      ITHROT    = 1 + MOD(ITH+NTH/2-1,NTH) 
                      ISPECROT  = ITHROT+(IK-1)*NTH 
-                     CALL W3GATH ( ISPECROT, FIELDGHOST )
+                     CALL W3GATHROT ( ISPECROT, FIELDGHOST )
                   ENDIF 
 !/SMC !!Li   Otherwise use SMC sub to gether field
 !/SMC                    CALL W3GATHSMC ( ISPEC, FIELD )
