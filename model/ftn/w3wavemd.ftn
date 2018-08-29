@@ -1233,7 +1233,7 @@
               DO ISPEC=1, NSPEC
                 IF ( IAPPRO(ISPEC) .EQ. IAPROC ) THEN
 !!Li              CALL W3GATH ( ISPEC, FIELD )
-                  IF( RGLGRD ) CALL W3GATH ( ISPEC, FIELD )
+                  !IF( RGLGRD ) CALL W3GATH ( ISPEC, FIELD )
                   IF( RGLGRD .AND. (ICLOSE.EQ.ICLOSE_TRPL) ) THEN 
                      !For Tripolar grid, we need ghost nodes for the
                      !fold that are rotated 180 deg
@@ -1241,7 +1241,7 @@
                      IK        = 1 + (ISPEC-1)/NTH
                      ITHROT    = 1 + MOD(ITH+NTH/2-1,NTH) 
                      ISPECROT  = ITHROT+(IK-1)*NTH 
-                     CALL W3GATH ( ISPECROT, FIELDGHOST )
+                     CALL W3GATH ( ISPEC, FIELD, ISPECROT, FIELDGHOST )
                   ENDIF 
 !/SMC !!Li   Otherwise use SMC sub to gether field
 !/SMC                    CALL W3GATHSMC ( ISPEC, FIELD )
@@ -2039,7 +2039,7 @@
 !/
       END SUBROUTINE W3WAVE
 !/ ------------------------------------------------------------------- /
-      SUBROUTINE W3GATH ( ISPEC, FIELD )
+      SUBROUTINE W3GATH ( ISPEC, FIELD,  ISPECROT, FIELDGHOST )
 !/
 !/                  +-----------------------------------+
 !/                  | WAVEWATCH III           NOAA/NCEP |
@@ -2127,7 +2127,7 @@
       USE W3GDATMD, ONLY: NSPEC, NX, NY, NSEA, NSEAL, MAPSF, DMIN
       USE W3WDATMD, ONLY: A => VA
 !/MPI      USE W3ADATMD, ONLY: MPIBUF, BSTAT, IBFLOC, ISPLOC, BISPL, &
-!/MPI                          NSPLOC, NRQSG2, IRQSG2, GSTORE
+!/MPI                          NSPLOC, NRQSG2, IRQSG2, GSTORE, TSTORE
 !/MPI      USE W3ODATMD, ONLY: NDST, IAPROC, NAPROC, NOTYPE
 !/
       IMPLICIT NONE
@@ -2137,8 +2137,9 @@
 !/ ------------------------------------------------------------------- /
 !/ Parameter list
 !/
-      INTEGER, INTENT(IN)     :: ISPEC
+      INTEGER, INTENT(IN)     :: ISPEC, ISPECROT
       REAL, INTENT(OUT)       :: FIELD(1-NY:NY*(NX+2))
+      REAL, INTENT(OUT)       :: FIELDGHOST(1-NY:NY*(NX+2))
 !/
 !/ ------------------------------------------------------------------- /
 !/ Local parameters
@@ -2155,12 +2156,17 @@
 !/S      CALL STRACE (IENT, 'W3GATH')
 !
        FIELD  = 0.
+       FIELDGHOST = 0.
+
+       write(*,*) 'W3GATH JDM 1: Entered W3Gath', IAPROC, ISPEC, ISPECROT
+
 !
 ! 1.  Shared memory version ------------------------------------------ /
 !
 !/SHRD      DO ISEA=1, NSEA
 !/SHRD        IXY        = MAPSF(ISEA,3)
 !/SHRD        FIELD(IXY) = A(ISPEC,ISEA)
+!/SHRD        FIELDGHOST(IXY) = A(ISPECROT,ISEA)
 !/SHRD        END DO
 !
 !/SHRD      RETURN
@@ -2172,48 +2178,60 @@
 !/MPI      IBFLOC = IBFLOC + 1
 !/MPI      IF ( IBFLOC .GT. MPIBUF ) IBFLOC = 1
 !
-!/MPIT      IF ( ISPLOC .EQ. 1 ) THEN
-!/MPIT          STR = '--------------+'
-!/MPIT          WRITE (NDST,9000) STR
-!/MPIT        END IF
-!/MPIT      STR    = '              |'
-!/MPIT      STRT   = STR(IBFLOC)
-!/MPIT      STRT(9:9) = 'A'
+!/MPI      IF ( ISPLOC .EQ. 1 ) THEN
+!/MPI          STR = '--------------+'
+!/MPI          WRITE (NDST,9000) STR
+!/MPI        END IF
+!/MPI      STR    = '              |'
+!/MPI      STRT   = STR(IBFLOC)
+!/MPI      STRT(9:9) = 'A'
 !
 ! 2.b Check status of present buffer
 ! 2.b.1 Scatter (send) still in progress, wait to end
 !
+       write(*,*) 'W3GATH JDM 2', IAPROC, ISPEC
 !/MPI      IF ( BSTAT(IBFLOC) .EQ. 2 ) THEN
 !/MPI          IOFF =  1 + (BISPL(IBFLOC)-1)*NRQSG2
 !/MPI          IF ( NRQSG2 .GT. 0 ) CALL                              &
 !/MPI               MPI_WAITALL ( NRQSG2, IRQSG2(IOFF,2),             &
 !/MPI                             STATUS, IERR_MPI )
 !/MPI          BSTAT(IBFLOC) = 0
-!/MPIT          STRT(13:13) = 'S'
+!/MPI          STRT(13:13) = 'S'
 !/MPI        END IF
 !
+       write(*,*) 'W3GATH JDM 3', IAPROC, ISPEC
 ! 2.b.2 Gather (recv) not yet posted, post now
 !
 !/MPI      IF ( BSTAT(IBFLOC) .EQ. 0 ) THEN
 !/MPI          BSTAT(IBFLOC) = 1
 !/MPI          BISPL(IBFLOC) = ISPLOC
 !/MPI          IOFF =  1 + (ISPLOC-1)*NRQSG2
+       write(*,*) 'W3GATH JDM 3 a', IAPROC, ISPEC
 !/MPI          IF ( NRQSG2 .GT. 0 ) CALL                              &
 !/MPI               MPI_STARTALL ( NRQSG2, IRQSG2(IOFF,1), IERR_MPI )
-!/MPIT          STRT(10:10) = 'g'
+       write(*,*) 'W3GATH JDM 3 b', IAPROC, ISPEC
+!/MPI          IF ( NRQSG2 .GT. 0 ) CALL                              &
+!/MPI               MPI_STARTALL ( NRQSG2, IRQSG2(IOFF,3), IERR_MPI )
+!/MPI          STRT(10:10) = 'g'
 !/MPI        END IF
 !
+       write(*,*) 'W3GATH JDM 4', IAPROC, ISPEC
 ! 2.c Put local spectral densities in store
 !
 !/MPI      DO JSEA=1, NSEAL
 !/MPI        GSTORE(IAPROC+(JSEA-1)*NAPROC,IBFLOC) = A(ISPEC,JSEA)
+!/MPI        TSTORE(IAPROC+(JSEA-1)*NAPROC,IBFLOC) = A(ISPECROT,JSEA)
 !/MPI        END DO
 !
+       write(*,*) 'W3GATH JDM 4a', IAPROC, ISPEC
 ! 2.d Wait for remote spectral densities
 !
 !/MPI      IOFF =  1 + (BISPL(IBFLOC)-1)*NRQSG2
 !/MPI      IF ( NRQSG2 .GT. 0 ) CALL                                  &
 !/MPI           MPI_WAITALL ( NRQSG2, IRQSG2(IOFF,1), STATUS, IERR_MPI )
+       write(*,*) 'W3GATH JDM 4b', IAPROC, ISPEC
+!!/MPI      IF ( NRQSG2 .GT. 0 ) CALL                                  &
+!!/MPI           MPI_WAITALL ( NRQSG2, IRQSG2(IOFF,3), STATUS, IERR_MPI )
 !
 !/MPIT      STRT(11:11) = 'G'
 !/MPIT      WRITE (STRT(1:7),'(I2,I5)') BSTAT(IBFLOC), ISPLOC
@@ -2221,13 +2239,16 @@
 !
 ! 2.e Convert storage array to field.
 !
+       write(*,*) 'W3GATH JDM 5', IAPROC, ISPEC
 !/MPI      DO ISEA=1, NSEA
 !/MPI        IXY        = MAPSF(ISEA,3)
 !/MPI        FIELD(IXY) = GSTORE(ISEA,IBFLOC)
+!/MPI        FIELDGHOST(IXY) = TSTORE(ISEA,IBFLOC)
 !/MPI        END DO
 !
 ! 2.f Pre-fetch data in available buffers
 !
+       write(*,*) 'W3GATH JDM 6', IAPROC, ISPEC
 !/MPI      IS0    = ISPLOC
 !/MPI      IB0    = IBFLOC
 !/MPI      NPST   = 0
@@ -2242,48 +2263,52 @@
 !/MPI            IOFF       = 1 + (IS0-1)*NRQSG2
 !/MPI            IF ( NRQSG2 .GT. 0 ) CALL                            &
 !/MPI                 MPI_STARTALL ( NRQSG2, IRQSG2(IOFF,1), IERR_MPI )
+!/MPI            IF ( NRQSG2 .GT. 0 ) CALL                            &
+!/MPI                 MPI_STARTALL ( NRQSG2, IRQSG2(IOFF,3), IERR_MPI )
 !/MPI            NPST       = NPST + 1
-!/MPIT            STRT        = STR(IB0)
-!/MPIT            STRT(10:10) = 'g'
-!/MPIT            WRITE (STRT(1:7),'(I2,I5)') BSTAT(IB0), BISPL(IB0)
-!/MPIT            STR(IB0)    = STRT
+!/MPI            STRT        = STR(IB0)
+!/MPI            STRT(10:10) = 'g'
+!/MPI            WRITE (STRT(1:7),'(I2,I5)') BSTAT(IB0), BISPL(IB0)
+!/MPI            STR(IB0)    = STRT
 !/MPI          END IF
 !/MPI        IF ( NPST .GE. 2 ) EXIT
 !/MPI        END DO
 !
+       write(*,*) 'W3GATH JDM 7', IAPROC, ISPEC
 ! 2.g Test output
 !
-!/MPIT      DO IB0=1, MPIBUF
-!/MPIT        STRT   = STR(IB0)
-!/MPIT        IF ( STRT(2:2) .EQ. ' ' ) THEN
-!/MPIT            IF ( BSTAT(IB0) .EQ. 0 ) THEN
-!/MPIT                WRITE (STRT(1:2),'(I2)') BSTAT(IB0)
-!/MPIT              ELSE
-!/MPIT                WRITE (STRT(1:7),'(I2,I5)') BSTAT(IB0), BISPL(IB0)
-!/MPIT              END IF
-!/MPIT            STR(IB0) = STRT
-!/MPIT          END IF
-!/MPIT        END DO
-!/MPIT      WRITE (NDST,9010) ISPLOC, STR
+!/MPI      DO IB0=1, MPIBUF
+!/MPI        STRT   = STR(IB0)
+!/MPI        IF ( STRT(2:2) .EQ. ' ' ) THEN
+!/MPI            IF ( BSTAT(IB0) .EQ. 0 ) THEN
+!/MPI                WRITE (STRT(1:2),'(I2)') BSTAT(IB0)
+!/MPI              ELSE
+!/MPI                WRITE (STRT(1:7),'(I2,I5)') BSTAT(IB0), BISPL(IB0)
+!/MPI              END IF
+!/MPI            STR(IB0) = STRT
+!/MPI          END IF
+!/MPI        END DO
+!/MPI      WRITE (NDST,9010) ISPLOC, STR
 !
+       write(*,*) 'W3GATH JDM 8', IAPROC, ISPEC
 !/MPI      RETURN
 !
 ! Formats
 !
-!/MPIT 9000 FORMAT ( ' TEST OF BUFFER MANAGEMENT MPI :'/              &
-!/MPIT               ' -------------------------------'/              &
-!/MPIT      '      RECORDS ALTERNATELY WRITTEN BY W3GATH AND W3SCAT'/ &
-!/MPIT      '      FRIST COLLUMN  : LOCAL ISPEC'/                     &
-!/MPIT      '      OTHER COLLUMNS : BUFFER STATUS INDICATOR '/        &
-!/MPIT      '                        0 : INACTIVE'/                   &
-!/MPIT      '                        1 : RECEIVING'/                  &
-!/MPIT      '                        2 : SENDING'/                    &
-!/MPIT      '                       LOCAL ISPEC FOR BUFFER'/          &
-!/MPIT      '                       A  : ACTIVE BUFFER'/              &
-!/MPIT      '                       g/G: START/FINISH RECIEVE'/       &
-!/MPIT      '                       s/S: START/FINISH SEND'/          &
-!/MPIT      ' +-----+',8A15)
-!/MPIT 9010 FORMAT ( ' |',I4,' |',8A15)
+!/MPI 9000 FORMAT ( ' TEST OF BUFFER MANAGEMENT MPI :'/              &
+!/MPI               ' -------------------------------'/              &
+!/MPI      '      RECORDS ALTERNATELY WRITTEN BY W3GATH AND W3SCAT'/ &
+!/MPI      '      FRIST COLLUMN  : LOCAL ISPEC'/                     &
+!/MPI      '      OTHER COLLUMNS : BUFFER STATUS INDICATOR '/        &
+!/MPI      '                        0 : INACTIVE'/                   &
+!/MPI      '                        1 : RECEIVING'/                  &
+!/MPI      '                        2 : SENDING'/                    &
+!/MPI      '                       LOCAL ISPEC FOR BUFFER'/          &
+!/MPI      '                       A  : ACTIVE BUFFER'/              &
+!/MPI      '                       g/G: START/FINISH RECIEVE'/       &
+!/MPI      '                       s/S: START/FINISH SEND'/          &
+!/MPI      ' +-----+',8A15)
+!/MPI 9010 FORMAT ( ' |',I4,' |',8A15)
 !/
 !/ End of W3GATH ----------------------------------------------------- /
 !/

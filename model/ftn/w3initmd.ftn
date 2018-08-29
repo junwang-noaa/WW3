@@ -1267,13 +1267,14 @@
 !/S      USE W3SERVMD, ONLY: STRACE
 !
       USE W3GDATMD, ONLY: NSEA
-!/MPI      USE W3GDATMD, ONLY: NSPEC
+!/MPI      USE W3GDATMD, ONLY: NSPEC, NTH
 !/MPI      USE W3WDATMD, ONLY: VA
 !/MPI      USE W3ADATMD, ONLY: MPI_COMM_WAVE, WW3_FIELD_VEC,         &
 !/MPI                          WW3_SPEC_VEC, IAPPRO, WADATS,         &
 !/MPI                          NRQSG1, IRQSG1, NRQSG2, IRQSG2,       &
-!/MPI                          GSTORE, SSTORE, MPIBUF, BSTAT,        &
+!/MPI                          GSTORE, SSTORE, MPIBUF, BSTAT, TSTORE, &
 !/MPI                          BISPL, ISPLOC, IBFLOC, NSPLOC
+
       USE W3ODATMD, ONLY: NDST, NAPROC, IAPROC
 !/
       IMPLICIT NONE
@@ -1289,6 +1290,7 @@
 !/ Local parameters
 !/
       INTEGER                 :: NSEALM, NXXXX
+!/MPI      INTEGER                 :: ITH, IK, ITHROT, ISPROT
 !/MPI      INTEGER                 :: IERR_MPI, ISP, IH, ITARG,       &
 !/MPI                                 IERR1, IERR2, IP
 !/S      INTEGER, SAVE           :: IENT = 0
@@ -1329,7 +1331,11 @@
 !/MPI        END DO
 !
 !/MPI      NRQSG1 = NSPEC - NSPLOC
-!/MPI      ALLOCATE ( WADATS(IMOD)%IRQSG1(MAX(1,NRQSG1),2) )
+! IF no tripolar: 
+!!/MPI      ALLOCATE ( WADATS(IMOD)%IRQSG1(MAX(1,NRQSG1),2) )
+!else if tripolar
+!/MPI      ALLOCATE ( WADATS(IMOD)%IRQSG1(MAX(1,NRQSG1),3) )
+!endif
 !/MPI      IRQSG1 => WADATS(IMOD)%IRQSG1
 !/MPI      IH     = 0
 !
@@ -1338,10 +1344,18 @@
 !/MPI        IF ( IAPPRO(ISP) .NE. IAPROC ) THEN
 !/MPI            ITARG  = IAPPRO(ISP) - 1
 !/MPI            IH     = IH + 1
+!/MPI            ITH       = 1 + MOD(ISP-1,NTH)
+!/MPI            IK        = 1 + (ISP-1)/NTH
+!/MPI            ITHROT    = 1 + MOD(ITH+NTH/2-1,NTH)
+!/MPI            ISPROT  = ITHROT+(IK-1)*NTH
 !/MPI            CALL MPI_SEND_INIT ( VA(ISP,1), 1, WW3_SPEC_VEC,     &
 !/MPI                 ITARG, ISP, MPI_COMM_WAVE, IRQSG1(IH,1), IERR1 )
 !/MPI            CALL MPI_RECV_INIT ( VA(ISP,1), 1, WW3_SPEC_VEC,     &
 !/MPI                 ITARG, ISP, MPI_COMM_WAVE, IRQSG1(IH,2), IERR2 )
+!! if tripolar: 
+!/MPI            CALL MPI_SEND_INIT ( VA(ISPROT,1), 1, WW3_SPEC_VEC,     &
+!/MPI                 ITARG, ISP, MPI_COMM_WAVE, IRQSG1(IH,3), IERR1 )
+!! endif tripolar or behind flag?
 !/MPIT            WRITE (NDST,9022) IH, ISP, ITARG+1,                 &
 !/MPIT                   IRQSG1(IH,1), IERR1, IRQSG1(IH,2), IERR2
 !/MPI          END IF
@@ -1353,20 +1367,24 @@
 !     Also set up buffering of data.
 !
 !/MPI      NRQSG2 = MAX( 1 , NAPROC-1 )
-!/MPI      ALLOCATE ( WADATS(IMOD)%IRQSG2(NRQSG2*NSPLOC,2),           &
+!/MPI      ALLOCATE ( WADATS(IMOD)%IRQSG2(NRQSG2*NSPLOC,3),           &
 !/MPI                 WADATS(IMOD)%GSTORE(NAPROC*NSEALM,MPIBUF),      &
+!/MPI                 WADATS(IMOD)%TSTORE(NAPROC*NSEALM,MPIBUF),      &
 !/MPI                 WADATS(IMOD)%SSTORE(NAPROC*NSEALM,MPIBUF) )
+
 !/MPI      NRQSG2 = NAPROC - 1
 !
 !/MPI      IRQSG2 => WADATS(IMOD)%IRQSG2
 !/MPI      GSTORE => WADATS(IMOD)%GSTORE
 !/MPI      SSTORE => WADATS(IMOD)%SSTORE
+!/MPI      TSTORE => WADATS(IMOD)%TSTORE
 !
 !/MPI      IH     = 0
 !/MPI      ISPLOC = 0
 !/MPI      IBFLOC = 0
 !/MPI      WADATS(IMOD)%GSTORE = 0.
 !/MPI      WADATS(IMOD)%SSTORE = 0.
+!/MPI      WADATS(IMOD)%TSTORE = 0.
 !
 ! 3.a Loop over local spectral components
 !
@@ -1395,6 +1413,12 @@
 !/MPI                     ( WADATS(IMOD)%SSTORE(IP,IBFLOC), 1,        &
 !/MPI                       WW3_FIELD_VEC, ITARG, ISP, MPI_COMM_WAVE, &
 !/MPI                       IRQSG2(IH,2), IERR2 )
+!IF TRIPOLAR: 
+!/MPI                  CALL MPI_RECV_INIT                             &
+!/MPI                     ( WADATS(IMOD)%TSTORE(IP,IBFLOC), 1,        &
+!/MPI                       WW3_FIELD_VEC, ITARG, ISP, MPI_COMM_WAVE, &
+!/MPI                       IRQSG2(IH,3), IERR2 )
+!END IF TRIPOLAR
 !/MPIT                  WRITE (NDST,9032) IH, ISP, ITARG+1, IBFLOC,   &
 !/MPIT                         IRQSG2(IH,1), IERR1, IRQSG2(IH,2), IERR2
 !
