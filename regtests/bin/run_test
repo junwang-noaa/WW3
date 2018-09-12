@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 # --------------------------------------------------------------------------- #
 #                                                                             #
 # Script for running WW-III tests.                                            #
@@ -51,7 +51,7 @@ Required:
   test_name  : name of test case (directory)
 Options:
   -a ww3_env       : use WW3 environment setup file <ww3_env>
-                   :   *default is <source_dir>/wwatch3.env
+                   :   *default is <source_dir>/bin/wwatch3.env
                    :   *file will be created if it does not already exist
   -c cmplr         : setup comp & link files for specified cmplr
   -C coupl         : invoke test using <coupl> coupled application
@@ -148,7 +148,7 @@ do
   -N) nml_input=1 ;;
   -o) shift; outopt="$1" ;;
   -O) pomp=1 ;;
-  -p) shift; runcmd="$1" ; pmpi=1 ;;
+  -p) shift; runcmd="$1" ; runcmd1=$runcmd ; pmpi=1 ;;
   -q) shift; exit_p="$1" ;;
   -r) shift; exec_p="$1" ;;
   -s) shift; swtstr="$1" ;;
@@ -343,7 +343,7 @@ then
   d="`dirname $ww3_env`"; b="`basename $ww3_env`";
   export WWATCH3_ENV="`cd $d 1>/dev/null 2>&1 && pwd`/$b"
 else
-  export WWATCH3_ENV="$path_s/wwatch3.env"
+  export WWATCH3_ENV="$path_b/wwatch3.env"
 fi
 if [ -f $path_b/w3_setup ]
 then
@@ -367,6 +367,23 @@ else
   errmsg "WW3 setup script $path_b/w3_setup not found"
   exit 1
 fi
+
+#if [ ! -e $path_b/w3adc ]
+#then
+#  $path_b/w3_setup $path_s -q
+#fi
+#
+#if [ ! -e $path_b/comp ] || [ ! -e $path_b/link ]
+#then
+#  errmsg "No comp/link file found in $path_b. Use option -c"
+#  exit 1
+#fi  
+#
+#if [ ! -e $path_b/switch ]
+#then
+#  $path_b/w3_setup $path_s -s $file_c -q
+#fi
+
 
 # --------------------------------------------------------------------------- #
 # 3. Execute Test                                                             #
@@ -434,7 +451,7 @@ then
   then # build pre- & post-processing programs with SHRD only
     cat $file_c | sed 's/DIST/SHRD/' | sed 's/MPI //' | \
                   sed 's/OMPG //'    | sed 's/OMPX //'| \
-                  sed 's/OMPH //'                          > $path_b/switch
+                  sed 's/OMPH //'    | sed 's/PDLIB //'  > $path_b/switch
   else
     \cp -f $file_c $path_b/switch
   fi
@@ -455,11 +472,19 @@ then
 
     if [ $grdstr ]
     then
-      ifile=$path_i/${prog}_${grdstr}${gu}.inp
+      fileconf="${prog}_${grdstr}${gu}"
     else
-      ifile=$path_i/$prog${gu}.inp
+      fileconf="${prog}${gu}"
     fi
-    ofile="$path_w/`basename $ifile .inp`.out"
+
+    # select inp/nml files
+    if [ $nml_input ] && [ ! -z "`ls ${path_i}/${fileconf}.nml 2>/dev/null`" ]
+    then
+      ifile="`ls ${path_i}/${fileconf}.nml 2>/dev/null`"
+    else
+      ifile="`ls $path_i/${fileconf}.inp 2>/dev/null`"
+    fi
+
 
     if [ ! -f $path_e/$prog ]
     then
@@ -471,13 +496,26 @@ then
       errmsg "$ifile not found"
       exit 1
     fi
-    \rm -f $prog.inp
-    \ln -s $ifile $prog.inp
+
+    # link conf file
+    if [ $nml_input ] && [ ! -z "`echo ${ifile} | grep -o nml`" ]
+    then
+      \rm -f $prog.nml
+      \ln -s $ifile $prog.nml
+      ofile="$path_w/`basename $ifile .nml`.out"
+    else
+      \rm -f $prog.inp
+      \ln -s $ifile $prog.inp
+      ofile="$path_w/`basename $ifile .inp`.out"
+    fi
+
     echo "   Processing $ifile"
     echo "   Screen output routed to $ofile"
+
     if $path_e/$prog > $ofile
     then
       \rm -f $prog.inp
+      \rm -f $prog.nml
       if [ $multi -eq 2 ]
       then
         mv mod_def.ww3 mod_def.$g
@@ -502,7 +540,14 @@ prog=ww3_strt
 if [ $exec_p = $prog -o $exec_p = "none" ]
 then
 
-ifile="`ls $path_i/$prog.inp 2>/dev/null`"
+# select inp/nml files
+if [ $nml_input ] && [ ! -z "`ls ${path_i}/${prog}.nml 2>/dev/null`" ]
+then
+  ifile="`ls ${path_i}/${prog}.nml 2>/dev/null`"
+else
+  ifile="`ls $path_i/$prog.inp 2>/dev/null`"
+fi
+
 if [ $? = 0 ]
 then
 
@@ -516,7 +561,7 @@ then
   then # build pre- & post-processing programs with SHRD only
     cat $file_c | sed 's/DIST/SHRD/' | sed 's/MPI //' | \
                   sed 's/OMPG //'    | sed 's/OMPX //'| \
-                  sed 's/OMPH //'                          > $path_b/switch
+                  sed 's/OMPH //'    | sed 's/PDLIB //'  > $path_b/switch
 
   else
     \cp -f $file_c $path_b/switch
@@ -542,12 +587,21 @@ then
       gu="_$g"
     fi
 
-    ofile="$path_w/`basename $ifile .inp`${gu}.out"
+    # link conf file
+    if [ $nml_input ] && [ ! -z "`echo ${ifile} | grep -o nml`" ]
+    then
+      \rm -f $prog.nml
+      \ln -s $ifile $prog.nml
+      ofile="$path_w/`basename $ifile .nml`${gu}.out"
+    else
+      \rm -f $prog.inp
+      \ln -s $ifile $prog.inp
+      ofile="$path_w/`basename $ifile .inp`${gu}.out"
+    fi
 
     echo "   Processing $ifile"
     echo "   Screen output routed to $ofile"
-    \rm -f $prog.inp
-    \ln -s $ifile $prog.inp
+
     if [ $multi -eq 2 ]
     then
       \rm -f mod_def.ww3
@@ -556,6 +610,7 @@ then
     if $path_e/$prog > $ofile
     then
       \rm -f $prog.inp
+      \rm -f $prog.nml
       if [ $multi -eq 2 ]
       then
         mv restart.ww3 restart.$g
@@ -583,7 +638,14 @@ prog=ww3_bound
 if [ $exec_p = $prog -o $exec_p = "none" ]
 then
 
-ifile="`ls $path_i/$prog.inp 2>/dev/null`"
+# select inp/nml files
+if [ $nml_input ] && [ ! -z "`ls ${path_i}/${prog}.nml 2>/dev/null`" ]
+then
+  ifile="`ls ${path_i}/${prog}.nml 2>/dev/null`"
+else
+  ifile="`ls $path_i/$prog.inp 2>/dev/null`"
+fi
+
 if [ $? = 0 ]
 then
 
@@ -597,7 +659,7 @@ then
   then # build pre- & post-processing programs with SHRD only
     cat $file_c | sed 's/DIST/SHRD/' | sed 's/MPI //' | \
                   sed 's/OMPG //'    | sed 's/OMPX //'| \
-                  sed 's/OMPH //'                          > $path_b/switch
+                  sed 's/OMPH //'    | sed 's/PDLIB //'  > $path_b/switch
   else
     \cp -f $file_c $path_b/switch
   fi
@@ -621,12 +683,21 @@ then
       gu="_$g"
     fi
 
-    ofile="$path_w/`basename $ifile .inp`${gu}.out"
+    # link conf file
+    if [ $nml_input ] && [ ! -z "`echo ${ifile} | grep -o nml`" ]
+    then
+      \rm -f $prog.nml
+      \ln -s $ifile $prog.nml
+      ofile="$path_w/`basename $ifile .nml`${gu}.out"
+    else
+      \rm -f $prog.inp
+      \ln -s $ifile $prog.inp
+      ofile="$path_w/`basename $ifile .inp`${gu}.out"
+    fi
 
     echo "   Processing $ifile"
     echo "   Screen output routed to $ofile"
-    \rm -f $prog.inp
-    \ln -s $ifile $prog.inp
+
     if [ $multi -eq 2 ]
     then
       \rm -f mod_def.ww3
@@ -635,6 +706,7 @@ then
     if $path_e/$prog > $ofile
     then
       \rm -f $prog.inp
+      \rm -f $prog.nml
       if [ $multi -eq 2 ]
       then
         mv nest.ww3 nest.$g
@@ -662,7 +734,16 @@ prog=ww3_bounc
 if [ $exec_p = $prog -o $exec_p = "none" ]
 then
 
-ifile="`ls $path_i/$prog.inp 2>/dev/null`"
+# select inp/nml files
+if [ $nml_input ] && [ ! -z "`ls ${path_i}/${prog}.nml 2>/dev/null`" ]
+then
+  ifile="`ls ${path_i}/${prog}.nml 2>/dev/null`"
+  files_p="spec.list"
+  files_p="$files_p $(cat ${ifile} | grep -i 'bound%file' |  cut -d '=' -f2 | cut -d "'" -f2 | cut -d '"' -f2 )"
+else
+  ifile="`ls $path_i/$prog.inp 2>/dev/null`"
+fi
+
 if [ $? = 0 ]
 then
 
@@ -676,7 +757,7 @@ then
   then # build pre- & post-processing programs with SHRD only
     cat $file_c | sed 's/DIST/SHRD/' | sed 's/MPI //' | \
                   sed 's/OMPG //'    | sed 's/OMPX //'| \
-                  sed 's/OMPH //'                          > $path_b/switch
+                  sed 's/OMPH //'    | sed 's/PDLIB //'  > $path_b/switch
   else
     \cp -f $file_c $path_b/switch
   fi
@@ -700,12 +781,29 @@ then
       gu="_$g"
     fi
 
-    ofile="$path_w/`basename $ifile .inp`${gu}.out"
+    # link conf file
+    if [ $nml_input ] && [ ! -z "`echo ${ifile} | grep -o nml`" ]
+    then
+      for file_p in ${files_p}
+      do
+        if [ -e ${path_i}/${file_p} ]
+        then
+          \rm -f ${file_p}
+          \ln -s ${path_i}/${file_p} .
+        fi
+      done
+      \rm -f $prog.nml
+      \ln -s $ifile $prog.nml
+      ofile="$path_w/`basename $ifile .nml`${gu}.out"
+    else
+      \rm -f $prog.inp
+      \ln -s $ifile $prog.inp
+      ofile="$path_w/`basename $ifile .inp`${gu}.out"
+    fi
 
     echo "   Processing $ifile"
     echo "   Screen output routed to $ofile"
-    \rm -f $prog.inp
-    \ln -s $ifile $prog.inp
+
     if [ $multi -eq 2 ]
     then
       \rm -f mod_def.ww3
@@ -714,6 +812,7 @@ then
     if $path_e/$prog > $ofile
     then
       \rm -f $prog.inp
+      \rm -f $prog.nml
       if [ $multi -eq 2 ]
       then
         mv nest.ww3 nest.$g
@@ -741,10 +840,16 @@ prog=ww3_prep
 if [ $exec_p = $prog -o $exec_p = "none" ]
 then
 
-inputs="`ls $path_i/$prog*.inp 2>/dev/null`"
+# select inp/nml files
+if [ $nml_input ] && [ ! -z "`ls ${path_i}/${prog}*.nml 2>/dev/null`" ]
+then
+  inputs="`ls ${path_i}/${prog}*.nml 2>/dev/null`"
+else
+  inputs="`ls $path_i/$prog*.inp 2>/dev/null`"
+fi
+
 if [ $? = 0 ]
 then
-
   echo ' '
   echo '+---------------------+'
   echo '| Prep forcing fields |'
@@ -755,7 +860,7 @@ then
   then # build pre- & post-processing programs with SHRD only
     cat $file_c | sed 's/DIST/SHRD/' | sed 's/MPI //' | \
                   sed 's/OMPG //'    | sed 's/OMPX //'| \
-                  sed 's/OMPH //'                          > $path_b/switch
+                  sed 's/OMPH //'    | sed 's/PDLIB //'  > $path_b/switch
   else
     \cp -f $file_c $path_b/switch
   fi
@@ -783,12 +888,23 @@ then
     for ifile in $inputs
     do
 
-      otype="`basename $ifile .inp | sed s/^${prog}_//`"
-      ofile="$path_w/`basename $ifile .inp`.out"
+      # link conf file
+      if [ $nml_input ] && [ ! -z "`echo ${ifile} | grep -o nml`" ]
+      then
+        \rm -f $prog.nml
+        \ln -s $ifile $prog.nml
+        otype="`basename $ifile .nml | sed s/^${prog}_//`"
+        ofile="$path_w/`basename $ifile .nml`.out"
+      else
+        \rm -f $prog.inp
+        \ln -s $ifile $prog.inp
+        otype="`basename $ifile .inp | sed s/^${prog}_//`"
+        ofile="$path_w/`basename $ifile .inp`.out"
+      fi
+
       echo "   Processing $ifile for $otype"
       echo "   Screen output routed to $ofile"
-      \rm -f $prog.inp
-      \ln -s $ifile $prog.inp
+
       if [ $multi -eq 2 ]
       then
         \rm -f mod_def.ww3
@@ -797,6 +913,7 @@ then
       if $path_e/$prog > $ofile
       then
         \rm -f $prog.inp
+        \rm -f $prog.nml
         if [ $multi -eq 2 ]
         then
           \rm -f mod_def.ww3
@@ -826,10 +943,16 @@ prog=ww3_prnc
 if [ $exec_p = $prog -o $exec_p = "none" ]
 then
 
-inputs="`ls $path_i/$prog*.inp 2>/dev/null`"
+# select inp/nml files
+if [ $nml_input ] && [ ! -z "`ls ${path_i}/${prog}*.nml 2>/dev/null`" ]
+then
+  inputs="`ls ${path_i}/${prog}*.nml 2>/dev/null`"
+else
+  inputs="`ls $path_i/$prog*.inp 2>/dev/null`"
+fi
+
 if [ $? = 0 ]
 then
-
   echo ' '
   echo '+-------------------------------+'
   echo '| Prep of NetCDF forcing fields |'
@@ -840,7 +963,7 @@ then
   then # build pre- & post-processing programs with SHRD only
     cat $file_c | sed 's/DIST/SHRD/' | sed 's/MPI //' | \
                   sed 's/OMPG //'    | sed 's/OMPX //'| \
-                  sed 's/OMPH //'                          > $path_b/switch
+                  sed 's/OMPH //'    | sed 's/PDLIB //'  > $path_b/switch
   else
     \cp -f $file_c $path_b/switch
   fi
@@ -868,12 +991,23 @@ then
     for ifile in $inputs
     do
 
-      otype="`basename $ifile .inp | sed s/^${prog}_//`"
-      ofile="$path_w/`basename $ifile .inp`.out"
+      # link conf file
+      if [ $nml_input ] && [ ! -z "`echo ${ifile} | grep -o nml`" ]
+      then
+        \rm -f $prog.nml
+        \ln -s $ifile $prog.nml
+        otype="`basename $ifile .nml | sed s/^${prog}_//`"
+        ofile="$path_w/`basename $ifile .nml`.out"
+      else
+        \rm -f $prog.inp
+        \ln -s $ifile $prog.inp
+        otype="`basename $ifile .inp | sed s/^${prog}_//`"
+        ofile="$path_w/`basename $ifile .inp`.out"
+      fi
+
       echo "   Processing $ifile"
       echo "   Screen output routed to $ofile"
-      \rm -f $prog.inp
-      \ln -s $ifile $prog.inp
+
       if [ $multi -eq 2 ]
       then
         \rm -f mod_def.ww3
@@ -882,6 +1016,7 @@ then
       if $path_e/$prog > $ofile
       then
         \rm -f $prog.inp
+        \rm -f $prog.nml
         if [ $multi -eq 2 ]
         then
           \rm -f mod_def.ww3
@@ -906,6 +1041,8 @@ then
 fi
 
 # 3.f Main program ---------------------------------------------------------- #
+
+cp $path_i/bottomspectrum.inp .
 
 if [ $multi -ge 1 ]
 then
@@ -944,24 +1081,22 @@ else
   fi
 fi
 
-# inp / nml file - gridset option (eq 2)
+# config filename - gridset option (eq 2)
 if [ $multi -eq 2 ]
 then
-  if [ $nml_input ] && [ ! -z "`ls ${path_i}/${prog}_${grdset}.nml 2>/dev/null`" ]
-  then
-    ifile="`ls ${path_i}/${prog}_${grdset}.nml 2>/dev/null`"
-    files_p="`cat ${ifile} | grep 'point%file' |  cut -d '=' -f2 | cut -d "'" -f2 | cut -d '"' -f2 `"
-  else
-    ifile="`ls ${path_i}/${prog}_${grdset}.inp 2>/dev/null`"
-  fi
+  fileconf="${prog}_${grdset}"
 else
-  if [ $nml_input ] && [ ! -z "`ls ${path_i}/${prog}.nml 2>/dev/null`" ]
-  then
-    ifile="`ls ${path_i}/${prog}.nml 2>/dev/null`"
-    files_p="`cat ${ifile} | grep 'point%file' |  cut -d '=' -f2 | cut -d "'" -f2 | cut -d '"' -f2 `"
-  else
-    ifile="`ls ${path_i}/${prog}.inp 2>/dev/null`"
-  fi
+  fileconf="${prog}"
+fi
+
+# select inp/nml files
+if [ $nml_input ] && [ ! -z "`ls ${path_i}/${fileconf}.nml 2>/dev/null`" ]
+then
+  ifile="`ls ${path_i}/${fileconf}.nml 2>/dev/null`"
+  files_p="points.list"
+  files_p="$files_p $(cat ${ifile} | grep -i 'point%file' |  cut -d '=' -f2 | cut -d "'" -f2 | cut -d '"' -f2 )"
+else
+  ifile="`ls $path_i/${fileconf}.inp 2>/dev/null`"
 fi
 
 
@@ -1003,8 +1138,24 @@ then
 
   ofile="$path_w/$prog.out"
 
-  \rm -f $prog.inp
-  \ln -s $ifile $prog.inp
+  # link conf file
+  if [ $nml_input ] && [ ! -z "`echo ${ifile} | grep -o nml`" ]
+  then
+    \rm -f $prog.nml
+    \ln -s $ifile $prog.nml
+    for file_p in ${files_p}
+    do
+      if [ -e ${path_i}/${file_p} ]
+      then
+        \rm -f ${file_p}
+        \ln -s ${path_i}/${file_p} .
+      fi
+    done
+  else
+    \rm -f $prog.inp
+    \ln -s $ifile $prog.inp
+  fi
+
   if [ $multi -ge 1 ] && [ $coupl = "ESMF" ]
   then
     \rm -f PET*.ESMF_LogFile
@@ -1021,18 +1172,6 @@ then
       echo "pet_count: 1" >> ww3_esmf.rc
     fi
   fi
-  if [ $multi -ge 1 ] && [ $nml_input ] && [ ! -z "`echo ${ifile} | grep -o nml`" ]
-  then
-    \rm -f $prog.nml
-    \ln -s $ifile $prog.nml
-    for file_p in ${files_p}
-    do
-      if [ -e ${path_i}/${file_p} ]
-      then
-        \ln -s ${path_i}/${file_p} .
-      fi
-    done
-  fi
 
   echo "   Processing $ifile"
   echo "   Screen output copied to $ofile"
@@ -1044,7 +1183,11 @@ then
     fi
     if [ $nthrd ]
     then
-      runcmd="$runcmd omplace -nt $nthrd"
+      if ( which omplace ) ; then
+        runcmd="$runcmd omplace -nt $nthrd"
+      else
+        runcmd="$runcmd /usr/bin/env OMP_NUM_THREADS=$nthrd"
+      fi
     fi
   fi
   if [ $pomp ]
@@ -1057,7 +1200,8 @@ then
 
   if [ $multi -eq 0 ] && [ $coupl = "OASIS" ]
   then
-    if $runcmd $path_e/$prgb : -np $nproc $path_w/toy_model | tee $ofile
+    halfnproc=$(($nproc / 2))
+    if $runcmd1 -np $halfnproc $path_e/$prgb : -np $halfnproc $path_w/toy_model | tee $ofile
     then
       \rm -f track_i.ww3
       \rm -f $prog.inp
@@ -1095,12 +1239,23 @@ prog=ww3_gint
 if [ $exec_p = $prog -o $exec_p = "none" ]
 then
 
+# config filename - gridset option (eq 2)
 if [ $multi -eq 2 ]
 then
-  ifile="`ls ${path_i}/${prog}_${grdset}.inp 2>/dev/null`"
+  fileconf="${prog}_${grdset}"
 else
-  ifile="`ls ${path_i}/${prog}.inp 2>/dev/null`"
+  fileconf="${prog}"
 fi
+
+# select inp/nml files
+if [ $nml_input ] && [ ! -z "`ls ${path_i}/${fileconf}.nml 2>/dev/null`" ]
+then
+  ifile="`ls ${path_i}/${fileconf}.nml 2>/dev/null`"
+else
+  ifile="`ls $path_i/${fileconf}.inp 2>/dev/null`"
+fi
+
+
 if [ $? = 0 ]
 then
 
@@ -1114,7 +1269,7 @@ then
   then # build pre- & post-processing programs with SHRD only
     cat $file_c | sed 's/DIST/SHRD/' | sed 's/MPI //' | \
                   sed 's/OMPG //'    | sed 's/OMPX //'| \
-                  sed 's/OMPH //'                          > $path_b/switch
+                  sed 's/OMPH //'    | sed 's/PDLIB //'  > $path_b/switch
   else
     \cp -f $file_c $path_b/switch
   fi
@@ -1125,14 +1280,26 @@ then
     exit 1
   fi
 
-  ofile="$path_w/`basename $ifile .inp`.out"
-  \rm -f $prog.inp
-  \ln -f $ifile $prog.inp
+
+  # link conf file
+  if [ $nml_input ] && [ ! -z "`echo ${ifile} | grep -o nml`" ]
+  then
+    \rm -f $prog.nml
+    \ln -s $ifile $prog.nml
+    ofile="$path_w/`basename $ifile .nml`.out"
+  else
+    \rm -f $prog.inp
+    \ln -s $ifile $prog.inp
+    ofile="$path_w/`basename $ifile .inp`.out"
+  fi
+
   echo "   Processing $ifile"
   echo "   Screen output copied to $ofile"
+
   if $path_e/$prog > $ofile
   then
     \rm -f $prog.inp
+    \rm -f $prog.nml
     for g in $intgl_grids
     do
       if [ -f "out_grd.$g" ]
@@ -1190,7 +1357,15 @@ fi
 if [ $exec_p = $prog -o $exec_p = "none" ]
 then
 
-inputs="`ls $path_i/$prog*.inp 2>/dev/null`"
+# select inp/nml files
+if [ $nml_input ] && [ ! -z "`ls ${path_i}/${prog}*.nml 2>/dev/null`" ]
+then
+  inputs="`ls ${path_i}/${prog}*.nml 2>/dev/null`"
+else
+  inputs="`ls $path_i/$prog*.inp 2>/dev/null`"
+fi
+
+
 if [ $? = 0 ]
 then
 
@@ -1204,7 +1379,7 @@ then
   then # build pre- & post-processing programs with SHRD only
     cat $file_c | sed 's/DIST/SHRD/' | sed 's/MPI //' | \
                   sed 's/OMPG //'    | sed 's/OMPX //'| \
-                  sed 's/OMPH //'                          > $path_b/switch
+                  sed 's/OMPH //'    | sed 's/PDLIB //'  > $path_b/switch
   else
     \cp -f $file_c $path_b/switch
   fi
@@ -1236,12 +1411,23 @@ then
     for ifile in $inputs
     do
 
-      otype="`basename $ifile .inp | sed s/^${prog}_//`"
-      ofile="$path_w/`basename $ifile .inp`${gu}.out"
+      # link conf file
+      if [ $nml_input ] && [ ! -z "`echo ${ifile} | grep -o nml`" ]
+      then
+        \rm -f $prog.nml
+        \ln -s $ifile $prog.nml
+        otype="`basename $ifile .nml | sed s/^${prog}_//`"
+        ofile="$path_w/`basename $ifile .nml`${gu}.out"
+      else
+        \rm -f $prog.inp
+        \ln -s $ifile $prog.inp
+        otype="`basename $ifile .inp | sed s/^${prog}_//`"
+        ofile="$path_w/`basename $ifile .inp`${gu}.out"
+      fi
+
       echo "   Processing $ifile"
       echo "   Screen output routed to $ofile"
-      \rm -f $prog.inp
-      \ln -s $ifile $prog.inp
+
       if [ $multi -eq 2 ]
       then
         \rm -f mod_def.ww3
@@ -1254,6 +1440,7 @@ then
       if $path_e/$prog > $ofile
       then
         \rm -f $prog.inp
+        \rm -f $prog.nml
         if [ $multi -eq 2 ]
         then
           \rm -f mod_def.ww3
@@ -1347,7 +1534,15 @@ fi
 if [ $exec_p = $prog -o $exec_p = "none" ]
 then
 
-inputs="`ls $path_i/$prog*.inp 2>/dev/null`"
+# select inp/nml format for input file to program $prog
+if [ $nml_input ] && [ ! -z "`ls ${path_i}/${prog}*.nml 2>/dev/null`" ]
+then
+  inputs="`ls ${path_i}/${prog}*.nml 2>/dev/null`"
+else
+  inputs="`ls $path_i/$prog*.inp 2>/dev/null`"
+fi
+
+
 if [ $? = 0 ]
 then
 
@@ -1361,7 +1556,7 @@ then
   then # build pre- & post-processing programs with SHRD only
     cat $file_c | sed 's/DIST/SHRD/' | sed 's/MPI //' | \
                   sed 's/OMPG //'    | sed 's/OMPX //'| \
-                  sed 's/OMPH //'                          > $path_b/switch
+                  sed 's/OMPH //'    | sed 's/PDLIB //'  > $path_b/switch
   else
     \cp -f $file_c $path_b/switch
   fi
@@ -1393,12 +1588,23 @@ then
     for ifile in $inputs
     do
 
-      otype="`basename $ifile .inp | sed s/^${prog}_//`"
-      ofile="$path_w/`basename $ifile .inp`${gu}.out"
+      # link conf file
+      if [ $nml_input ] && [ ! -z "`echo ${ifile} | grep -o nml`" ]
+      then
+        \rm -f $prog.nml
+        \ln -s $ifile $prog.nml
+        otype="`basename $ifile .nml | sed s/^${prog}_//`"
+        ofile="$path_w/`basename $ifile .nml`${gu}.out"
+      else
+        \rm -f $prog.inp
+        \ln -s $ifile $prog.inp
+        otype="`basename $ifile .inp | sed s/^${prog}_//`"
+        ofile="$path_w/`basename $ifile .inp`${gu}.out"
+      fi
+
       echo "   Processing $ifile"
       echo "   Screen output routed to $ofile"
-      \rm -f $prog.inp
-      \ln -s $ifile $prog.inp
+
       if [ $multi -eq 2 ]
       then
         \rm -f mod_def.ww3
@@ -1409,6 +1615,7 @@ then
       if $path_e/$prog > $ofile
       then
         \rm -f $prog.inp
+        \rm -f $prog.nml
         if [ $multi -eq 2 ]
         then
           \rm -f mod_def.ww3
@@ -1449,7 +1656,15 @@ do
 if [ $exec_p = $prog -o $exec_p = "none" ]
 then
 
-inputs="`ls $path_i/$prog*.inp 2>/dev/null`"
+# select inp/nml files
+if [ $nml_input ] && [ ! -z "`ls ${path_i}/${prog}*.nml 2>/dev/null`" ]
+then
+  inputs="`ls ${path_i}/${prog}*.nml 2>/dev/null`"
+else
+  inputs="`ls $path_i/$prog*.inp 2>/dev/null`"
+fi
+
+
 if [ $? = 0 ]
 then
 
@@ -1463,7 +1678,7 @@ then
   then # build pre- & post-processing programs with SHRD only
     cat $file_c | sed 's/DIST/SHRD/' | sed 's/MPI //' | \
                   sed 's/OMPG //'    | sed 's/OMPX //'| \
-                  sed 's/OMPH //'                          > $path_b/switch
+                  sed 's/OMPH //'    | sed 's/PDLIB //'  > $path_b/switch
   else
     \cp -f $file_c $path_b/switch
   fi
@@ -1490,20 +1705,42 @@ then
         continue
       fi
       gu="_$g"
+      fileconf="$prog${gu}"
+    else
+      fileconf="$prog"
     fi
 
-    ifile=$path_i/$prog${gu}.inp
+    # select inp/nml files
+    if [ $nml_input ] && [ ! -z "`ls ${path_i}/${fileconf}.nml 2>/dev/null`" ]
+    then
+      ifile="`ls ${path_i}/${fileconf}.nml 2>/dev/null`"
+    else
+      ifile="`ls $path_i/${fileconf}.inp 2>/dev/null`"
+    fi
+
     if [ ! -f $ifile ]
     then
       errmsg "$ifile not found"
       exit 1
     fi
-    otype="`basename $ifile .inp | sed s/^${prog}_//`"
-    ofile="$path_w/`basename $ifile .inp`.out"
+
+    # link conf file
+    if [ $nml_input ] && [ ! -z "`echo ${ifile} | grep -o nml`" ]
+    then
+      \rm -f $prog.nml
+      \ln -s $ifile $prog.nml
+      otype="`basename $ifile .nml | sed s/^${prog}_//`"
+      ofile="$path_w/`basename $ifile .nml`.out"
+    else
+      \rm -f $prog.inp
+      \ln -s $ifile $prog.inp
+      otype="`basename $ifile .inp | sed s/^${prog}_//`"
+      ofile="$path_w/`basename $ifile .inp`.out"
+    fi
+
     echo "   Processing $ifile"
     echo "   Screen output routed to $ofile"
-    \rm -f $prog.inp
-    \ln -s $ifile $prog.inp
+
     if [ $multi -eq 2 ]
     then
       \rm -f track_o.ww3
@@ -1512,6 +1749,7 @@ then
     if $path_e/$prog > $ofile
     then
       \rm -f $prog.inp
+      \rm -f $prog.nml
       if [ $multi -eq 2 ]
       then
         \rm -f track_o.ww3
@@ -1546,7 +1784,15 @@ prog=ww3_systrk
 if [ $exec_p = $prog -o $exec_p = "none" ]
 then
 
-ifile="`ls $path_i/$prog.inp 2>/dev/null`"
+# select inp/nml files
+if [ $nml_input ] && [ ! -z "`ls ${path_i}/${prog}.nml 2>/dev/null`" ]
+then
+  ifile="`ls ${path_i}/${prog}.nml 2>/dev/null`"
+else
+  ifile="`ls $path_i/$prog.inp 2>/dev/null`"
+fi
+
+
 if [ $? = 0 ]
 then
 
@@ -1561,7 +1807,7 @@ then
 #  then # build pre- & post-processing programs with SHRD only
 #    cat $file_c | sed 's/DIST/SHRD/' | sed 's/MPI //' | \
 #                  sed 's/OMPG //'    | sed 's/OMPX //'| \
-#                  sed 's/OMPH //'                          > $path_b/switch
+#                  sed 's/OMPH //'    | sed 's/PDLIB //'  > $path_b/switchh
 #  else
 #    \cp -f $file_c $path_b/switch
 #  fi
@@ -1572,11 +1818,22 @@ then
     exit 1
   fi
 
-  ofile="$path_w/`basename $ifile .inp`.out"
-  \rm -f $prog.inp
-  \ln -f $ifile $prog.inp
+
+  # link conf file
+  if [ $nml_input ] && [ ! -z "`echo ${ifile} | grep -o nml`" ]
+  then
+    \rm -f $prog.nml
+    \ln -s $ifile $prog.nml
+    ofile="$path_w/`basename $ifile .nml`.out"
+  else
+    \rm -f $prog.inp
+    \ln -s $ifile $prog.inp
+    ofile="$path_w/`basename $ifile .inp`.out"
+  fi
+
   echo "   Processing $ifile"
   echo "   Screen output copied to $ofile"
+
   if [ $pmpi ]
   then
     if [ $nproc ]
@@ -1587,6 +1844,7 @@ then
   if $runcmd $path_e/$prog | tee $ofile
   then
     \rm -f $prog.inp
+    \rm -f $prog.nml
   else
     errmsg "Error occured during $path_e/$prog execution"
     exit 1

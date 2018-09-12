@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 # --------------------------------------------------------------------------- #
 # make_makefile.sh : Generates the makefile for WAVEWATCH based on switch     #
 #                    settings                                                 #
@@ -19,40 +19,26 @@
 #       reserved.  WAVEWATCH III is a trademark of the NWS.                   #
 #       No unauthorized use without permission.                               #
 #                                                                             #
+# --------------------------------------------------------------------------- #
 
 # --------------------------------------------------------------------------- #
 # 1. Preparations                                                             #
 # --------------------------------------------------------------------------- #
-# 1.a Internal variables
-# set -x
-  ww3_env="${HOME}/.wwatch3.env"                           # setup file
-# The following line must not be removed: it is a switch for local install
-# so that all bin scripts point to the local wwatch3.env
-# WW3ENV
-# For manual install (without install_ww3_tar or install_ww3_svn) make sure to
-# either use the generic ww3_env or to add your own ww3_env="${my_directory}"
 
-  if [ ${WWATCH3_ENV} ]; then ww3_env="${WWATCH3_ENV}"; fi # alternate setup file
 
-# 1.b ID header  - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+# 1.a ID header  - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-# 1.c Read data from the environment file  - - - - - - - - - - - - - - - - - -
+  echo ' '
+  echo '                *****************************'
+  echo '              ***   WAVEWATCH III makefile  ***'
+  echo '                *****************************'
+  echo ' '
 
-  if [ ${WWATCH3_DIR} ] && [ ${WWATCH3_TMP} ]
-  then
-    main_dir=${WWATCH3_DIR}
-    temp_dir=${WWATCH3_TMP}
-  elif [ -f $ww3_env ]
-  then
-    set `grep WWATCH3_DIR $ww3_env` ; shift
-    main_dir="$*"
-    set `grep WWATCH3_TMP $ww3_env` ; shift
-    temp_dir="$*"
-  else
-     "*** Set-up file $ww3_env not found ***"
-    exit 1
-  fi
 
+# 1.b Internal variables - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+
+  # ar_cmd
   os=`uname -s 2>/dev/null`
   if [ "$os" = "AIX" ]
   then
@@ -61,39 +47,40 @@
     ar_cmd="ar rv"
   fi
 
-# 1.d Check / make directories   - - - - - - - - - - - - - - - - - - - - - - -
 
-  if [ -d $main_dir ]
-  then
-    cd $main_dir
-  else
-    echo "*** Directory $main_dir not found ***"
-    exit 2
-  fi
-
-  if [ ! -d $temp_dir ]
-  then
-    mkdir $temp_dir
-  fi
-  cd $temp_dir
-
-# 1.e Create makefile with header  - - - - - - - - - - - - - - - - - - - - - -
+# 1.c Create makefile with header  - - - - - - - - - - - - - - - - - - - - - -
 
   echo '# -------------------------'              > makefile
   echo '# WAVEWATCH III makefile   '             >> makefile
   echo '# -------------------------'             >> makefile
+
+
+# 1.d Get data from setup file - - - - - - - - - - - - - - - - - - - - - - - - 
+
+  source $(dirname $0)/w3_setenv
+  main_dir=$WWATCH3_DIR
+  temp_dir=$WWATCH3_TMP
+  source=$WWATCH3_SOURCE
+  list=$WWATCH3_LIST
+
 
 # --------------------------------------------------------------------------- #
 # 2. Part 1, subroutine dependencies                                          #
 # --------------------------------------------------------------------------- #
 # 2.a File ID
 
+  cd $temp_dir
   rm -f filelist.tmp
 
 # 2.b Get info from switch file  - - - - - - - - - - - - - - - - - - - - - - -
 
-  switch=$main_dir/bin/switch
-  old_sw=$main_dir/bin/switch.old
+  if [ -z "$(env | grep switch_file)" ]
+  then
+    switch_file=$main_dir/bin/switch
+  fi
+
+  switch=$switch_file
+  old_sw=${switch_file}.old
   new_sw=$main_dir/bin/w3_new
 
   if [ ! -f $old_sw ]
@@ -102,15 +89,17 @@
     $new_sw all
   fi
 
+  echo switch = $switch
+
 # NOTE: comment line with '#sort:key:" used by sort_switches, including ':'
 
-  for type in mach nco grib mcp c90 nec netcdf scrip scripnc \
+  for type in uost mach nco grib mcp c90 nec netcdf scrip scripnc \
               shared mpp mpiexp thread GSE prop \
               stress s_ln source stab s_nl snls s_bot s_db miche s_tr s_bs \
               dstress s_ice s_is reflection s_xx \
               wind windx rwind curr currx mgwind mgprop mggse \
               subsec tdyn dss0 pdif tide refrx ig rotag arctic nnt mprf \
-              cou coupl agcm ogcm igcm trknc
+              cou oasis agcm ogcm igcm trknc setup pdlib memck
   do
     case $type in
 #sort:mach:
@@ -237,7 +226,7 @@
 #sort:s_ice:
       s_ice  ) TY='one'
                ID='ice sink term'
-               OK='IC0 IC1 IC2 IC3 IC4' ;;
+               OK='IC0 IC1 IC2 IC3 IC4 IC5' ;;
 #sort:s_is:
       s_is  ) TY='one'
                ID='ice scattering term'
@@ -361,8 +350,8 @@
                ID='use of the coupler'
                TS='COU'
                OK='COU' ;;
-#sort:coupl:
-      coupl  ) TY='upto1'
+#sort:oasis:
+      oasis  ) TY='upto1'
                ID='type of coupler'
                TS='OASIS'
                OK='OASIS' ;;
@@ -371,6 +360,26 @@
                ID='use of netcdf for tracking of wave systems'
                TS='TRKNC'
                OK='TRKNC' ;;
+#sort:pdlib:
+      pdlib  ) TY='upto1'
+               ID='use pdlib'
+               TS='PDLIB'
+               OK='PDLIB' ;;
+#sort:memck: 
+      memck  ) TY='upto1'
+               ID='check memory use'
+               TS='MEMCHECK'
+               OK='MEMCHECK' ;;
+#sort:setup:
+      setup  ) TY='upto1'
+               ID='switch to zeta setup'
+               TS='SETUP'
+               OK='SETUP' ;;
+#sort:uost:
+      uost   ) TY='uost'
+               ID='unresolved obstacles source term'
+               TS='UOST'
+               OK='UOST' ;;
    esac
 
     n_found='0'
@@ -379,7 +388,7 @@
     do
       if [ "`grep $check $switch | wc -w | awk '{print $1}'`" -gt '1' ]
       then
-        n_found=`expr $n_found + 1`
+        n_found=$(($n_found + 1))
         s_found="$s_found $check"
       fi
     done
@@ -489,11 +498,15 @@
       arctic ) arctic=$sw ;;
       mprf   ) mprf=$sw ;;
       cou    ) cou=$sw ;;
-      coupl  ) coupl=$sw ;;
+      oasis  ) oasis=$sw ;;
       agcm   ) agcm=$sw ;;
       ogcm   ) ogcm=$sw ;;
       igcm   ) igcm=$sw ;;
       trknc  ) trknc=$sw ;;
+      pdlib  ) pdlib=$sw ;;
+      memck  ) memck=$sw ;;
+      setup  ) setup=$sw ;;
+      uost   ) uost=$sw ;;
               *    ) ;;
     esac
   done
@@ -533,18 +546,23 @@
       echo ' ' ; exit 9
   fi
 
+  smco=$NULL
   case $g_switch in
    PR0) pr=$NULL ;;
    PR1) pr='w3profsmd w3pro1md' ;;
    PR2) pr='w3profsmd w3pro2md' ;;
    PR3) pr='w3profsmd w3pro3md' ;;
-   SMC) pr='w3psmcmd' ;;
+   SMC) pr='w3psmcmd'; smco='w3smcomd w3psmcmd' ;;
   esac 
 
   case $p_switch in
    UQ ) pr="$pr w3uqckmd" ;;
    UNO) pr="$pr w3uno2md" ;;
   esac 
+
+  case $uost in
+   UOST) uostmd="w3uostmd"
+   esac
 
   case $stress in
    FLX0) str_st1='no' ; str_st2='no' ; str_st3='yes' ; str_st6='no'
@@ -590,7 +608,7 @@
    ST0) st='w3src0md'
         stx=$NULL ;;
    ST1) st='w3src1md'
-        stx=$NULL ;;
+        stx='w3src1md' ;;
    ST2) st='w3src2md'
         stx='w3src2md' ;;
    ST3) st='w3src3md'
@@ -721,6 +739,7 @@
    IC2) ic='w3sic2md' ;;
    IC3) ic='w3sic3md' ;;
    IC4) ic='w3sic4md' ;;
+   IC5) ic='w3sic5md' ;;
   esac
 
   is=$NULL
@@ -732,6 +751,23 @@
   refcode=$NULL
   case $reflection in
    REF1) refcode='w3ref1md'
+   esac
+
+  pdlibcode=$NULL 
+  pdlibyow=$NULL 
+  case $pdlib in
+   PDLIB) pdlibcode='yowfunction pdlib_field_vec w3profsmd_pdlib'
+          pdlibyow='yowsidepool yowdatapool yowerr yownodepool yowelementpool yowexchangeModule yowrankModule yowpdlibmain yowpd' ;;
+   esac
+
+  memcode=$NULL 
+  case $memck in 
+    MEMCHECK) memcode='w3meminfo' 
+    esac
+
+  setupcode=$NULL
+  case $setup in
+   SETUP) setupcode='w3wavset'
    esac
 
   case $s_xx in
@@ -752,12 +788,12 @@
    IG1) igcode='w3gig1md w3canomd'
    esac
 
-  couplmd=$NULL
-  case $coupl in
-   OASIS) couplmd='w3oacpmd'
+  oasismd=$NULL
+  case $oasis in
+   OASIS) oasismd='w3oacpmd'
    esac
 
-  if [ "$coupl" = 'OASIS' ] && [ "$str_st3" = 'no' ]
+  if [ "$oasis" = 'OASIS' ] && [ "$str_st3" = 'no' ]
   then
       echo ' '
       echo "   *** !/OASIS cannot be used in combination with !/$stress"
@@ -801,6 +837,19 @@
     mprfaux=$NULL
   fi
 
+  mpi_mode=no
+  if [ -n "`grep MPI $switch`" ]
+  then
+    mpi_mode=yes
+  fi
+
+  if [ "$pdlib" = 'PDLIB' ] && [ "$mpi_mode" = no ]
+  then
+      echo ' '
+      echo "   *** For PDLIB, we need to have MPI as well."
+      echo ' ' ; exit 8
+  fi
+
 
 # 2.c Make makefile and file list  - - - - - - - - - - - - - - - - - - - - - -
 
@@ -819,62 +868,63 @@
     case $prog in
      ww3_grid) IDstring='Grid preprocessor'
                core=
-               data='w3wdatmd w3gdatmd w3adatmd w3idatmd w3odatmd'
+               data='w3wdatmd w3gdatmd w3adatmd w3idatmd w3odatmd wmmdatmd'
                prop=
-             source="w3triamd $stx $nlx $btx $is"
+             source="w3parall w3triamd $stx $nlx $btx $is"
                  IO='w3iogrmd w3tripmd'
-                aux='constants w3servmd w3arrymd w3dispmd w3gsrumd w3timemd' ;;
+                aux="constants $uostmd w3servmd w3arrymd w3dispmd w3gsrumd w3timemd $pdlibyow $memcode" ;;
      ww3_strt) IDstring='Initial conditions program'
                core=
-               data='w3gdatmd w3wdatmd w3adatmd w3idatmd w3odatmd'
+               data="$memcode w3gdatmd w3wdatmd w3adatmd w3idatmd w3odatmd"
                prop=
-             source="$stx $nlx $btx $is"
+             source="$pdlibcode $pdlibyow $db $tr $trx $bt $setupcode $stx $nlx $btx $is wmmdatmd w3parall"
                  IO='w3iogrmd w3iorsmd w3tripmd'
-                aux='constants w3triamd w3servmd w3arrymd w3dispmd w3gsrumd w3timemd' ;;
+                aux="constants $uostmd w3triamd w3servmd w3arrymd w3dispmd w3gsrumd w3timemd" ;;
      ww3_bound) IDstring='boundary conditions program'
                core=
-               data='w3adatmd w3gdatmd w3wdatmd w3idatmd w3odatmd'
+               data="w3adatmd $memcode w3gdatmd w3wdatmd w3idatmd w3odatmd"
                prop=
-             source="$stx $nlx $btx  $is w3triamd"
+             source="$pdlibcode $pdlibyow $db $bt $setupcode $tr $trx $stx $nlx $btx $is wmmdatmd w3parall w3triamd"
                  IO='w3iobcmd w3iogrmd w3dispmd w3gsrumd'
-                aux='constants w3servmd w3timemd w3cspcmd' ;;
+                aux="constants $uostmd w3servmd w3timemd w3arrymd w3cspcmd" ;;
      ww3_bounc) IDstring='NetCDF boundary conditions program'
                core=
-               data='w3adatmd w3gdatmd w3wdatmd w3idatmd w3odatmd'
+               data="w3adatmd $memcode w3gdatmd w3wdatmd w3idatmd w3odatmd"
                prop=
-             source="$stx $nlx $btx  $is w3triamd"
+             source="$pdlibcode $pdlibyow $db $bt $setupcode $stx $nlx $btx $is wmmdatmd w3parall w3triamd"
                  IO='w3iobcmd w3iogrmd w3dispmd w3gsrumd'
-                aux='constants w3servmd w3timemd w3cspcmd' ;;
+                aux="constants $uostmd w3servmd w3arrymd w3timemd w3cspcmd w3nmlbouncmd" ;;
      ww3_prep) IDstring='Field preprocessor'
                core='w3fldsmd'
-               data='w3gdatmd w3adatmd w3idatmd w3odatmd w3wdatmd'
+               data="$memcode w3gdatmd w3adatmd w3idatmd w3odatmd w3wdatmd wmmdatmd"
                prop=
-             source="w3triamd $stx $nlx $btx  $is"
-                 IO="w3iogrmd w3tripmd $couplmd $agcmmd $ogcmmd $igcmmd"
-                aux="constants w3servmd w3timemd $tidecode w3arrymd w3dispmd w3gsrumd" ;;
+             source="$pdlibcode $pdlibyow $db $bt $setupcode w3triamd $stx $nlx $btx  $is"
+                 IO="w3iogrmd $oasismd $agcmmd $ogcmmd $igcmmd w3tripmd"
+                aux="constants $uostmd w3servmd w3timemd $tidecode w3arrymd w3dispmd w3gsrumd w3parall" ;;
      ww3_prnc) IDstring='NetCDF field preprocessor'
                core='w3fldsmd'
-               data='w3gdatmd w3adatmd w3idatmd w3odatmd w3wdatmd'
+               data="$memcode w3gdatmd w3adatmd w3idatmd w3odatmd w3wdatmd wmmdatmd"
                prop=
-             source="w3triamd $stx $nlx $btx $is"
+             source="$pdlibcode $pdlibyow $db $bt $setupcode w3triamd $stx $nlx $btx $is w3parall"
                  IO="w3iogrmd $couplmd $agcmmd $ogcmmd $igcmmd"
-                aux="constants w3servmd w3timemd w3arrymd w3dispmd w3gsrumd $tidecode" ;;
-     ww3_prtide) IDstring='Tide prediction'
+                aux="constants $uostmd w3servmd w3timemd w3arrymd w3dispmd w3gsrumd $tidecode w3nmlprncmd" ;;
+    ww3_prtide) IDstring='Tide prediction'
                core='w3fldsmd'
-               data='w3gdatmd w3adatmd w3idatmd w3odatmd'
-               prop=
-             source="w3triamd $stx $nlx $btx $is"
+               data="wmmdatmd $memcode w3gdatmd w3wdatmd w3adatmd w3idatmd w3odatmd"
+               prop="$pr"
+             source="$pdlibcode $pdlibyow $db $bt $setupcode w3triamd $stx $nlx $btx $is w3parall"
                  IO="w3iogrmd $couplmd $agcmmd $ogcmmd $igcmmd"
-                aux="constants w3servmd w3timemd w3arrymd w3dispmd w3gsrumd $tidecode" ;;
+                aux="constants $uostmd w3servmd w3timemd w3arrymd w3dispmd w3gsrumd $tidecode" ;;
      ww3_shel) IDstring='Generic shell'
                core='w3fldsmd w3initmd w3wavemd w3wdasmd w3updtmd'
-               data='wmmdatmd w3gdatmd w3wdatmd w3adatmd w3idatmd w3odatmd'
+               data="wmmdatmd $memcode w3gdatmd w3wdatmd w3adatmd w3idatmd w3odatmd"
                prop="$pr"
-             source="w3triamd w3srcemd $dsx $flx $ln $st $nl $bt $ic $is $db $tr $bs $xx $refcode $igcode w3tripmd"
-                 IO="w3iogrmd w3iogomd w3iopomd w3iotrmd w3iorsmd w3iobcmd $couplmd $agcmmd $ogcmmd $igcmmd"
+             source="$pdlibcode $setupcode w3triamd w3srcemd $dsx $flx $ln $st $nl $bt $ic"
+             source="$source $is $db $tr $bs $xx $refcode $igcode w3parall"
+                 IO="w3iogrmd w3iogomd w3iopomd w3iotrmd w3iorsmd w3iobcmd $oasismd $agcmmd $ogcmmd $igcmmd w3tripmd"
                  IO="$IO w3iosfmd w3partmd"
-                aux="constants w3servmd w3timemd $tidecode w3arrymd w3dispmd w3cspcmd w3gsrumd $cplcode"
-                aux="$aux w3namlmd" ;;
+                aux="constants $uostmd w3servmd w3timemd $tidecode w3arrymd w3dispmd w3cspcmd w3gsrumd $cplcode"
+                aux="$aux w3nmlshelmd $pdlibyow" ;;
     ww3_multi|ww3_multi_esmf)
                if [ "$prog" = "ww3_multi" ]
                then
@@ -886,13 +936,13 @@
                fi
                core="$core wminitmd wmwavemd wmfinlmd wmgridmd wmupdtmd wminiomd"
                core="$core w3fldsmd w3initmd w3wavemd w3wdasmd w3updtmd"
-               data='wmmdatmd w3gdatmd w3wdatmd w3adatmd w3idatmd w3odatmd'
+               data="wmmdatmd $memcode w3gdatmd w3wdatmd w3adatmd w3idatmd w3odatmd"
                prop="$pr"
-             source="w3triamd w3srcemd $dsx $flx $ln $st $nl $bt $ic $is $db $tr $bs $xx $refcode $igcode"
+             source="$pdlibcode $pdlibyow $setupcode w3parall w3triamd w3srcemd $dsx $flx $ln $st $nl $bt $ic $is $db $tr $bs $xx $refcode $igcode"
                  IO='w3iogrmd w3iogomd w3iopomd wmiopomd'
                  IO="$IO w3iotrmd w3iorsmd w3iobcmd w3iosfmd w3partmd $couplmd $agcmmd $ogcmmd $igcmmd"
-                aux="constants $tidecode w3servmd w3timemd w3arrymd w3dispmd w3cspcmd w3gsrumd $mprfaux"
-                aux="$aux  wmunitmd w3namlmd" 
+                aux="constants $uostmd $tidecode w3servmd w3timemd w3arrymd w3dispmd w3cspcmd w3gsrumd $mprfaux"
+                aux="$aux  wmunitmd w3nmlmultimd" 
                 if [ "$scrip" = 'SCRIP' ]
                 then
                   aux="$aux scrip_constants scrip_grids scrip_iounitsmod"
@@ -906,13 +956,13 @@
    ww3_sbs1) IDstring='Multi-grid shell sbs version' 
                core='wminitmd wmwavemd wmfinlmd wmgridmd wmupdtmd wminiomd' 
                core="$core w3fldsmd w3initmd w3wavemd w3wdasmd w3updtmd" 
-               data='wmmdatmd w3gdatmd w3wdatmd w3adatmd w3idatmd w3odatmd' 
+               data="w3parall wmmdatmd $memcode w3gdatmd w3wdatmd w3adatmd w3idatmd w3odatmd" 
                prop="$pr" 
-               source="w3triamd w3srcemd $dsx $flx $ln $st $nl $bt $db $tr $bs $xx $refcode $igcode $is $ic" 
+               source="$pdlibcode $pdlibyow w3triamd w3srcemd $dsx $flx $ln $st $nl $bt $db $tr $bs $xx $refcode $igcode $is $ic" 
                  IO='w3iogrmd w3iogomd w3iopomd wmiopomd' 
                  IO="$IO w3iotrmd w3iorsmd w3iobcmd w3iosfmd w3partmd $couplmd $agcmmd $ogcmmd $igcmmd" 
-                aux="constants w3servmd w3timemd w3arrymd w3dispmd w3cspcmd w3gsrumd $mprfaux $tidecode" 
-                aux="$aux  wmunitmd w3namlmd"  
+                aux="constants $uostmd w3servmd w3timemd w3arrymd w3dispmd w3cspcmd w3gsrumd $mprfaux $tidecode" 
+                aux="$aux  wmunitmd w3nmlmultimd"  
                 if [ "$scrip" = 'SCRIP' ]
                 then
                   aux="$aux scrip_constants scrip_grids scrip_iounitsmod"
@@ -925,108 +975,109 @@
                 fi ;;
      ww3_outf) IDstring='Gridded output'
                core=
-               data='wmmdatmd w3gdatmd w3wdatmd w3adatmd w3idatmd w3odatmd'
+               data="w3parall wmmdatmd $memcode w3gdatmd w3wdatmd w3adatmd w3idatmd w3odatmd"
                prop=
-             source="$stx $nlx $btx $is"
+             source="$pdlibcode $pdlibyow $db $bt $setupcode $tr $trx $stx $nlx $btx $is"
                  IO='w3iogrmd w3iogomd'
-                aux='constants w3servmd w3timemd w3arrymd w3dispmd w3gsrumd'
-                aux="$aux w3namlmd" ;;
+                aux="constants $uostmd w3servmd w3timemd w3arrymd w3dispmd w3gsrumd"
+                aux="$aux" ;;
      ww3_ounf) IDstring='Gridded NetCDF output'
                core='w3initmd'
-               data='wmmdatmd w3gdatmd w3wdatmd w3adatmd w3idatmd w3odatmd'
+               data="wmmdatmd $memcode w3gdatmd w3wdatmd w3adatmd w3idatmd w3odatmd"
                prop=
-             source="w3triamd $stx $nlx $btx  $is"
+             source="$pdlibcode $pdlibyow $db $bt $setupcode w3parall w3triamd $stx $nlx $btx  $is"
                  IO='w3iogrmd w3iogomd w3iorsmd w3iopomd w3tripmd'
-                aux='constants w3servmd w3timemd w3arrymd w3dispmd w3gsrumd'
-                aux="$aux w3namlmd" ;;
+                aux="constants $uostmd w3servmd w3timemd w3arrymd w3dispmd w3gsrumd"
+                aux="$aux w3nmlounfmd $smco" ;;
      ww3_outp) IDstring='Point output'
                core=
-               data='w3triamd w3gdatmd w3wdatmd w3adatmd w3idatmd w3odatmd'
+               data="wmmdatmd w3parall w3triamd $memcode w3gdatmd w3wdatmd w3adatmd w3idatmd w3odatmd"
                prop=
-             source="$flx $ln $st $nl $bt $ic $is $db $tr $bs $xx $igcode"
+             source="$pdlibcode $pdlibyow $setupcode $flx $ln $st $nl $bt $ic $is $db $tr $bs $xx $igcode"
                  IO='w3bullmd w3iogrmd w3iopomd w3partmd'
-                aux='constants w3servmd w3timemd w3arrymd w3dispmd w3gsrumd' ;;
+                aux="constants $uostmd w3servmd w3timemd w3arrymd w3dispmd w3gsrumd" ;;
      ww3_ounp) IDstring='Point NetCDF output'
                core=
-               data='w3triamd w3gdatmd w3wdatmd w3adatmd w3idatmd w3odatmd'
+               data="wmmdatmd w3parall w3triamd $memcode w3gdatmd w3wdatmd w3adatmd w3idatmd w3odatmd"
                prop=
-             source="$flx $ln $st $nl $bt $ic $is $db $tr $bs $xx $igcode"
+             source="$pdlibcode $pdlibyow $setupcode $flx $ln $st $nl $bt $ic $is $db $tr $bs $xx $igcode"
                  IO='w3bullmd w3iogrmd w3iopomd w3partmd'
-                aux='constants w3servmd w3timemd w3arrymd w3dispmd w3gsrumd' ;;
+                aux="constants $uostmd w3servmd w3timemd w3arrymd w3dispmd w3gsrumd"
+                aux="$aux w3nmlounpmd" ;;
      ww3_trck) IDstring='Track output post'
                core=
-               data='w3gdatmd w3odatmd'
+               data="$memcode w3gdatmd w3odatmd"
                prop=
              source=
                  IO=
                 aux="constants w3servmd w3timemd w3gsrumd" ;;
      ww3_trnc) IDstring='Track NetCDF output post'
                core=
-               data='w3gdatmd w3odatmd'
+               data="$memcode w3gdatmd w3odatmd"
                prop=
              source=
                  IO=
-                aux="constants w3servmd w3timemd w3gsrumd" ;;
+                aux="constants $uostmd w3servmd w3timemd w3gsrumd w3nmltrncmd" ;;
      ww3_grib) IDstring='Gridded output (GRIB)'
                core=
-               data='wmmdatmd w3triamd w3gdatmd w3wdatmd w3adatmd w3idatmd w3odatmd'
+               data="w3parall wmmdatmd w3triamd $memcode w3gdatmd w3wdatmd w3adatmd w3idatmd w3odatmd"
                prop=
-             source="$stx $nlx $btx $is"
+             source="$pdlibcode $pdlibyow $db $bt $setupcode $stx $nlx $btx $is"
                  IO='w3iogrmd w3iogomd'
-                aux='constants w3servmd w3timemd w3arrymd w3dispmd w3gsrumd'
-                aux="$aux w3namlmd" ;;
+                aux="constants $uostmd w3servmd w3timemd w3arrymd w3dispmd w3gsrumd"
+                aux="$aux" ;;
      ww3_gspl) IDstring='Grid splitting'
                core='w3fldsmd'
-               data='w3gdatmd w3wdatmd w3adatmd w3idatmd w3odatmd'
+               data="$memcode w3gdatmd w3wdatmd w3adatmd w3idatmd w3odatmd"
                prop=
-             source="w3triamd $stx $nlx $btx $is"
-                 IO="w3iogrmd  $couplmd $agcmmd $ogcmmd $igcmmd"
-                aux="constants w3servmd w3timemd w3arrymd w3dispmd w3gsrumd $tidecode" ;;
+             source="$pdlibcode $pdlibyow $db $bt $setupcode wmmdatmd w3parall w3triamd $stx $nlx $btx $is"
+                 IO="w3iogrmd  $oasismd $agcmmd $ogcmmd $igcmmd"
+                aux="constants $uostmd w3servmd w3timemd w3arrymd w3dispmd w3gsrumd $tidecode" ;;
      ww3_gint) IDstring='Grid Interpolation'
                core=
-               data='wmmdatmd w3gdatmd w3wdatmd w3adatmd w3idatmd w3odatmd'
+               data="w3parall wmmdatmd $memcode w3gdatmd w3wdatmd w3adatmd w3idatmd w3odatmd"
                  IO='w3iogrmd w3iogomd'
                prop=
-             source="$st $nl $is"
-                aux='constants w3triamd w3servmd  w3arrymd w3dispmd w3timemd w3gsrumd'
-                aux="$aux w3namlmd" ;;
+             source="$pdlibcode $pdlibyow $db $bt $st $nl $is"
+                aux="constants $uostmd w3triamd w3servmd  w3arrymd w3dispmd w3timemd w3gsrumd"
+                aux="$aux" ;;
       gx_outf) IDstring='GrADS input file generation (gridded fields)'
                core=
-               data='wmmdatmd w3gdatmd w3wdatmd w3adatmd w3idatmd w3odatmd'
+               data="$memcode w3gdatmd w3wdatmd w3adatmd w3idatmd w3odatmd"
                prop=
-             source="w3triamd $stx $nlx $btx $db $tr $bs $xx $is"
+             source="$pdlibcode $pdlibyow $db $bt $setupcode wmmdatmd w3parall w3triamd $stx $nlx $btx $tr $bs $xx $is"
                  IO='w3iogrmd w3iogomd'
-                aux='constants w3servmd w3timemd w3arrymd w3dispmd w3gsrumd'
-                aux="$aux w3namlmd" ;;
+                aux="constants $uostmd w3servmd w3timemd w3arrymd w3dispmd w3gsrumd"
+                aux="$aux" ;;
       gx_outp) IDstring='GrADS input file generation for point output'
                core=
-               data='w3triamd w3gdatmd w3wdatmd w3adatmd w3idatmd w3odatmd'
+               data="$memcode w3gdatmd w3wdatmd w3adatmd w3idatmd w3odatmd"
                prop=
-             source="$flx $ln $st $nl $bt $ic $is $db $tr $bs $xx"
+             source="$pdlibcode $pdlibyow $db $bt $setupcode wmmdatmd w3parall w3triamd $ln $flx $st $nlx $btx $tr $bs $xx $is $ic"
                  IO='w3iogrmd w3iopomd'
-                aux='constants w3servmd w3timemd w3arrymd w3dispmd w3gsrumd' ;;
+                aux="constants $uostmd w3servmd w3timemd w3arrymd w3dispmd w3gsrumd" ;;
       ww3_systrk) IDstring='Wave system tracking postprocessor'
                core='w3strkmd'
-               data=
+               data="$memcode w3gdatmd w3adatmd w3idatmd w3odatmd w3wdatmd"
                prop=
-             source=
+             source="$pdlibcode $pdlibyow $db $bt $setupcode wmmdatmd w3dispmd w3triamd $ln $stx $nlx $btx $tr $bs $xx $is"
                  IO=
-                aux='constants w3servmd w3timemd' ;;
+                aux="constants $uostmd w3servmd w3timemd w3arrymd w3gsrumd w3parall" ;;
      libww3) IDstring='Object file archive'
                core='w3fldsmd w3initmd w3wavemd w3wdasmd w3updtmd'
                data='wmmdatmd w3gdatmd w3wdatmd w3adatmd w3idatmd w3odatmd'
                prop="$pr"
              source="w3triamd w3srcemd $dsx $flx $ln $st $nl $bt $ic $is $db $tr $bs $xx $refcode $igcode"
                  IO='w3iogrmd w3iogomd w3iopomd w3iotrmd w3iorsmd w3iobcmd w3iosfmd w3partmd'
-                aux="constants w3servmd w3timemd $tidecode w3arrymd w3dispmd w3cspcmd w3gsrumd" ;;
+                aux="constants $uostmd w3servmd w3timemd $tidecode w3arrymd w3dispmd w3cspcmd w3gsrumd" ;;
      ww3_uprstr) IDstring='Update Restart File' 
-                 core= 
-	              data='wmmdatmd w3triamd w3gdatmd w3wdatmd w3adatmd w3idatmd w3odatmd' 
-                 prop= 
-                 source="$stx $nlx $btx $is" 
-                 IO='w3iogrmd w3iogomd w3iorsmd' 
-                 aux='constants w3servmd w3timemd w3arrymd w3dispmd w3gsrumd' 
-                 aux="$aux w3namlmd" ;; 
+              core= 
+	          data='wmmdatmd w3triamd w3gdatmd w3wdatmd w3adatmd w3idatmd w3odatmd' 
+              prop= 
+            source="$memcode $pdlibcode $pdlibyow $flx $ln $st $nl $bt $ic $is $db $tr $bs $xx"
+                IO='w3iogrmd w3iogomd w3iorsmd' 
+               aux="constants $uostmd w3servmd w3timemd w3arrymd w3dispmd w3gsrumd" 
+               aux="$aux w3parall" ;; 
     esac
 
     # if esmf is included in program name, then
@@ -1048,7 +1099,6 @@
       files="$aux $core $data $prop $source $IO $prog"
       filesl="$prog $data $core $prop $source $IO $aux"
     fi
-
     echo "# $IDstring"                           >> makefile
     echo ' '                                     >> makefile
     for file in $files
@@ -1113,6 +1163,7 @@
 
     suffixes="ftn f F f90 F90 c"
     fexti=none
+    ispdlibi=no 
     for s in $suffixes
     do
       if [ -f $main_dir/ftn/$file.$s ]
@@ -1120,11 +1171,18 @@
         fexti=$s
         break
       fi
+      if [ -f $main_dir/ftn/PDLIB/$file.$s ]
+      then
+        fexti=$s
+        ispdlibi=yes
+        break
+      fi
     done
     if [ "$fexti" = 'none' ]
     then
       echo '      *** make_makefile.sh error ***'
-      echo "          Source file $main_dir/ftn/$file.* not found"
+      echo "          Source file $main_dir/ftn/$file.* "
+      echo "                   or $main_dir/ftn/PDLIB/$file.* not found"
       echo "          Source file suffixes checked: $suffixes"
       exit 2
     fi
@@ -1139,6 +1197,11 @@
     string2='	@$(aPb)/ad3'" $file"
     string3="$NULL"
 
+    if [ "$ispdlibi" = 'yes' ]
+    then 
+      string1='$(aPo)/'$file'.o : PDLIB/'$file.$fexti' '
+    fi 
+
     $main_dir/bin/ad3 $file 0 1 > ad3.out 2>&1
 
     if [ -n "`grep error ad3.out`" ]
@@ -1152,45 +1215,23 @@
     then
       touch check_file
     else
-      grep USE $file.$fexto  > check_file
-      grep use $file.$fexto >> check_file
+      check_file=`grep -i '^[[:blank:]]*use' $file.$fexto | awk '{print toupper($2)}' | \
+                     sed -e 's/,//' | sort -u`
     fi
     rm -f $file.$fexto
 
-    for mod in W3INITMD W3WAVEMD W3WDASMD W3UPDTMD W3FLDSMD W3CSPCMD \
-               W3GDATMD W3WDATMD W3ADATMD W3ODATMD W3IDATMD \
-               W3FLD1MD  W3FLD2MD \
-               W3IOGRMD W3IOGOMD W3IOPOMD W3IOTRMD W3IORSMD W3IOBCMD \
-                        W3IOSFMD W3PARTMD W3BULLMD \
-               W3TIDEMD W3CANOMD W3GIG1MD W3STRKMD \
-               W3PRO1MD W3PRO2MD W3PRO3MD W3PROXMD \
-                        W3UQCKMD W3UNO2MD W3PSMCMD W3PROFSMD \
-               W3SRCEMD W3FLX1MD W3FLX2MD W3FLX3MD W3FLX4MD W3FLXXMD \
-               W3SLN1MD W3SLNXMD \
-               W3SRC0MD W3SRC1MD W3SRC2MD W3SRC3MD W3SRC4MD \
-                        W3SRC6MD W3SRCXMD \
-               W3SNL1MD W3SNL2MD W3SNL3MD W3SNL4MD W3SNLXMD W3SNLSMD \
-                        m_xnldata serv_xnl4v5 m_fileio m_constants \
-               W3SWLDMD \
-               W3SBT1MD W3SBT4MD W3SBT8MD W3SBT9MD W3SBTXMD \
-               W3SDB1MD W3SDBXMD \
-               W3STR1MD W3STRXMD \
-               W3SBS1MD W3SBSXMD \
-               W3SIC1MD W3SIC2MD W3SIC3MD W3SIC4MD W3SIS1MD W3SIS2MD \
-               W3REF1MD \
-               W3SXXXMD \
-              CONSTANTS W3SERVMD W3TIMEMD W3ARRYMD W3DISPMD W3GSRUMD W3TRIAMD \
-               WMINITMD WMWAVEMD WMFINLMD WMMDATMD WMGRIDMD WMUPDTMD W3TRIPMD \
-               WMUNITMD WMINIOMD WMIOPOMD WMSCRPMD WMESMFMD \
-               w3getmem WW_cc CMP_COMM W3OACPMD W3AGCMMD W3OGCMMD W3IGCMMD  W3NAMLMD 
+      for mod in $check_file
       do
+      modfound=yes
       case $mod in
+         'W3UOSTMD'     ) modtest=w3uostmd.o ;;
          'W3INITMD'     ) modtest=w3initmd.o ;;
          'W3WAVEMD'     ) modtest=w3wavemd.o ;;
          'W3WDASMD'     ) modtest=w3wdasmd.o ;;
          'W3UPDTMD'     ) modtest=w3updtmd.o ;;
          'W3FLDSMD'     ) modtest=w3fldsmd.o ;;
          'W3CSPCMD'     ) modtest=w3cspcmd.o ;;
+         'MALLOCINFO_M' ) modtest=w3meminfo.o ;;
          'W3GDATMD'     ) modtest=w3gdatmd.o ;;
          'W3WDATMD'     ) modtest=w3wdatmd.o ;;
          'W3ADATMD'     ) modtest=w3adatmd.o ;;
@@ -1240,10 +1281,10 @@
          'W3SNL4MD'     ) modtest=w3snl4md.o ;;
          'W3SNLXMD'     ) modtest=w3snlxmd.o ;;
          'W3SNLSMD'     ) modtest=w3snlsmd.o ;;
-         'm_xnldata'    ) modtest=mod_xnl4v5.o ;;
-         'serv_xnl4v5'  ) modtest=serv_xnl4v5.o ;;
-         'm_fileio'     ) modtest=mod_fileio.o ;;
-         'm_constants'  ) modtest=mod_constants.o ;;
+         'M_XNLDATA'    ) modtest=mod_xnl4v5.o ;;
+         'SERV_XNL4V5'  ) modtest=serv_xnl4v5.o ;;
+         'M_FILEIO'     ) modtest=mod_fileio.o ;;
+         'M_CONSTANTS'  ) modtest=mod_constants.o ;;
          'W3SWLDMD'     ) modtest=w3swldmd.o ;;
          'W3SBT1MD'     ) modtest=w3sbt1md.o ;;
          'W3SBT4MD'     ) modtest=w3sbt4md.o ;;
@@ -1260,6 +1301,7 @@
          'W3SIC2MD'     ) modtest=w3sic2md.o ;;
          'W3SIC3MD'     ) modtest=w3sic3md.o ;;
          'W3SIC4MD'     ) modtest=w3sic4md.o ;;
+         'W3SIC5MD'     ) modtest=w3sic5md.o ;;
          'W3SIS1MD'     ) modtest=w3sis1md.o ;;
          'W3SIS2MD'     ) modtest=w3sis2md.o ;;
          'W3REF1MD'     ) modtest=w3ref1md.o ;;
@@ -1282,18 +1324,39 @@
          'WMIOPOMD'     ) modtest=wmiopomd.o ;;
          'WMSCRPMD'     ) modtest=wmscrpmd.o ;;
          'WMESMFMD'     ) modtest=wmesmfmd.o ;;
-         'w3getmem'     ) modtest=w3getmem.o ;;
-         'WW_cc'        ) modtest=ww.comm.o  ;;
+         'W3GETMEM'     ) modtest=w3getmem.o ;;
+         'WW_CC'        ) modtest=ww.comm.o  ;;
          'CMP_COMM'     ) modtest=cmp.comm.o  ;;
          'W3OACPMD'     ) modtest=w3oacpmd.o ;;
          'W3AGCMMD'     ) modtest=w3agcmmd.o ;;
          'W3OGCMMD'     ) modtest=w3ogcmmd.o ;;
          'W3IGCMMD'     ) modtest=w3igcmmd.o ;;
-         'W3NAMLMD'     ) modtest=w3namlmd.o ;;
 	 'W3TRIPMD'     ) modtest=w3tripmd.o ;;
+         'W3NMLMULTIMD' ) modtest=w3nmlmultimd.o ;;
+         'W3NMLPRNCMD'  ) modtest=w3nmlprncmd.o ;;
+         'W3NMLOUNFMD'  ) modtest=w3nmlounfmd.o ;;
+         'W3NMLOUNPMD'  ) modtest=w3nmlounpmd.o ;;
+         'W3NMLTRNCMD'  ) modtest=w3nmltrncmd.o ;;
+         'W3NMLBOUNCMD' ) modtest=w3nmlbouncmd.o ;;
+         'W3NMLSHELMD'  ) modtest=w3nmlshelmd.o ;;
+         'W3NETCDF'     ) modtest=w3netcdf.o ;;
+         'YOWFUNCTION'  ) modtest=yowfunction.o ;;
+         'YOWDATAPOOL'  ) modtest=yowdatapool.o ;;
+         'YOWNODEPOOL'  ) modtest=yownodepool.o ;;
+         'YOWSIDEPOOL'  ) modtest=yowsidepool.o ;;
+         'YOWRANKMODULE'     ) modtest=yowrankModule.o ;;
+         'YOWERR'            ) modtest=yowerr.o ;;
+         'YOWELEMENTPOOL'    ) modtest=yowelementpool.o ;;
+         'YOWEXCHANGEMODULE' ) modtest=yowexchangeModule.o ;;
+         'YOWPDLIBMAIN'      ) modtest=yowpdlibmain.o ;;
+         'PDLIB_FIELD_VEC'   ) modtest=pdlib_field_vec.o ;;
+         'PDLIB_W3PROFSMD'   ) modtest=w3profsmd_pdlib.o ;;
+         'W3PARALL'     ) modtest=w3parall.o ;;
+         'W3SMCOMD'     ) modtest=w3smcomd.o ;;
+         *              ) modfound=no ;; 
       esac
-      nr=`grep $mod check_file | wc -c | awk '{ print $1 }'`
-      if [ "$nr" -gt '8' ]
+
+      if [ "$modfound" == "yes" ]
       then
         if [ "$modtest" != "$file.o" ]
         then

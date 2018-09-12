@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 # --------------------------------------------------------------------------- #
 # sort_switch: Script to unify the way the switches are ordered in the switch #
 #              file, while checking and correcting for missing switches.      #
@@ -23,23 +23,14 @@
 #       No unauthorized use without permission.                               #
 #                                                                             #
 # --------------------------------------------------------------------------- #
+
+
+# --------------------------------------------------------------------------- #
 # 1. Preparations                                                             #
 # --------------------------------------------------------------------------- #
 # 1.a Internal variables
 
   set -e
-
-# 1.a.1 Setup file
-
-  ww3_env="${HOME}/.wwatch3.env"                           # setup file
-# The following line must not be removed: it is a switch for local install
-# so that all bin scripts point to the local wwatch3.env
-# WW3ENV
-# For manual install (without install_ww3_tar or install_ww3_svn) make sure to
-# either use the generic ww3_env or to add your own ww3_env="${my_directory}"
-
-  if [ ${WWATCH3_ENV} ]; then ww3_env="${WWATCH3_ENV}"; fi # alternate
-
   home_dir=`pwd`
 
 # 1.a.2 Usage function
@@ -121,28 +112,19 @@ EOF
     exit 2
   fi
 
-# 1.a.4 Setup WW3 environment
+# 1.a.4 Get data from setup file - - - - - - - - - - - - - - - - - - - - - - - - 
 
-  if [ -f $ww3_env ]
-  then
-    set `grep WWATCH3_DIR $ww3_env` ; shift
-    main_dir="$*"
-    set `grep WWATCH3_TMP $ww3_env` ; shift
-    temp_dir="$*"
-    set `grep WWATCH3_SOURCE $ww3_env` ; shift
-    source="$*"
-    set `grep WWATCH3_LIST $ww3_env` ; shift
-    list="$*"
-  else
-    echo "*** Set-up file $ww3_env not found ***"; echo ' '
-    exit 3
-  fi
+  source $(dirname $0)/w3_setenv
+  main_dir=$WWATCH3_DIR
+  temp_dir=$WWATCH3_TMP
+  source=$WWATCH3_SOURCE
+  list=$WWATCH3_LIST
+ 
+# 1.a.5 Process input (part 2)
 
   bin_dir="$main_dir/exe"
   script="$main_dir/bin/make_makefile.sh"
   shorts="make_makefile.stripped"
- 
-# 1.a.5 Process input (part 2)
 
   mkdir -p $temp_dir
 
@@ -207,7 +189,7 @@ EOF
     for sw in $work_sw
     do
       if [ "$sw" = "$add" ] ; then
-        found=`expr $found + 1` ; fi
+        found=$(($found + 1)) ; fi
     done
     if [ "$found" = '0' ] ; then
       old_switches="$old_switches $add" ; fi
@@ -309,7 +291,7 @@ EOF
       do
         if [ "$sw" = "$avail" ]
         then
-          i_fnd=`expr $i_fnd + 1`
+          i_fnd=$(($i_fnd + 1))
           if [ "$i_fnd" = '1' ]
           then
             found="$sw"
@@ -351,7 +333,7 @@ EOF
             do
               if [ "$sw" = "$swf" ]
               then
-                i_sec=`expr $i_sec + 1`
+                i_sec=$(($i_sec + 1))
                 found="$sw"
               fi
             done
@@ -361,7 +343,7 @@ EOF
             i_fnd='1'
             found=`echo $OK | awk '{ print $1}'`
             msg=' (added)'
-            i_add=`expr $i_add + 1`
+            i_add=$(($i_add + 1))
           else
             msg=' (dual use)'
           fi
@@ -403,7 +385,7 @@ EOF
           if [ "$lines" = '0' ]
           then
             new_switches="$new_switches $pfnd"
-            i_tot=`expr $i_tot + 1`
+            i_tot=$(($i_tot + 1))
           fi
         done
       fi
@@ -495,7 +477,7 @@ EOF
 
       if [ "$i_fnd" = '1' ]
       then
-        i_tot=`expr $i_tot + 1`
+        i_tot=$(($i_tot + 1))
         new_switches="$new_switches $found"
         temp_sw=`echo "$work_sw" | sed -e "s/ $found / /g"`
         work_sw=$temp_sw

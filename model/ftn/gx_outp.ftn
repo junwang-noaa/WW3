@@ -551,6 +551,7 @@
 !/                  (F. Ardhuin)
 !/    16-Jul-2012 : Move GMD (SNL3) and nonlinear filter (SNLS)
 !/                  from 3.15 (HLT).                    ( version 4.08 )
+!/    18-Aug-2018 : S_{ice} IC5 (Q. Liu)                ( version 6.06 )
 !/
 !  1. Purpose :
 !
@@ -629,7 +630,7 @@
 !/ST4      USE W3SRC4MD, ONLY : W3SPR4, W3SIN4, W3SDS4
 !/ST6      USE W3SRC6MD
 !/ST6      USE W3SWLDMD, ONLY : W3SWL6
-!/ST6      USE W3GDATMD, ONLY : SWL6S6, IICEDISP
+!/ST6      USE W3GDATMD, ONLY : SWL6S6
 !/STX      USE W3SRCXMD
 !/NL1      USE W3SNL1MD
 !/NL2      USE W3SNL2MD
@@ -645,6 +646,7 @@
 !/IC2      USE W3SIC2MD
 !/IC3      USE W3SIC3MD
 !/IC4      USE W3SIC4MD
+!/IC5      USE W3SIC5MD
 !/DB1      USE W3SDB1MD
 !/DBX      USE W3SDBXMD
 !/TRX      USE W3STRXMD
@@ -697,6 +699,7 @@
                                  XTR(NTH,NK), XDS(NTH,NK), XDB(NTH,NK),&
                                  XBT(NTH,NK), XBS(NTH,NK), XXX(NTH,NK),&
                                  XWL(NTH,NK), XIS(NTH,NK)
+      LOGICAL                 :: LBREAK
 !/ST3      LOGICAL                :: LLWS(NTH,NK) 
 !/ST4      LOGICAL                :: LLWS(NTH,NK)
 !/ST4      REAL                   :: LAMBDA(NSPEC)
@@ -977,7 +980,7 @@
 !/ST4                             ASO(J), UDIRR, Z0, CD,              &
 !/ST4                             TAUWX, TAUWY, TAUWNX, TAUWNY,       &
 !/ST4                             XWI, DIA,  LLWS, IX, IY, LAMBDA )
-!/ST6                CALL W3SIN6 (A, CG, WN2, USTAR, UDIRR, CD,   &
+!/ST6                CALL W3SIN6 (A, CG, WN2, UABS, USTAR, UDIRR, CD, &
 !/ST6                          TAUWX, TAUWY, TAUWNX, TAUWNY, XWI, DIA )
 !/STX                CALL W3SINX
               END IF
@@ -1004,8 +1007,8 @@
 !/ST6                IF (SWL6S6) CALL W3SWL6 ( A, CG, WN,  XWL, DIA )
 !/STX                CALL W3SDSX
 !
-!/DB1                CALL W3SDB1 ( A, WN2, DEPTH, EMEAN, FMEAN, WNMEAN,  &
-!/DB1                                                            XDB, DIA )
+!/DB1                CALL W3SDB1 ( J, A, DEPTH, EMEAN, FMEAN, WNMEAN, CG, &
+!/DB1                                                            LBREAK, XDB, DIA )
 !/DBX                CALL W3SDBX
 !
               END IF
@@ -1015,10 +1018,11 @@
 !/BTX                CALL W3SBTX
 
 !/IC1                CALL W3SIC1 ( A, DEPTH, CG,      IX, IY, XBT, DIA )
-!/IC2                CALL W3SIC2 ( A, DEPTH, ICETHICK ,CG,  WN, IX, IY, XBT, DIA, WN_R, &
-!/IC2                              CG_ICE, ALPHA_LIU, R, ICEF )
+!/IC2                CALL W3SIC2 ( A, DEPTH, ICETHICK, ICEF ,CG,  WN, IX, IY, XBT, DIA, WN_R, &
+!/IC2                              CG_ICE, ALPHA_LIU, R )
 !/IC3                CALL W3SIC3 ( A, DEPTH, CG,  WN, IX, IY, XBT, DIA )
 !/IC4                CALL W3SIC4 ( A, DEPTH, CG,      IX, IY, XBT, DIA ) 
+!/IC5                CALL W3SIC5 ( A, DEPTH, CG,  WN, IX, IY, XBT, DIA )
 
 !/BT4                    IX=1    ! to be fixed later 
 !/BT4                    IY=1    ! to be fixed later 

@@ -8,7 +8,7 @@
 !/                  |           J. H. Alves             |
 !/                  |            F. Ardhuin             |
 !/                  |                        FORTRAN 90 |
-!/                  | Last update :         29-May-2014 |
+!/                  | Last update :         06-Jun-2018 |
 !/                  +-----------------------------------+
 !/
 !/    14-Jan-1999 : Final FORTRAN 77                    ( version 1.18 )
@@ -73,8 +73,7 @@
 !/    16-Sep-2011 : Clean up.                           ( version 4.05 )
 !/    01-Dec-2011 : New namelist for reflection         ( version 4.05 )
 !/    01-Mar-2012 : Bug correction for NLPROP in ST2    ( version 4.05 )
-!/    12-Jun-2012 : Add /RTD option or rotated grid.    ( version 4.06 ) 
-!/                  (Jian-Guo Li, UK Met Office) 
+!/    12-Jun-2012 : Add /RTD rotated grid option. JGLi  ( version 4.06 ) 
 !/    13-Jul-2012 : Move data structures GMD (SNL3) and nonlinear
 !/                  filter (SNLS) from 3.15 (HLT).      ( version 4.07 )
 !/    02-Sep-2012 : Clean up of reflection and UG grids ( version 4.08 )
@@ -84,8 +83,7 @@
 !/    01-Jun-2013 : Adding namelist for spectral output ( version 4.10 )
 !/    12-Sep-2013 : Adding Arctic part for SMC grid.    ( version 4.11 )
 !/    01-Nov-2013 : Changed UG list name to UNST        ( version 4.12 )
-!/    11-Nov-2013 : SMC and rotated grid incorporated in the main 
-!/                  trunk                               ( version 4.13 )
+!/    11-Nov-2013 : Make SMC and RTD option compatible. ( version 4.13 )
 !/    13-Nov-2013 : Moved out reflection to W3UPDTMD    ( version 4.12 )
 !/    27-Jul-2013 : Adding free infragravity waves      ( version 4.15 )
 !/    02-Dec-2013 : Update of ST4                       ( version 4.16 )
@@ -95,6 +93,15 @@
 !/    15 Oct-2015 : Change SMC grid input files. JGLi   ( version 5.09 )
 !/    10-Jan-2017 : Changes for US3D and USSP           ( version 6.01 )
 !/    20-Jan-2017 : Bug fix for mask input from file.   ( version 6.02 )
+!/    01-Mar-2018 : RTD poles info read from namelist   ( version 6.02 )
+!/    14-Mar-2018 : Option to read UNST boundary file   ( version 6.02 )
+!/    26-Mar-2018 : Sea-point only Wnd/Cur input. JGLi  ( version 6.02 )
+!/    15-May-2018 : Dry sea points over zlim            ( version 6.04 )
+!/    06-Jun-2018 : add Implicit grid parameters for unstructured grids
+!/                  add DEBUGGRID/DEBUGSTP              ( version 6.04 )
+!/    18-Aug-2018 : S_{ice} IC5 (Q. Liu)                ( version 6.06 )
+!/    20-Jun-2018 : Update of ST6  (Q. Liu)             ( version 6.06 )
+!/    26-Aug-2018 : UOST (Mentaschi et al. 2015, 2018)  ( version 6.06 )
 !/
 !/    Copyright 2009-2013 National Weather Service (NWS),
 !/       National Oceanic and Atmospheric Administration.  All rights
@@ -145,7 +152,7 @@
 !      W3DMO5    Subr.   Id.    Set array dims for output type 5.
 !      ITRACE    Subr. W3SERVMD Subroutine tracing initialization.
 !      STRACE    Subr.   Id.    Subroutine tracing.
-!      NEXTLN    Subr.   Id.    Get next line from input filw
+!      NEXTLN    Subr.   Id.    Get next line from input file
 !      EXTCDE    Subr.   Id.    Abort program as graceful as possible.
 !      DISTAB    Subr. W3DISPMD Make tables for solution of the
 !                               dispersion relation.
@@ -308,8 +315,8 @@
 !     the polar Arctic part above 86N to the existing SMC grid and uses
 !     a map-east reference direction for this extra polar region.
 !     Because the map-east direction changes with latitude and longitude
-!     the wave spectra defined to the map-east direction could not mixed
-!     up with the conventional spectra defined to the local east
+!     the wave spectra defined to the map-east direction could not be 
+!     mixed up with the conventional spectra defined to the local east
 !     direction.  A rotation sub is provided for convertion from one to
 !     another.  Propagation part will be calculated together, including
 !     the boundary cells.  The boundary cells are then updated by
@@ -319,7 +326,9 @@
 !     For convenience, Arctic cellls are all base level cells and are
 !     appended to the end of the global cells.  If refined cells were
 !     used in the Arctic part, it would not be kept all together, making
-!     the sub-loops much more complicated.
+!     the sub-loops much more complicated. If refined resolution cells
+!     are required for a Arctic regional model, users may consider use
+!     the rotated SMC grid options (RTD and SMC).
 !
 !     For more information about the SMC grid, please refer to  
 !     Li, J.G. (2012) Propagation of Ocean Surface Waves on a Spherical
@@ -440,6 +449,10 @@
 !                  (Wang and Shen JGR 2010)
 !     !/IC4   Sink term for empirical, frequency-dependent attenuation
 !                   in ice (Wadhams et al. 1988: JGR 93 (C6) 6799-6818)
+!     !/IC5   Sink term for interaction with ice (Mosig et al. method)
+!                  (Mosig et al. 2015: JGR)
+!
+!     !/UOST  Unresolved Obstacles Source Term (UOST), Mentaschi et al. 2015
 !
 !     !/DB0   No depth-induced breaking included.
 !     !/DB1   Battjes-Janssen depth-limited breaking.
@@ -565,6 +578,11 @@
       ! STK_WN are the decays for Stokes drift partitions
       REAL                    :: STK_WN(25)
 
+!/DEBUGGRID       INTEGER     :: nbCase1, nbCase2, nbCase3,           &
+!/DEBUGGRID                      nbCase4, nbCase5, nbCase6,           &
+!/DEBUGGRID                      nbCase7, nbCase8
+!/DEBUGGRID       INTEGER     :: nbTMPSTA0, nbTMPSTA1, nbTMPSTA2
+!/DEBUGGRID       INTEGER     :: IAPROC
 !
 !/LN1      REAL                    :: CLIN, RFPM, RFHF
 !/ST1      REAL                    :: CINP, CDIS, APM
@@ -612,12 +630,15 @@
 !/IS2                                 IS2FRAGILITY, IS2DMIN, IS2DAMP, &
 !/IS2                                 IS2CONC, IS2CREEPB, IS2CREEPC,  &
 !/IS2                                 IS2CREEPD, IS2CREEPN, IS2BREAKE,&
-!/IS2                                 IS2WIM1, IS2BREAKF 
-!/IS2      LOGICAL                 :: IS2BREAK, IS2DISP, IS2DUPDATE 
+!/IS2                                 IS2WIM1, IS2BREAKF, IS2FLEXSTR, &
+!/IS2                                 IS2ANDISN, IS2ANDISE, IS2ANDISD
+!/IS2      LOGICAL                 :: IS2BREAK, IS2DISP, IS2DUPDATE,  &
+!/IS2                                 IS2ISOSCAT, IS2ANDISB
+!
 !/REF1      REAL                    :: REFCOAST, REFFREQ, REFMAP,     &
 !/REF1                                 REFSUBGRID, REFRMAX, REFMAPD,  &
 !/REF1                                 REFICEBERG, REFCOSP_STRAIGHT,  &
-!/REF1                                 REFFREQPOW
+!/REF1                                 REFFREQPOW, REFUNSTSOURCE
 !
 !/IG1  LOGICAL                 :: IGSWELLMAX, IGBCOVERWRITE
 !/IG1  INTEGER                 :: IGMETHOD, IGADDOUTP, IGSOURCE,      &
@@ -627,7 +648,7 @@
 !
 !/IC2  LOGICAL                 :: IC2DISPER
 !/IC2  REAL                    :: IC2TURB, IC2ROUGH, IC2REYNOLDS,      &
-!/IC2                             IC2SMOOTH, IC2VISC, IC2TURBS
+!/IC2                             IC2SMOOTH, IC2VISC, IC2TURBS, IC2DMAX
 
 !/IC3  REAL                    :: IC2TURB, IC2ROUGH, IC2REYNOLDS,      &
 !/IC3                             IC2SMOOTH, IC2VISC, IC2TURBS,        &
@@ -638,6 +659,10 @@
 
 !/IC4  INTEGER                 :: IC4METHOD
 !/IC4  REAL                    :: IC4KI(NIC4), IC4FC(NIC4)
+!
+!/IC5  REAL                    :: IC5MINIG, IC5MINWT,                  &
+!/IC5                             IC5MAXKRATIO, IC5MAXKI, IC5MINHW,    &
+!/IC5                             IC5MAXITER, IC5RKICK, IC5KFILTER
 
       CHARACTER               :: COMSTR*1, PNAME*30, RFORM*16,        &
                                  FROM*4, FNAME*60, TNAME*60, LINE*80, &
@@ -651,7 +676,8 @@
       REAL                    :: CFLTM, CICE0, CICEN, PMOVE, XFILT,    &
                                  LICE, XSEED, XR, HSPM, WSM, WSC, STDX,&
                                  STDY, STDT, ICEHMIN, ICEHFAC, ICEHINIT, &
-                                 ICEWIND, ICEHDISP, ICEFDISP, ICEDDISP
+                                 ICESLN, ICEWIND, ICESNL, ICESDS,        &
+                                 ICEHDISP, ICEFDISP, ICEDDISP
 !
       REAL(8)                 :: GSHIFT ! see notes in WMGHGH
       LOGICAL                 :: FLC, ICEDISP, TRCKCMPR
@@ -689,7 +715,8 @@
 !/ST4                                 SDSBM0, SDSBM1, SDSBM2, SDSBM3,      &
 !/ST4                                 SDSBM4, SDSLFGEN, SDSHFGEN
 !
-!/ST6      REAL                    :: SINA0, SDSA1, SDSA2, SWLB1
+!/ST6      REAL                    :: SINA0, SINWS, SINFC,                 &
+!/ST6                                 SDSA1, SDSA2, SWLB1
 !/ST6      INTEGER                 :: SDSP1, SDSP2
 !/ST6      LOGICAL                 :: SDSET, CSTB1
 !
@@ -705,25 +732,59 @@
 !/PR2      REAL                    :: DTIME
 !
 !/SMC      REAL                    :: DTIME, RFMAXD, SYMR, YJ0R
-!/SMC      LOGICAL                 :: UNO3, AVERG 
+!/SMC      LOGICAL                 :: UNO3, AVERG, SEAWND 
 !
 !/PR3      REAL                    :: WDTHCG, WDTHTH
-           REAL                    :: UGOBCDEPTH
-           LOGICAL                 :: UGOBCAUTO, EXPFSN, EXPFSPSI,     &
-                                      EXPFSFCT,IMPFSN
-           INTEGER                 :: UNSTSCHEMES(4), UNSTSCHEME
+           LOGICAL :: JGS_TERMINATE_MAXITER = .TRUE.
+           LOGICAL :: JGS_TERMINATE_DIFFERENCE = .TRUE.
+           LOGICAL :: JGS_TERMINATE_NORM = .TRUE.
+           LOGICAL :: JGS_LIMITER = .FALSE.
+           LOGICAL :: JGS_BLOCK_GAUSS_SEIDEL = .TRUE.
+           LOGICAL :: JGS_USE_JACOBI = .TRUE.
+           LOGICAL :: JGS_SOURCE_NONLINEAR = .FALSE.
+           LOGICAL :: UGOBCAUTO = .FALSE.
+           LOGICAL :: EXPFSN    = .TRUE.
+           LOGICAL :: EXPFSPSI  = .FALSE.
+           LOGICAL :: EXPFSFCT  = .FALSE.
+           LOGICAL :: IMPFSN    = .FALSE.
+           LOGICAL :: EXPTOTAL  = .FALSE.
+           LOGICAL :: IMPTOTAL  = .FALSE.
+           LOGICAL :: IMPREFRACTION = .FALSE.
+           LOGICAL :: IMPFREQSHIFT = .FALSE.
+           LOGICAL :: IMPSOURCE = .FALSE.
+           LOGICAL :: SETUP_APPLY_WLV = .FALSE.
+           INTEGER :: JGS_MAXITER=100
+           INTEGER :: nbSel
+           INTEGER :: UNSTSCHEMES(4)
+           INTEGER :: UNSTSCHEME
+           INTEGER :: JGS_NLEVEL = 0
+           REAL*8  :: JGS_PMIN = 0.
+           REAL*8  :: JGS_DIFF_THR = 1.E-10
+           REAL*8  :: JGS_NORM_THR = 1.E-20
+           REAL*8  :: SOLVERTHR_SETUP = 1.E-20
+           REAL*8  :: CRIT_DEP_SETUP = 0.
+!
+           CHARACTER               :: UGOBCFILE*60
+           REAL                    :: UGOBCDEPTH 
+           LOGICAL                 :: UGOBCOK
+
+!/RTD      REAL                    :: PLAT, PLON
+!/RTD      LOGICAL                 :: UNROT
 !
 !/FLD1      NAMELIST /FLD1/ TAILTYPE, TAILLEV, TAILT1, TAILT2
 !/FLD2      NAMELIST /FLD2/ TAILTYPE, TAILLEV, TAILT1, TAILT2
 !/FLX3      NAMELIST /FLX3/ CDMAX, CTYPE
 !/FLX4      NAMELIST /FLX4/ CDFAC
 !/IC2      NAMELIST /SIC2/  IC2DISPER, IC2TURB, IC2ROUGH, IC2REYNOLDS,      &
-!/IC2                      IC2SMOOTH, IC2VISC, IC2TURBS
+!/IC2                      IC2SMOOTH, IC2VISC, IC2TURBS, IC2DMAX
 !/IC3      NAMELIST /SIC3/  IC3MAXTHK, IC2TURB, IC2ROUGH, IC2REYNOLDS,      &
 !/IC3                      IC2SMOOTH, IC2VISC, IC2TURBS, IC3MAXCNC,      &
 !/IC3                      IC3CHENG, USECGICE, IC3HILIM, IC3KILIM,      &
 !/IC3                      IC3VISC, IC3ELAS, IC3DENS, IC3HICE
 !/IC4      NAMELIST /SIC4/  IC4METHOD, IC4KI, IC4FC
+!/IC5      NAMELIST /SIC5/  IC5MINIG, IC5MINWT, IC5MAXKRATIO,        &
+!/IC5                       IC5MAXKI, IC5MINHW, IC5MAXITER, IC5RKICK,&
+!/IC5                       IC5KFILTER
 !/IG1      NAMELIST /SIG1/  IGMETHOD, IGADDOUTP, IGSOURCE, IGBCOVERWRITE,   &
 !/IG1                      IGMAXFREQ, IGSTERMS, IGSWELLMAX,                &
 !/IG1                      IGSOURCEATBP, IGKDMIN, IGFIXEDDEPTH, IGEMPIRICAL 
@@ -755,7 +816,7 @@
 !/ST4                      SDSDTH, SDSCOS, SDSBRF1, SDSBRFDF,              &
 !/ST4                      SDSBM0, SDSBM1, SDSBM2, SDSBM3, SDSBM4,         &
 !/ST4                      SDSHFGEN, SDSLFGEN, WHITECAPWIDTH, FXINCUT, FXDSCUT
-!/ST6      NAMELIST /SIN6/ SINA0
+!/ST6      NAMELIST /SIN6/ SINA0, SINWS, SINFC
 !/ST6      NAMELIST /SDS6/ SDSET, SDSA1, SDSA2, SDSP1, SDSP2
 !/ST6      NAMELIST /SWL6/ SWLB1, CSTB1
 !/BT1      NAMELIST /SBT1/ GAMMA
@@ -763,21 +824,40 @@
 !/BT4                      RIPFAC2, RIPFAC3, RIPFAC4, SIGDEPTH,            &
 !/BT4                      BOTROUGHMIN, BOTROUGHFAC
 !/DB1      NAMELIST /SDB1/ BJALFA, BJGAM, BJFLAG
+!/UOST     NAMELIST /UOST/ UOSTFILELOCAL, UOSTFILESHADOW,             &
+!/UOST                     UOSTFACTORLOCAL, UOSTFACTORSHADOW
+!
 !/PR1      NAMELIST /PRO1/ CFLTM
 !/PR2      NAMELIST /PRO2/ CFLTM, DTIME, LATMIN
-!
 !/SMC      NAMELIST /PSMC/ CFLTM, DTIME, LATMIN, RFMAXD, UNO3, AVERG, &
-!/SMC                      LvSMC, ISHFT, JEQT,   NBISMC
+!/SMC                      LvSMC, ISHFT, JEQT,   NBISMC, SEAWND 
 ! 
 !/PR3      NAMELIST /PRO3/ CFLTM, WDTHCG, WDTHTH
-           NAMELIST /UNST/ UGOBCAUTO, UGOBCDEPTH,                     &
+           NAMELIST /UNST/ UGOBCAUTO, UGOBCDEPTH, UGOBCFILE,          &
                            EXPFSN, EXPFSPSI, EXPFSFCT,                &
-                           IMPFSN
+                           IMPFSN, IMPTOTAL, EXPTOTAL,                &
+                           IMPREFRACTION, IMPFREQSHIFT,               &
+                           IMPSOURCE,                                 &
+                           JGS_TERMINATE_MAXITER,                     &
+                           JGS_TERMINATE_DIFFERENCE,                  &
+                           JGS_TERMINATE_NORM,                        &
+                           JGS_LIMITER,                               &
+                           JGS_USE_JACOBI,                            &
+                           JGS_BLOCK_GAUSS_SEIDEL,                    &
+                           JGS_MAXITER,                               &
+                           JGS_PMIN,                                  &
+                           JGS_DIFF_THR,                              &
+                           JGS_NORM_THR,                              &
+                           JGS_NLEVEL,                                &
+                           JGS_SOURCE_NONLINEAR,                      &
+                           SETUP_APPLY_WLV, SOLVERTHR_SETUP,          &
+                           CRIT_DEP_SETUP
            NAMELIST /MISC/ CICE0, CICEN, LICE, XSEED, FLAGTR, XP, XR, & 
                       XFILT, PMOVE, IHM, HSPM, WSM, WSC, FLC, FMICHE, &
                       RWNDC, FACBERG, NOSW, GSHIFT, WCOR1, WCOR2,     &
                       STDX, STDY, STDT, ICEHMIN, ICEHINIT, ICEDISP,   &
-                      ICEWIND, ICEHFAC, ICEHDISP, ICEDDISP, ICEFDISP
+                      ICESLN, ICEWIND, ICESNL, ICESDS, ICEHFAC,       &
+                      ICEHDISP, ICEDDISP, ICEFDISP, NOLEAP, TRCKCMPR
            NAMELIST /OUTS/ P2SF, I1P2SF, I2P2SF,                      &
                              US3D, I1US3D, I2US3D,                    &
                              USSP, IUSSP, STK_WN,                     &
@@ -787,15 +867,18 @@
                              TH2MF, I1TH2M, I2TH2M,                   &
                              STH2MF, I1STH2M, I2STH2M
 !/IS1           NAMELIST /SIS1/ ISC1, ISC2
-!/IS2           NAMELIST /SIS2/ ISC1, IS2C2, IS2C3, IS2BACKSCAT, IS2BREAK,  &
+!/IS2           NAMELIST /SIS2/ ISC1, IS2C2, IS2C3, IS2BACKSCAT, IS2ISOSCAT, IS2BREAK,  &
 !/IS2                           IS2DISP, IS2FRAGILITY, IS2CONC, IS2DMIN,    &
 !/IS2                           IS2DAMP, IS2DUPDATE, IS2CREEPB, IS2CREEPC,  &
 !/IS2                           IS2CREEPD, IS2CREEPN, IS2BREAKE, IS2BREAKF, &
-!/IS2                           IS2WIM1
+!/IS2                           IS2WIM1, IS2FLEXSTR, IS2ANDISB, IS2ANDISE, IS2ANDISD,   &
+!/IS2                           IS2ANDISN
 !/REF1           NAMELIST /REF1/ REFCOAST, REFFREQ, REFMAP,  REFMAPD,       &
 !/REF1                          REFSUBGRID, REFICEBERG,                     &
 !/REF1                          REFCOSP_STRAIGHT, REFSLOPE, REFRMAX,        &
-!/REF1                          REFFREQPOW
+!/REF1                          REFFREQPOW, REFUNSTSOURCE
+!/
+!/RTD      NAMELIST /ROTD/ PLAT, PLON, UNROT
 !/
 !/ ------------------------------------------------------------------- /
 !/
@@ -817,6 +900,7 @@
 !--- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 ! 2.  IO set-up.
 !
+!/DEBUGGRID      IAPROC = 1
       NDSI   = 10
       NDSS   = 90
       NDSM   = 20
@@ -1051,6 +1135,8 @@
 !/IC3      FLIC   = .TRUE.
 !/IC4      NRIC   = NRIC + 1
 !/IC4      FLIC   = .TRUE.
+!/IC5      NRIC   = NRIC + 1
+!/IC5      FLIC   = .TRUE.
 !
 !/IS1      NRIS   = NRIS + 1
 !/IS1      FLIS   = .TRUE.
@@ -1186,7 +1272,7 @@
 !/FLX3      CD_MAX =    CDMAX
 !/FLX3      CAP_ID =    CTYPE
 !
-!/FLX4      CDFAC  = 1.0E-4
+!/FLX4      CDFAC  = 1.0
 !/FLX4      CALL READNL ( NDSS, 'FLX4', STATUS )
 !/FLX4      WRITE (NDSO,810) STATUS
 !/FLX4      WRITE (NDSO,811) CDFAC
@@ -1253,6 +1339,8 @@
 !/ST4      SINBR   = 0.
 !
 !/ST6      SINA0  = 0.09
+!/ST6      SINWS  = 32.0
+!/ST6      SINFC  = 6.0
 !
 !/ST1      CALL READNL ( NDSS, 'SIN1', STATUS )
 !/ST1      WRITE (NDSO,920) STATUS
@@ -1322,9 +1410,11 @@
 !/ST6      CALL READNL ( NDSS, 'SIN6', STATUS )
 !/ST6      WRITE (NDSO,920) STATUS
 !/ST6      SIN6A0 = SINA0
+!/ST6      SIN6WS = SINWS
+!/ST6      SIN6FC = SINFC
 !/ST6      J = 1
 !/ST6      IF ( SIN6A0.LE.0. ) J = 2
-!/ST6      WRITE (NDSO,921) YESXNO(J), SIN6A0
+!/ST6      WRITE (NDSO,921) YESXNO(J), SIN6A0, SIN6WS, SIN6FC
 !
 ! 6.e Define Snl.
 !
@@ -1550,12 +1640,12 @@
 !/ST4      SDSLFGEN  = 0.
 !
 !/ST6      SDSET  = .TRUE.
-!/ST6      SDSA1  = 3.74E-7
+!/ST6      SDSA1  = 4.75E-06
 !/ST6      SDSP1  = 4
-!/ST6      SDSA2  = 5.24E-6
+!/ST6      SDSA2  = 7.00E-05
 !/ST6      SDSP2  = 4
 !/ST6      CSTB1  = .FALSE.
-!/ST6      SWLB1  = 0.0032
+!/ST6      SWLB1  = 0.41E-02
 !
 !/ST1      CALL READNL ( NDSS, 'SDS1', STATUS )
 !/ST1      WRITE (NDSO,924) STATUS
@@ -1726,6 +1816,16 @@
 !/DB1      SDBC2  = BJGAM
 !/DB1      FDONLY = BJFLAG
 !
+!
+!/UOST      UOSTFILELOCAL = 'obstructions_local.'//ADJUSTL(TRIM(GNAME))//'.in'
+!/UOST      UOSTFILESHADOW = 'obstructions_shadow.'//ADJUSTL(TRIM(GNAME))//'.in'
+!/UOST      UOSTFACTORLOCAL = 1
+!/UOST      UOSTFACTORSHADOW = 1
+!/UOST      CALL READNL ( NDSS, 'UOST', STATUS )
+!/UOST      WRITE (NDSO,4500) STATUS
+!/UOST      WRITE (NDSO,4501) ADJUSTL(TRIM(UOSTFILELOCAL)), ADJUSTL(TRIM(UOSTFILESHADOW)), &
+!/UOST                UOSTFACTORLOCAL, UOSTFACTORSHADOW
+!
 ! 6.i Define Str.
 !
 !/TR0      WRITE (NDSO,930)
@@ -1762,16 +1862,85 @@
 !/IC4            //'Empirical method.','        '&
 !/IC4            //'Required field input: ice parameters (varies).'
 !
+!/IC5      WRITE (NDSO,935)
+!/IC5      WRITE(NDSO,'(A/A/)')'    Sice will be calculated using '&
+!/IC5            //'Mosig et al. method.','        '&
+!/IC5            //'Required field input: ice parameters 1, 2, 3 and 4.'
+!
 ! 6.l Read unstructured data 
 ! initialisation of logical related to unstructured grid
        UGOBCAUTO = .TRUE.
        UGOBCDEPTH= -10.
+       UGOBCOK = .FALSE.
+       UGOBCFILE = ''
        EXPFSN    = .TRUE.
        EXPFSPSI  = .FALSE.
        EXPFSFCT  = .FALSE.
        IMPFSN    = .FALSE.
+       IMPTOTAL  = .FALSE.
+       EXPTOTAL  = .FALSE. 
+       IMPREFRACTION = .FALSE.
+       IMPFREQSHIFT = .FALSE.
+       IMPSOURCE = .FALSE.
+       SETUP_APPLY_WLV = .FALSE.
+       SOLVERTHR_SETUP=1E-14
+       CRIT_DEP_SETUP=0.1
+       JGS_TERMINATE_MAXITER = .TRUE.
+       JGS_TERMINATE_DIFFERENCE = .TRUE.
+       JGS_TERMINATE_NORM = .FALSE.
+       JGS_LIMITER = .FALSE.
+       JGS_BLOCK_GAUSS_SEIDEL = .TRUE.
+       JGS_USE_JACOBI = .TRUE.
+       JGS_MAXITER=100
+       JGS_PMIN = 1
+       JGS_DIFF_THR = 1.E-10
+       JGS_NORM_THR = 1.E-20
+       JGS_NLEVEL = 0
+       JGS_SOURCE_NONLINEAR = .FALSE.
 ! read data from the unstructured devoted namelist
-       CALL READNL ( NDSS, 'UNST', STATUS ) 
+       CALL READNL ( NDSS, 'UNST', STATUS )
+
+       B_JGS_USE_JACOBI = JGS_USE_JACOBI
+       B_JGS_TERMINATE_MAXITER = JGS_TERMINATE_MAXITER
+       B_JGS_TERMINATE_DIFFERENCE = JGS_TERMINATE_DIFFERENCE
+       B_JGS_TERMINATE_NORM = JGS_TERMINATE_NORM
+       B_JGS_LIMITER = JGS_LIMITER
+       B_JGS_BLOCK_GAUSS_SEIDEL = JGS_BLOCK_GAUSS_SEIDEL
+       B_JGS_MAXITER = JGS_MAXITER
+       B_JGS_PMIN = JGS_PMIN
+       B_JGS_DIFF_THR = JGS_DIFF_THR
+       B_JGS_NORM_THR = JGS_NORM_THR
+       B_JGS_NLEVEL = JGS_NLEVEL
+       B_JGS_SOURCE_NONLINEAR = JGS_SOURCE_NONLINEAR
+
+       IF ((EXPFSN .eqv. .FALSE.).and.(EXPFSPSI .eqv. .FALSE.)     &
+           .and.(EXPFSFCT .eqv. .FALSE.)                           &
+           .and.(IMPFSN .eqv. .FALSE.)                             &
+           .and.(EXPTOTAL .eqv. .FALSE.)                           &
+           .and.(IMPTOTAL .eqv. .FALSE.)) THEN
+         EXPFSN=.TRUE. ! This is the default scheme ...
+       END IF
+       nbSel=0
+
+       IF (EXPFSN) nbSel=nbSel+1
+       IF (EXPFSPSI) nbSel=nbSel+1
+       IF (EXPFSFCT) nbSel=nbSel+1
+       IF (IMPFSN) nbSel=nbSel+1
+       IF (IMPTOTAL) nbSel=nbSel+1
+       IF (EXPTOTAL) nbSel=nbSel+1
+
+       IF (GTYPE .EQ. UNGTYPE) THEN
+         IF (nbSel .ne. 1) THEN
+           IF (nbSel .gt. 1) THEN
+             WRITE (NDSO,*) 'More than one scheme selected'
+           ELSE IF (nbSel .eq. 0) THEN
+             WRITE (NDSO,*) 'no scheme selected'
+           END IF
+           WRITE (NDSO,*)'Select only one of EXPFSN, EXPFSFCT, EXPFSPSI'
+           WRITE (NDSO,*)'IMPFSN, IMPTOTAL'
+           STOP
+         END IF
+       END IF
 !
 ! 6.m Select propagation scheme
 !
@@ -1837,6 +2006,7 @@
 !/SMC      RFMAXD = 80.0
 !/SMC      UNO3   = .FALSE.
 !/SMC      AVERG  = .FALSE.
+!/SMC      SEAWND = .FALSE.
 !
 !/PR3      WDTHCG = 1.5
 !/PR3      WDTHTH = WDTHCG
@@ -1878,10 +2048,13 @@
 !/SMC      Refran = RFMAXD * DERA 
 !/SMC      FUNO3  = UNO3
 !/SMC      FVERG  = AVERG
+!/SMC      FSWND  = SEAWND
 !/SMC      IF( UNO3 ) WRITE (NDSO,*)                  &
 !/SMC        " Advection use 3rd order UNO3 instead of UNO2 scheme."
-!/SMC      IF( AVERG) WRITE (NDSO,*)                  &
+!/SMC      IF( AVERG ) WRITE (NDSO,*)                 &
 !/SMC        " Extra 1-2-1 average smoothing activated on SMC grid."
+!/SMC      IF( SEAWND ) WRITE (NDSO,*)                & 
+!/SMC        " Sea-point only wind input is required for SMC grid. "
 !/SMC      NRLv = LvSMC 
 !/SMC      WRITE (NDSO,4001) NRLv
 !/SMC      WRITE (NDSO,4002) JEQT
@@ -1904,6 +2077,13 @@
 !
       CTMAX  = CFLTM
 !
+!/RTD ! Set/ read in rotation values - these will be written out
+!/RTD ! out later with the rest of the grid info
+!/RTD      PLAT = -999.9
+!/RTD      PLON = -999.9
+!/RTD      UNROT = .TRUE.
+!/RTD      CALL READNL ( NDSS, 'ROTD', STATUS )
+!
 ! 6.n Set miscellaneous parameters (ice, seeding, numerics ... )
 !
       CICE0  = 0.5
@@ -1912,7 +2092,10 @@
       ICEHFAC= 1.0  
       ICEHMIN= 0.2  ! the 0.2 value is arbitrary and needs to be tuned.
       ICEHINIT= 0.5  
+      ICESLN = 1.0
       ICEWIND= 1.0
+      ICESNL = 1.0
+      ICESDS = 1.0
       ICEHDISP= 0.6 ! Prevent from convergence crash in w3dispmd in the presence of ice, should be tuned
       ICEDDISP= 80
       ICEFDISP= 2
@@ -1935,7 +2118,8 @@
       WCOR1  = 99. 
       WCOR2  = 0.
 ! Variables for Space-Time Extremes
-!  Default negative values make w3iogomd use local grid size
+!  Default negative values make w3iogomd switch off space-time extremes
+!  forces user to provide NAMELIST if wanting to compute STE parameters
       STDX = -1. 
       STDY = -1. 
       STDT = -1. 
@@ -1984,6 +2168,8 @@
 !/IS2      IS2BACKSCAT = 1.
 !/IS2      IS2BREAK = .FALSE.
 !/IS2      IS2BREAKF = 3.6
+!/IS2      IS2FLEXSTR=2.7414E+05  ! value used in Boutin et al. JGR 2018. 
+!/IS2      IS2ISOSCAT=.TRUE.     ! uses isotropic back-scatter
 !/IS2      IS2DISP=.FALSE. !not dispersion only attenuation following Liu disp. eq.
 !/IS2      IS2DUPDATE=.TRUE.
 !/IS2      IS2FRAGILITY=0.9
@@ -1995,11 +2181,16 @@
 !/IS2      IS2CREEPN=3.0
 !/IS2      IS2BREAKE=1.
 !/IS2      IS2WIM1=1.
+!/IS2      IS2ANDISB=.FALSE. !anelastic instead of inelastic dissipation if IS2CREEPB>0
+!/IS2      IS2ANDISE=0.55    !energy of activation
+!/IS2      IS2ANDISD=1.672E-9!
+!/IS2      IS2ANDISN=1.      !dependency on stress. Equal to 1 normally?
 !/IS2      CALL READNL ( NDSS, 'SIS2', STATUS )
 !/IS2      WRITE (NDSO,947) STATUS
-!/IS2      WRITE (NDSO,948) ISC1, IS2BACKSCAT, IS2BREAK, IS2DUPDATE, IS2DISP, &
+!/IS2      WRITE (NDSO,948) ISC1, IS2BACKSCAT, IS2ISOSCAT, IS2BREAK, IS2DUPDATE, IS2DISP, &
 !/IS2        IS2DAMP, IS2FRAGILITY, IS2DMIN, IS2C2, IS2C3, IS2CONC, IS2CREEPB,&
-!/IS2        IS2CREEPC, IS2CREEPD, IS2CREEPN, IS2BREAKE, IS2BREAKF, IS2WIM1
+!/IS2        IS2CREEPC, IS2CREEPD, IS2CREEPN, IS2BREAKE, IS2BREAKF, IS2WIM1,  &
+!/IS2        IS2FLEXSTR, IS2ANDISB, IS2ANDISE, IS2ANDISD, IS2ANDISN
 !
 !/REF1      REFCOAST=0.
 !/REF1      REFMAP=0.
@@ -2011,6 +2202,7 @@
 !/REF1      REFSLOPE=0.22
 !/REF1      REFSUBGRID=0.
 !/REF1      REFICEBERG=0.
+!/REF1      REFUNSTSOURCE=0.
 !
 !/REF1      CALL READNL ( NDSS, 'REF1', STATUS )
 !/REF1      WRITE (NDSO,969) STATUS
@@ -2037,6 +2229,7 @@
 !/IC2       IC2REYNOLDS = 1.5E5
 !/IC2       IC2SMOOTH = 2E5
 !/IC2       IC2VISC = 1.
+!/IC2       IC2DMAX = 0.
 !
 !/IC3       IC3MAXTHK = 100.0
 !/IC3       IC3MAXCNC = 100.0
@@ -2059,7 +2252,15 @@
 !/IC4       IC4METHOD = 1 !switch for methods within IC4
 !/IC4       IC4KI=0.0
 !/IC4       IC4FC=0.0
-
+!
+!/IC5       IC5MINIG      = 1.
+!/IC5       IC5MINWT      = 0.
+!/IC5       IC5MAXKRATIO  = 1E9
+!/IC5       IC5MAXKI      = 100.
+!/IC5       IC5MINHW      = 300.
+!/IC5       IC5MAXITER    = 100.
+!/IC5       IC5RKICK      = 0.
+!/IC5       IC5KFILTER    = 0.0025
 !
 !/IC2      CALL READNL ( NDSS, 'SIC2 ', STATUS )
 !/IC2      WRITE (NDSO,971) STATUS
@@ -2069,6 +2270,12 @@
 !
 !/IC4      CALL READNL ( NDSS, 'SIC4 ', STATUS )
 !/IC4      WRITE (NDSO,971) STATUS
+!
+!/IC5      CALL READNL ( NDSS, 'SIC5 ', STATUS )
+!/IC5      WRITE (NDSO,971) STATUS
+!/IC5      WRITE (NDSO,2971) IC5MINIG, IC5MINWT, IC5MAXKRATIO,         &
+!/IC5                        IC5MAXKI, IC5MINHW, IC5MAXITER, IC5RKICK, &
+!/IC5                        IC5KFILTER
 !
       CALL READNL ( NDSS, 'OUTS', STATUS )
       WRITE (NDSO,4970) STATUS
@@ -2135,10 +2342,16 @@
 !
       IF ( FLAGTR.LT.0 .OR. FLAGTR.GT.6 ) FLAGTR = 0
       CICEN  = MIN ( 1. , MAX ( 0. , CICEN ) )
-      ICEWIND  = MIN ( 1. , MAX ( 0. , ICEWIND ) )
+      ICESLN  = MIN ( 1. , MAX ( 0. , ICESLN ) )
+      ICEWIND = MIN ( 1. , MAX ( 0. , ICEWIND ) )
+      ICESDS  = MIN ( 1. , MAX ( 0. , ICESDS ) )
+      ICESNL  = MIN ( 1. , MAX ( 0. , ICESNL ) )
       FICEN  = CICEN
       GRIDSHIFT=GSHIFT
-      ICE100WIND=ICEWIND
+      ICESCALES(1)=ICESLN 
+      ICESCALES(2)=ICEWIND
+      ICESCALES(3)=ICESNL
+      ICESCALES(4)=ICESDS
       CMPRTRCK=TRCKCMPR
       CICE0  = MIN ( CICEN , MAX ( 0. , CICE0 ) )
       FICEL  = LICE
@@ -2253,7 +2466,7 @@
       IF ( FLNMLO ) THEN
         WRITE (NDSO,917)
 !/FLX3          WRITE (NDSO,2810) CDMAX*1.E3, CTYPE
-!/FLX4          WRITE (NDSO,2810) CDFAC*1.E4
+!/FLX4          WRITE (NDSO,2810) CDFAC
 !/LN1          WRITE (NDSO,2820) CLIN, RFPM, RFHF
 !/ST1          WRITE (NDSO,2920) CINP
         IF ( .NOT. FLSTB2 ) THEN
@@ -2268,7 +2481,7 @@
 !/ST4          WRITE (NDSO,2920) ZWND, ALPHA0, Z0MAX, BETAMAX, SINTHP, ZALP,   &
 !/ST4            TAUWSHELTER, SWELLFPAR, SWELLF, SWELLF2, SWELLF3, SWELLF4, &
 !/ST4            SWELLF5, SWELLF6, SWELLF7, Z0RAT, SINBR
-!/ST6          WRITE (NDSO,2920) SINA0
+!/ST6          WRITE (NDSO,2920) SINA0, SINWS, SINFC
 !/NL1          WRITE (NDSO,2922) LAMBDA, NLPROP, KDCONV, KDMIN,       &
 !/NL1                            SNLCS1, SNLCS2, SNLCS3
 !/NL2          WRITE (NDSO,2922) IQTYPE, TAILNL, NDEPTH
@@ -2310,11 +2523,6 @@
 !/BT4          WRITE (NDSO,2926) SEDMAPD50, SED_D50_UNIFORM,      &
 !/BT4                            RIPFAC1,RIPFAC2,RIPFAC3,RIPFAC4, SIGDEPTH, &
 !/BT4                            BOTROUGHMIN, BOTROUGHFAC
-!/IS1          WRITE (NDSO,2946) IS1C1, IS1C2
-!/IS2          WRITE (NDSO,2948) ISC1, IS2BACKSCAT, IS2BREAK, IS2DUPDATE,  &
-!/IS2                    IS2DISP, IS2DAMP, IS2FRAGILITY, IS2DMIN, IS2C2,   &
-!/IS2                    IS2C3, IS2CONC, IS2CREEPB, IS2CREEPC, IS2CREEPD,  &
-!/IS2                    IS2CREEPN, IS2BREAKE, IS2BREAKF, IS2WIM1
 !/DB1          IF ( BJFLAG ) THEN
 !/DB1              WRITE (NDSO,2928) BJALFA, BJGAM, '.TRUE.'
 !/DB1            ELSE
@@ -2323,11 +2531,25 @@
 !/PR1          WRITE (NDSO,2953) CFLTM
 !/PR2          WRITE (NDSO,2953) CFLTM, DTIME, LATMIN
 !/SMC          WRITE (NDSO,2953) CFLTM, DTIME, LATMIN, RFMAXD, UNO3, &
-!/SMC                            AVERG, LvSMC, NBISMC, ISHFT,  JEQT
+!/SMC                      AVERG, LvSMC, NBISMC, ISHFT, JEQT, SEAWND 
 !/PR3          WRITE (NDSO,2953) CFLTM, WDTHCG, WDTHTH
 !
-        WRITE (NDSO,2956) UGOBCAUTO, UGOBCDEPTH,                      &
-                          EXPFSN, EXPFSPSI, EXPFSFCT, IMPFSN
+        WRITE (NDSO,2956) UGOBCAUTO, UGOBCDEPTH, TRIM(UGOBCFILE),     &
+                          EXPFSN, EXPFSPSI, EXPFSFCT, IMPFSN, EXPTOTAL,&
+                          IMPTOTAL, IMPREFRACTION, IMPFREQSHIFT,      &
+                          IMPSOURCE, SETUP_APPLY_WLV,                 &
+                          JGS_TERMINATE_MAXITER,                      &
+                          JGS_TERMINATE_DIFFERENCE,                   &
+                          JGS_TERMINATE_NORM,                         &
+                          JGS_LIMITER,                                &
+                          JGS_USE_JACOBI,                             &
+                          JGS_BLOCK_GAUSS_SEIDEL,                     &
+                          JGS_MAXITER,                                &
+                          JGS_PMIN,                                   &
+                          JGS_DIFF_THR,                               &
+                          JGS_NORM_THR,                               &
+                          JGS_NLEVEL,                                 &
+                          JGS_SOURCE_NONLINEAR
 !
         WRITE (NDSO,2976)    P2SF, I1P2SF, I2P2SF,                    &
                              US3D, I1US3D, I2US3D,                    & 
@@ -2340,7 +2562,7 @@
 !
 !/REF1         WRITE(NDSO,2986) REFCOAST, REFFREQ, REFSLOPE, REFMAP,  &
 !/REF1                    REFMAPD, REFSUBGRID , REFRMAX, REFFREQPOW,  &
-!/REF1                    REFICEBERG, REFCOSP_STRAIGHT
+!/REF1                    REFICEBERG, REFCOSP_STRAIGHT, REFUNSTSOURCE
 !
 !/IG1         WRITE(NDSO,2977) IGMETHOD, IGADDOUTP, IGSOURCE,         &
 !/IG1                    IGSTERMS, IGBCOVERWRITE, IGSWELLMAX,         &
@@ -2348,14 +2570,31 @@
 !/IG1                    IGFIXEDDEPTH, IGEMPIRICAL 
 !
 !/IC2         WRITE(NDSO,2978) IC2DISPER, IC2TURB, IC2ROUGH,          &
-!/IC2                          IC2REYNOLDS,  IC2SMOOTH, IC2VISC, IC2TURBS
+!/IC2                    IC2REYNOLDS,  IC2SMOOTH, IC2VISC, IC2TURBS,  &
+!/IC2                    IC2DMAX
+!
 !/IC3         WRITE(NDSO,2979) IC3MAXTHK, IC3MAXCNC, IC2TURB,         &
 !/IC3                          IC2ROUGH,  IC2REYNOLDS,  IC2SMOOTH,    &
 !/IC3                          IC2VISC, IC2TURBS, IC3CHENG,           &
 !/IC3                          USECGICE, IC3HILIM, IC3KILIM,          &
 !/IC3                          IC3HICE, IC3VISC, IC3DENS, IC3ELAS
-
+!
 !/IC4         WRITE(NDSO,NML=SIC4)
+!
+!/IC5         WRITE(NDSO,2981) IC5MINIG, IC5MINWT, IC5MAXKRATIO,       &
+!/IC5                          IC5MAXKI, IC5MINHW, IC5MAXITER,         &
+!/IC5                          IC5RKICK, IC5KFILTER
+!
+!/IS1          WRITE (NDSO,2946) IS1C1, IS1C2
+!
+!/IS2          WRITE (NDSO,2948) ISC1, IS2BACKSCAT, IS2ISOSCAT, IS2BREAK,  &
+!/IS2                    IS2DUPDATE, IS2FLEXSTR, IS2DISP,  IS2DAMP, IS2FRAGILITY, IS2DMIN, IS2C2,   &
+!/IS2                    IS2C3, IS2CONC, IS2CREEPB, IS2CREEPC, IS2CREEPD,  &
+!/IS2                    IS2CREEPN, IS2BREAKE, IS2BREAKF, IS2WIM1, IS2ANDISB, &
+!/IS2                    IS2ANDISE, IS2ANDISD, IS2ANDISN
+!
+!/UOST         WRITE (NDSO, 4502) ADJUSTL(TRIM(UOSTFILELOCAL)), ADJUSTL(TRIM(UOSTFILESHADOW)), &
+!/UOST                   UOSTFACTORLOCAL, UOSTFACTORSHADOW
 
 !
         IF ( FLCOMB ) THEN
@@ -2364,7 +2603,8 @@
                                 WSCUT, '.TRUE.', NOSWLL, FHMAX,       &
                                 RWNDC, WCOR1, WCOR2, FACBERG, GSHIFT, &
                                 STDX, STDY, STDT, ICEHMIN, ICEHFAC,   &
-                                ICEHINIT, ICEDISP, ICEWIND, ICEHDISP, &
+                                ICEHINIT, ICEDISP, ICEHDISP,          &
+                                ICESLN, ICEWIND, ICESNL, ICESDS,      &
                                 ICEDDISP,ICEFDISP, NOLEAP, TRCKCMPR
         ELSE
           WRITE (NDSO,2966) CICE0, CICEN, LICE, PMOVE, XSEED, FLAGTR, &
@@ -2372,7 +2612,8 @@
                                 WSCUT, '.FALSE.', NOSWLL, FHMAX,      &
                                 RWNDC, WCOR1, WCOR2, FACBERG, GSHIFT, &
                                 STDX, STDY, STDT,  ICEHMIN, ICEHFAC,  &
-                                ICEHINIT, ICEDISP, ICEWIND, ICEHDISP, &
+                                ICEHINIT, ICEDISP, ICEHDISP,          &
+                                ICESLN, ICEWIND, ICESNL, ICESDS,      &
                                 ICEDDISP, ICEFDISP, NOLEAP, TRCKCMPR
           END IF
 !
@@ -2413,7 +2654,7 @@
 ! ... High frequency cut-off
 !
       FXFM   = 2.5
-!/ST6       FXFM   = 6.0
+!/ST6       FXFM   = SIN6FC
       FXPM   = 4.0
       FXPM   = FXPM * GRAV / 28.
       FXFM   = FXFM * TPI
@@ -2518,19 +2759,20 @@
 !
 ! Propagation specific to unstructured grids
 !
+      DO_CHANGE_WLV=.FALSE.
       IF ( GTYPE.EQ.UNGTYPE) THEN 
         UNSTSCHEMES(:)=0
         IF (EXPFSN)   UNSTSCHEMES(1)=1
         IF (EXPFSPSI) UNSTSCHEMES(2)=1
         IF (EXPFSFCT) UNSTSCHEMES(3)=1
         IF (IMPFSN)   UNSTSCHEMES(4)=1
-
+        UNSTSCHEME=-1
         DO IX=1,4
           IF (UNSTSCHEMES(IX).EQ.1) THEN 
             UNSTSCHEME=IX
             EXIT
-            END IF
-          END DO
+          END IF
+        END DO
  
         SELECT CASE (UNSTSCHEME)
         CASE (1) 
@@ -2549,7 +2791,44 @@
 !
         IF (SUM(UNSTSCHEMES).GT.1) WRITE(NDSO,1035)
         WRITE (NDSO,2951) PNAME2
+        IF (IMPTOTAL) THEN
+          FSTOTALIMP = IMPTOTAL
+          PNAME2 = 'N Implicit (Fluctuation Splitting) for total implicit'
         END IF
+        IF (EXPTOTAL) THEN
+          FSTOTALEXP = EXPTOTAL 
+          PNAME2 = 'N Explicit (Fluctuation Splitting) for one exchange explicit DC HPCF '
+        END IF
+        IF (IMPREFRACTION .and. IMPTOTAL .AND. FLCTH) THEN
+          FSREFRACTION = .TRUE.
+          PNAME2 = 'Refraction done implicitly'
+          WRITE (NDSO,2951) PNAME2
+        ELSE
+          FSREFRACTION = .FALSE.
+        END IF
+        IF (IMPFREQSHIFT .and. IMPTOTAL .AND. FLCK) THEN
+          FSFREQSHIFT = .TRUE.
+          PNAME2 = 'Frequency shifting done implicitly'
+          WRITE (NDSO,2951) PNAME2
+        ELSE
+          FSFREQSHIFT = .FALSE.
+        END IF
+        IF (IMPSOURCE .and. IMPTOTAL .AND. FLSOU) THEN
+          FSSOURCE = .TRUE.
+          PNAME2 = 'Source terms integrated implicitly'
+          WRITE (NDSO,2951) PNAME2
+        ELSE
+          FSSOURCE = .FALSE.
+        END IF
+        IF (SETUP_APPLY_WLV) THEN
+          DO_CHANGE_WLV = SETUP_APPLY_WLV
+          PNAME2 = ' we change WLV'
+          WRITE (NDSO,2952) PNAME2
+        END IF
+        SOLVERTHR_STP = SOLVERTHR_SETUP
+        CRIT_DEP_STP  = CRIT_DEP_SETUP
+      END IF
+
 !
 ! 7.c Grid coordinates (branch here based on grid type)
 !
@@ -2799,6 +3078,11 @@
           CALL READMSH(NDSS,FNAME)
           ALLOCATE(ZBIN(NX, NY),OBSX(NX,NY),OBSY(NX,NY))
           ZBIN(:,1) = VSC*XYB(:,3)
+!/DEBUGSTP          WRITE(740,*) 'VSC=', VSC
+!/DEBUGSTP          WRITE(740,*) 'Printing ZBIN 1'
+!/DEBUGSTP          DO IX=1,NX
+!/DEBUGSTP            WRITE(740,*) 'IX/ZBIN=', IX, ZBIN(IX,1)
+!/DEBUGSTP          END DO
 !
 ! subgrid obstructions are not yet handled in unstructured grids
 !
@@ -2812,11 +3096,19 @@
       ALLOCATE ( TMPSTA(NY,NX), TMPMAP(NY,NX) )
       TMPSTA = 0
 !
-      DO IY=1, NY
-        DO IX=1, NX
-          IF ( ZBIN(IX,IY) .LE. ZLIM ) TMPSTA(IY,IX) = 1
+!/DEBUGSTP          WRITE(740,*) 'Printing ZBIN 2'
+!/DEBUGSTP          DO IX=1,NX
+!/DEBUGSTP            WRITE(740,*) 'IX/ZBIN=', IX, ZBIN(IX,1)
+!/DEBUGSTP          END DO
+      IF (GTYPE .EQ. UNGTYPE) THEN
+        TMPSTA = 1
+      ELSE
+        DO IY=1, NY
+          DO IX=1, NX
+            IF ( ZBIN(IX,IY) .LE. ZLIM ) TMPSTA(IY,IX) = 1
           END DO
         END DO
+      ENDIF
 !
 !Li   Suspended for SMC grid.  JGLi15Oct2014
       IF( RGLGRD ) THEN
@@ -2915,29 +3207,37 @@
 !Li     End of RGLGRD block
         ENDIF
 !Li 
-!/RTD ! 7.h  Read rotated grid Polat and Polon and define angleD variable
-!/RTD       CALL NEXTLN ( COMSTR , NDSI , NDSE )
-!/RTD !AC   READ (NDSI,*,END=2001,ERR=2002) NDSTR, IDFM, IDLA, RFORM, TNAME
-!/RTD       READ (NDSI,*,END=2001,ERR=2002) Polat, Polon
-!/RTD !Li   J = LEN_TRIM(FNMPRE)
-!/RTD !Li   OPEN (NDSTR,FILE=FNMPRE(:J)//TNAME,             &
-!/RTD !Li               FORM='FORMATTED',STATUS='OLD',ERR=2000)
-!/RTD       ALLOCATE ( AnglDin(NX,NY) )
-!/RTD       ALLOCATE ( StdLon(NX,NY), StdLat(NX,NY) )
-!/RTD !Li
-!/RTD !Li   CALL INA2R ( AnglDin, NX, NY, 1, NX, 1, NY, NDSTR, NDST, NDSE, &
-!/RTD !Li                IDFM, RFORM, IDLA, 1.0, 0.0)
-!/RTD !Li   Use the regular grid X/YGRDIN as euqatorial lon/lat 
-!/RTD       IX=NX*NY
-!/RTD       CALL W3EQTOLL( YGRDIN, XGRDIN, StdLat, StdLon,   &
-!/RTD     &                AnglDin, Polat, Polon,  IX )
+!
+!/RTD ! 7.h Calculate rotation angles for configs with rotated pole
+!/RTD !     Check that pole lat/lon values have been read in
+!/RTD !     and exit the program if they have not
+!/RTD       PoLon = PLON
+!/RTD       PoLat = PLAT
+!/RTD       FLAGUNR = UNROT
+!/RTD       IF( PoLon .EQ. -999.9 .OR. PoLat .EQ. -999.9 ) THEN
+!/RTD         WRITE( NDSE, 1050 )
+!/RTD         CALL EXTCDE ( 63 )
+!/RTD       ENDIF
+!/RTD
+!/RTD       ALLOCATE( AnglDin(NX,NY) )
+!/RTD       ALLOCATE(StdLat(NX,NY), StdLon(NX,NY))
+!/RTD
+!/RTD !     Calculate rotation angles; (StdLon/Lat are returned, but not used)
+!/RTD !     The regular grid X/YGRDIN are used as equatorial lon and lat
+!/RTD       CALL W3EQTOLL( YGRDIN, XGRDIN, StdLat, StdLon, AnglDin, &
+!/RTD                      PoLat, PoLon, NX*NY )
+!/RTD
+!/RTD !     Write out rotation information
+!/RTD       WRITE (NDSO,4203)   PoLat, PoLon
 !/RTD       WRITE (NDSO,4200) 
-!/RTD       WRITE (NDSO,4201)    (        ix,     ix=1,NX,100)
-!/RTD       WRITE (NDSO,4202)    1,(AnglDin(ix, 1), ix=1,NX,100)
-!/RTD       WRITE (NDSO,4202)   NY,(AnglDin(ix,NY), ix=1,NX,100)
-!/RTD       WRITE (NDSO,4203)   Polat, Polon
+!/RTD       WRITE (NDSO,4201)    (        IX,     IX=1,NX,NX/3)
+!/RTD       WRITE (NDSO,4202)    1,(AnglDin(IX, 1), IX=1,NX,NX/3)
+!/RTD       WRITE (NDSO,4202)   NY,(AnglDin(IX,NY), IX=1,NX,NX/3)
+!/RTD       IF ( FLAGUNR ) WRITE (NDSO,4204)
 !/RTD       WRITE (NDSO,*) ' '
 !/RTD
+!/RTD !     Clean up
+!/RTD       DEALLOCATE( StdLat, StdLon )
 !
 !/SMC !! 7.i  Read SMC grid cell and face integer arrays.  
 !/SMC       CALL NEXTLN ( COMSTR , NDSI , NDSE )
@@ -3140,10 +3440,17 @@
 !/ARC
 !--- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 ! 8.  Finalize status maps
-! 8.a Automatic OBC detection for ug grids
+! 8.a Defines open boundary conditions for UNST grids
 !
-      IF (GTYPE.EQ.UNGTYPE.AND.UGOBCAUTO)  &
-        CALL UG_GETOPENBOUNDARY(TMPSTA,ZBIN,UGOBCDEPTH)
+       J = LEN_TRIM(UGOBCFILE)
+       IF (GTYPE.EQ.UNGTYPE.AND.UGOBCFILE(:J).NE.'')  &
+        CALL READMSHOBC(NDSS,UGOBCFILE,TMPSTA,UGOBCOK)
+       IF ((GTYPE.EQ.UNGTYPE).AND.UGOBCAUTO.AND.(.NOT.UGOBCOK))  &
+          CALL UG_GETOPENBOUNDARY(TMPSTA,ZBIN,UGOBCDEPTH)
+!/DEBUGSTP          WRITE(740,*) 'Printing ZBIN 4'
+!/DEBUGSTP          DO IX=1,NX
+!/DEBUGSTP            WRITE(740,*) 'IX/ZBIN=', IX, ZBIN(IX,1)
+!/DEBUGSTP          END DO
 !
 ! 8.b Determine where to get the data
 !
@@ -3153,6 +3460,7 @@
 !
 ! ... Data to be read in parts
 !
+!/DEBUGGRID             WRITE(740+IAPROC,*) 'FROM=', TRIM(FROM)
       IF ( FROM .EQ. 'PART' ) THEN
 !
 ! 8.b Update TMPSTA with input boundary data (ILOOP=1)
@@ -3164,7 +3472,14 @@
           'TO READ DATA IN PARTS. STOPPING NOW (107).'
           CALL EXTCDE ( 107 )
         END IF
-
+!/DEBUGGRID       nbCase1=0
+!/DEBUGGRID       nbCase2=0
+!/DEBUGGRID       nbCase3=0
+!/DEBUGGRID       nbCase4=0
+!/DEBUGGRID       nbCase5=0
+!/DEBUGGRID       nbCase6=0
+!/DEBUGGRID       nbCase7=0
+!/DEBUGGRID       nbCase8=0
         DO ILOOP=1, 2
 !
           IF ( ILOOP .EQ. 1 ) THEN
@@ -3179,6 +3494,10 @@
           DO
             CALL NEXTLN ( COMSTR , NDSI , NDSE )
             READ (NDSI,*,END=2001,ERR=2002) IX, IY, CONNCT
+!/DEBUGGRID  		 WRITE(740+IAPROC,*) 'read IX=', IX
+!/DEBUGGRID  		 WRITE(740+IAPROC,*) 'read IY=', IY
+!/DEBUGGRID  		 WRITE(740+IAPROC,*) 'read CONNCT=', CONNCT
+
 !
 ! ... Check if last point reached.
 !
@@ -3186,7 +3505,7 @@
 !           
 ! ... Check if point in grid.
 !
-            IF (GTYPE.EQ.UNGTYPE.AND.UGOBCAUTO) CYCLE
+            IF (GTYPE.EQ.UNGTYPE.AND.(UGOBCAUTO.OR.UGOBCOK)) CYCLE
             IF (IX.LT.1 .OR. IX.GT.NX .OR.  IY.LT.1 .OR. IY.GT.NY) THEN
                 WRITE (NDSO,981)
                 WRITE (NDSO,*) '       ', IX, IY
@@ -3195,6 +3514,8 @@
 !
 ! ... Check if intermediate points are to be added.
 !
+!/DEBUGGRID  		 WRITE(740+IAPROC,*) 'CONNCT=', CONNCT
+!/DEBUGGRID  		 WRITE(740+IAPROC,*) 'FIRST=', FIRST
             IF ( CONNCT .AND. .NOT.FIRST ) THEN
                 IDX    = IX - IXO
                 IDY    = IY - IYO
@@ -3227,6 +3548,7 @@
 ! ... Check if point itself is to be added
 !
             IF ( TMPSTA(IY,IX).EQ.1 .OR. J.EQ.2 ) THEN
+!/DEBUGGRID                nbCase2=nbCase2+1
                 TMPSTA(IY,IX) = NSTAT
               END IF
 !
@@ -3275,48 +3597,54 @@
                 IX1    = IX
                 IY1    = IY
 !
-                JJ     = TMPSTA(IY,IX)
-                TMPSTA(IY,IX) = NSTAT
-!
-                DO
-                  NBT    = 0
-!
-                  DO IX=MAX(1,IX1-J), MIN(IX1+J,NX)
-                    DO IY=MAX(1,IY1-J), MIN(IY1+J,NY)
-                      IF ( TMPSTA(IY,IX) .EQ. JJ ) THEN
-                          IF (IX.GT.1) THEN
-                              IF (TMPSTA(IY  ,IX-1).EQ.NSTAT           &
-                                      .AND. TMPMAP(IY  ,IX-1).EQ.JJ )  &
-                              TMPSTA(IY,IX) = NSTAT
-                            END IF
-                          IF (IX.LT.NX) THEN
-                              IF (TMPSTA(IY  ,IX+1).EQ.NSTAT           &
-                                      .AND. TMPMAP(IY  ,IX+1).EQ.JJ )  &
-                              TMPSTA(IY,IX) = NSTAT
-                            END IF
-                          IF (IY.LT.NY) THEN
-                              IF (TMPSTA(IY+1,IX  ).EQ.NSTAT           &
-                                      .AND. TMPMAP(IY+1,IX  ).EQ.JJ )  &
-                              TMPSTA(IY,IX) = NSTAT
-                            END IF
-                          IF (IY.GT.1) THEN
-                              IF (TMPSTA(IY-1,IX  ).EQ.NSTAT           &
-                                      .AND. TMPMAP(IY-1,IX  ).EQ.JJ )  &
-                               TMPSTA(IY,IX) = NSTAT
-                            END IF
-                          IF (TMPSTA(IY,IX).EQ.NSTAT) NBT = NBT + 1
+              JJ     = TMPSTA(IY,IX)
+!/DEBUGGRID             nbCase3=nbCase3 + 1
+              TMPSTA(IY,IX) = NSTAT
+              DO
+                NBT    = 0
+                DO IX=MAX(1,IX1-J), MIN(IX1+J,NX)
+                  DO IY=MAX(1,IY1-J), MIN(IY1+J,NY)
+                    IF ( TMPSTA(IY,IX) .EQ. JJ ) THEN
+                      IF (IX.GT.1) THEN
+                        IF (TMPSTA(IY  ,IX-1).EQ.NSTAT           &
+                            .AND. TMPMAP(IY  ,IX-1).EQ.JJ ) THEN
+!/DEBUGGRID               nbCase4=nbCase4 + 1
+                          TMPSTA(IY,IX) = NSTAT
                         END IF
-                      END DO
-                    END DO
-!
-                IF ( NBT .NE. 0 ) THEN
-                    J      = J + 1
-                  ELSE
-                    EXIT
-                  END IF
+                      END IF
+                      IF (IX.LT.NX) THEN
+                        IF (TMPSTA(IY  ,IX+1).EQ.NSTAT           &
+                            .AND. TMPMAP(IY  ,IX+1).EQ.JJ ) THEN
+!/DEBUGGRID               nbCase5=nbCase5 + 1
+                          TMPSTA(IY,IX) = NSTAT
+		        END IF
+                      END IF
+                      IF (IY.LT.NY) THEN
+                        IF (TMPSTA(IY+1,IX  ).EQ.NSTAT           &
+                            .AND. TMPMAP(IY+1,IX  ).EQ.JJ ) THEN
+!/DEBUGGRID  	          nbCase6=nbCase6 + 1
+                          TMPSTA(IY,IX) = NSTAT
+		        END IF
+                      END IF
+                      IF (IY.GT.1) THEN
+                        IF (TMPSTA(IY-1,IX  ).EQ.NSTAT           &
+                           .AND. TMPMAP(IY-1,IX  ).EQ.JJ ) THEN
+!/DEBUGGRID               nbCase7=nbCase7 + 1
+                          TMPSTA(IY,IX) = NSTAT
+			END IF
+                      END IF
+                      IF (TMPSTA(IY,IX).EQ.NSTAT) NBT = NBT + 1
+                    END IF
+                  END DO
                 END DO
 !
+                IF ( NBT .NE. 0 ) THEN
+                  J = J + 1
+                ELSE
+                  EXIT
+                END IF
               END DO
+            END DO
 !
 ! ... Outer boundary excluded points
 !
@@ -3340,7 +3668,30 @@
 !
 ! ... Branch back input / excluded points ( ILOOP in 8.b )
 !
-          END DO           
+        END DO
+!/DEBUGGRID      WRITE(740+IAPROC,*) 'nbCase1=', nbCase1
+!/DEBUGGRID      WRITE(740+IAPROC,*) 'nbCase2=', nbCase2
+!/DEBUGGRID      WRITE(740+IAPROC,*) 'nbCase3=', nbCase3
+!/DEBUGGRID      WRITE(740+IAPROC,*) 'nbCase4=', nbCase4
+!/DEBUGGRID      WRITE(740+IAPROC,*) 'nbCase5=', nbCase5
+!/DEBUGGRID      WRITE(740+IAPROC,*) 'nbCase6=', nbCase6
+!/DEBUGGRID      WRITE(740+IAPROC,*) 'nbCase7=', nbCase7
+!/DEBUGGRID      WRITE(740+IAPROC,*) 'nbCase8=', nbCase8
+!/DEBUGGRID      nbTMPSTA0=0
+!/DEBUGGRID      nbTMPSTA1=0
+!/DEBUGGRID      nbTMPSTA2=0
+!/DEBUGGRID      DO IX=1,NX
+!/DEBUGGRID        DO IY=1,NY
+!/DEBUGGRID          WRITE(740+IAPROC,*) 'IX/IY/TMPSTA=', IX, IY, TMPSTA(IY,IX)
+!/DEBUGGRID          IF (TMPSTA(IY,IX) .eq. 0) nbTMPSTA0=nbTMPSTA0+1
+!/DEBUGGRID          IF (TMPSTA(IY,IX) .eq. 1) nbTMPSTA1=nbTMPSTA1+1
+!/DEBUGGRID          IF (TMPSTA(IY,IX) .eq. 2) nbTMPSTA2=nbTMPSTA2+1
+!/DEBUGGRID        END DO
+!/DEBUGGRID      END DO
+!/DEBUGGRID      WRITE(740+IAPROC,*) 'nbTMPSTA0=', nbTMPSTA0
+!/DEBUGGRID      WRITE(740+IAPROC,*) 'nbTMPSTA1=', nbTMPSTA1
+!/DEBUGGRID      WRITE(740+IAPROC,*) 'nbTMPSTA2=', nbTMPSTA2
+!/DEBUGGRID      FLUSH(740+IAPROC)
 !
         ELSE ! FROM .EQ. PART
 !
@@ -3413,6 +3764,8 @@
                   TMPSTA(IY,IX) = NSTAT
                 ELSE
                   TMPSTA(IY,IX) = READMP(IX,IY)
+                  ! force to dry the sea points over zlim
+                  IF ( ZBIN(IX,IY) .GT. ZLIM ) TMPSTA(IY,IX) = 0
                 END IF
               END DO
             END DO
@@ -3501,7 +3854,7 @@
       FFACBERG=FACBERG
 !/REF1      REFPARS(1)=REFCOAST
 !/REF1      REFPARS(2)=REFSUBGRID
-!/REF1      REFPARS(3)=0.
+!/REF1      REFPARS(3)=REFUNSTSOURCE
 !/REF1      REFPARS(4)=REFICEBERG
 !/REF1      REFPARS(6)=REFFREQ
 !/REF1      REFPARS(7)=REFSLOPE
@@ -3548,10 +3901,15 @@
 !/T      CALL PRTBLK (NDST, NX, NY, NX, ZBIN, MAPOUT, 1, 0.,          &
 !/T                   1, NX, IX3, 1, NY, IY3, 'Zb', 'm')
 !
+!/DEBUGSTP          WRITE(740,*) 'Printing ZBIN 5'
+!/DEBUGSTP          DO IX=1,NX
+!/DEBUGSTP            WRITE(740,*) 'IX/ZBIN=', IX, ZBIN(IX,1)
+!/DEBUGSTP          END DO
       TRNX   = 0.
       TRNY   = 0.
 !
-!Li  Shelter MAPSTA etc LLG definitions for SMC by logical RGLGRD 
+!Li  Shelter MAPSTA etc LLG definitions for SMC by logical RGLGRD !
+!AR  This is only .FALSE. for SMC ..
       IF( RGLGRD ) THEN
       ISEA   = 0
       DO IY=1, NY
@@ -3598,6 +3956,10 @@
 
           END DO
         END DO
+!/DEBUGSTP        DO ISEA=1,NSEA
+!/DEBUGSTP          WRITE(740,*) 'ISEA,ZB=', ISEA, ZB(ISEA)
+!/DEBUGSTP        END DO
+!/DEBUGSTP        FLUSH(740)
       ENDIF
 !!Li End of RGLGRD IF block
 !
@@ -3817,13 +4179,12 @@
 !/ARC          CTHG0S(NCel)=0.0
 !/ARC       
 !
-!/RTD !!Li    Assign rotated grid angle for all sea points.  JGLi01Feb2016
-!/RTD           DO ISEA=1,NSEA
-!/RTD             IX = MAPSF(ISEA,1)
-!/RTD             IY = MAPSF(ISEA,2)
-!/RTD             AnglD(ISEA) = AnglDin(IX,IY)
-!/RTD           END DO
-!/RTD 
+!/RTD !Li   Assign rotated grid angle for all sea points.  JGLi01Feb2016
+!/RTD       DO ISEA=1,NSEA
+!/RTD          IX = MAPSF(ISEA,1)
+!/RTD          IY = MAPSF(ISEA,2)
+!/RTD          AnglD(ISEA) = AnglDin(IX,IY)
+!/RTD       END DO
 !
 !/T      CALL PRTBLK (NDST, NX, NY, NX, ZBIN, MAPOUT, 0, 0.,          &
 !/T                   1, NX, IX3, 1, NY, IY3, 'Sea points', 'm')
@@ -3918,6 +4279,7 @@
 !/IC2       IC2PARS(5)=IC2SMOOTH
 !/IC2       IC2PARS(6)=IC2VISC
 !/IC2       IC2PARS(7)=IC2TURBS
+!/IC2       IC2PARS(8)=IC2DMAX
 !
 !/IC3       IC3PARS(:)=0.
 !/IC3       IC3PARS(1)=IC3MAXTHK
@@ -3941,47 +4303,20 @@
 !/IC4      IC4_KI=IC4KI
 !/IC4      IC4_FC=IC4FC
 !
-!/IS2      IS2PARS(1) = ISC1
-!/IS2      IS2PARS(2) = IS2BACKSCAT
-!/IS2      IS2PARS(3)=0.
-!/IS2      IF (IS2BREAK) IS2PARS(3)=1.
-!/IS2      IS2PARS(4)=IS2C2
-!/IS2      IS2PARS(5)=IS2C3
-!/IS2      IS2PARS(6)=0.
-!/IS2      IF (IS2DISP) IS2PARS(6)=1.
-!/IS2      IS2PARS(7)=IS2DAMP
-!/IS2      IS2PARS(8)=IS2FRAGILITY
-!/IC2       IC2PARS(4)=IC2REYNOLDS
-!/IC2       IC2PARS(5)=IC2SMOOTH
-!/IC2       IC2PARS(6)=IC2VISC
-!/IC2       IC2PARS(7)=IC2TURBS
-!
-!/IC3       IC3PARS(:)=0.
-!/IC3       IC3PARS(1)=IC3MAXTHK
-!/IC3       IC3PARS(2)=IC2TURB
-!/IC3       IC3PARS(3)=IC2ROUGH
-!/IC3       IC3PARS(4)=IC2REYNOLDS
-!/IC3       IC3PARS(5)=IC2SMOOTH
-!/IC3       IC3PARS(6)=IC2VISC
-!/IC3       IC3PARS(7)=IC2TURBS
-!/IC3       IC3PARS(8)=IC3MAXCNC
-!/IC3       IF (IC3CHENG) IC3PARS(9)=1.0
-!/IC3       IC3PARS(10)=IC3HILIM
-!/IC3       IC3PARS(11)=IC3KILIM
-!/IC3       IF (USECGICE) IC3PARS(12)=1.0
-!/IC3       IC3PARS(13)=IC3HICE
-!/IC3       IC3PARS(14)=IC3VISC
-!/IC3       IC3PARS(15)=IC3DENS
-!/IC3       IC3PARS(16)=IC3ELAS
-!
-!/IC4      IC4PARS(1)=IC4METHOD
-!/IC4      IC4_KI=IC4KI
-!/IC4      IC4_FC=IC4FC
+!/IC5       IC5PARS(:)=0.
+!/IC5       IC5PARS(1)=IC5MINIG
+!/IC5       IC5PARS(2)=IC5MINWT
+!/IC5       IC5PARS(3)=IC5MAXKRATIO
+!/IC5       IC5PARS(4)=IC5MAXKI
+!/IC5       IC5PARS(5)=IC5MINHW
+!/IC5       IC5PARS(6)=IC5MAXITER
+!/IC5       IC5PARS(7)=IC5RKICK
+!/IC5       IC5PARS(8)=IC5KFILTER
 !
 !/IS2      IS2PARS(1) = ISC1
 !/IS2      IS2PARS(2) = IS2BACKSCAT
 !/IS2      IS2PARS(3)=0.
-!/IS2      IF (IS2BREAK) IS2PARS(3)=1.
+!/IS2      IF (IS2BREAK) IS2PARS(3)=1. 
 !/IS2      IS2PARS(4)=IS2C2
 !/IS2      IS2PARS(5)=IS2C3
 !/IS2      IS2PARS(6)=0.
@@ -3999,10 +4334,19 @@
 !/IS2      IS2PARS(16)=IS2BREAKE
 !/IS2      IS2PARS(17)=IS2BREAKF
 !/IS2      IS2PARS(18)=IS2WIM1
+!/IS2      IS2PARS(19)=IS2FLEXSTR
+!/IS2      IS2PARS(20)=0.
+!/IS2      IF (IS2ISOSCAT) IS2PARS(20)=1.
+!/IS2      IS2PARS(21)=IS2ANDISD
+!/IS2      IS2PARS(22)=IS2ANDISN
+!/IS2      IS2PARS(23)=0.
+!/IS2      IF (IS2ANDISB) IS2PARS(23)=1.
+!/IS2      IS2PARS(24)=IS2ANDISE
 !
 ! 9.d Estimates shoreline direction for reflection
 !     and shoreline treatment in general for UNST grids. 
 ! NB: this is updated with moving water levels in W3ULEV
+! AR: this is not anymore needed and will be deleted ...
 !
       IF (GTYPE.EQ.UNGTYPE) THEN 
         CALL SETUGIOBP 
@@ -4106,9 +4450,6 @@
 !
       DEALLOCATE ( ZBIN, TMPSTA, TMPMAP )
 !/RTD      DEALLOCATE ( AnglDin )
-!/RTD      WRITE (NDSO,*) ' '
-!/RTD      WRITE (NDSO,4204) 
-!/RTD      WRITE (NDSO,*) ' '
 !
 ! 9.e Reads bottom information from file
 !
@@ -4526,7 +4867,7 @@
 !/FLX4  810 FORMAT (/'  Stresses (Hwang 2011) ',A/                     &
 !/FLX4        ' --------------------------------------------------')
 !/FLX4  811 FORMAT ( '       drag coefficient scaling    :',E11.4    /)
-!/FLX4 2810 FORMAT ( '  &FLX4 CDFAC =',F6.3,'E-4 /')
+!/FLX4 2810 FORMAT ( '  &FLX4 CDFAC =',F6.3,' /')
 !/FLX3  811 FORMAT ( '       Max Cd * 10^3               :',F8.2/     &
 !/FLX3               '       Cap type                    : ',A/)
 !/FLX3 2810 FORMAT ( '  &FLX3 CDMAX =',F6.2,'E-3 , CTYPE = ',I1,' /')
@@ -4608,8 +4949,10 @@
 !/ST6  920 FORMAT (/'  Wind input (Donelan et al, 2006) ',A/       &
 !/ST6         ' --------------------------------------------------')
 !/ST6  921 FORMAT ( '  negative wind input active       :  ',A/    &
-!/ST6               '    attenuation factor             :  ',F6.2/ )
-!/ST6 2920 FORMAT ( '  &SIN6 SINA0 =',F6.3,' /')
+!/ST6               '  attenuation factor               :  ',F6.2/ &
+!/ST6               '  wind speed scaling factor        :  ',F6.2/ &
+!/ST6               '  frequency cut-off factor         :  ',F6.2/)
+!/ST6 2920 FORMAT ( '  &SIN6 SINA0 =', F6.3, ', SINWS =', F6.2, ', SINFC =', F6.2, ' /')
 !
 !/STX  920 FORMAT (/'  Experimental wind input.'/)
 !
@@ -4804,6 +5147,9 @@
 !/IC4  935 FORMAT (/'  Dissipation via ice parameters (SIC4).'&
 !/IC4           ,/' --------------------------------------------------')
 !
+!/IC5  935 FORMAT (/'  Dissipation via ice parameters (SIC5).'&
+!/IC5           ,/' --------------------------------------------------')
+!
 !/IS0 944 FORMAT  (/'  Ice scattering not defined.'/)
 !/IS1 945 FORMAT  (/'  Ice scattering ',A,/ &
 !/IS1              ' --------------------------------------------------')
@@ -4814,13 +5160,14 @@
 !/IS2 947 FORMAT  (/'  Ice scattering ',A,/ &
 !/IS2              ' --------------------------------------------------')
 !/IS2 948 FORMAT  ('  IS2 Scattering ... '/&
-!/IS2              '        scattering coefficient       : ',F6.2/ &
+!/IS2              '        scattering coefficient       : ',F5.2/ &
 !/IS2              '        0: no back-scattering        : ',F5.2/ &
+!/IS2              '     TRUE: istropic back-scattering  : ',L3/ &
 !/IS2              '     TRUE: update of ICEDMAX         : ',L3/ &
 !/IS2              '     TRUE: keeps updated ICEDMAX     : ',L3/ &
 !/IS2              '     TRUE: uses Robinson-Palmer disp.: ',L3/ &
-!/IS2              '        attenuation                  : ',F3.1/ &
-!/IS2              '        fragility                    : ',F4.2/ &
+!/IS2              '        attenuation                  : ',F5.2/ &
+!/IS2              '        fragility                    : ',F5.2/ &
 !/IS2              '        minimum floe size in meters  : ',F5.2/ &
 !/IS2              '        pack scattering coef 1       : ',F5.2/ &
 !/IS2              '        pack scattering coef 2       : ',F5.2/ &
@@ -4830,21 +5177,40 @@
 !/IS2              '        creep D coefficient          : ',F5.2/ &
 !/IS2              '        creep N power                : ',F5.2/ &
 !/IS2              '        elastic energy factor        : ',F5.2/ &
-!/IS2              '        factor for ice breakup       : ',F5.2)
+!/IS2              '        factor for ice breakup       : ',F5.2/ &
+!/IS2              '        IS2WIM1                      : ',F5.2/ &
+!/IS2              '        flexural strength            : ',E9.3/ &
+!/IS2              '        anelastic dissipation        : ',L3/ &
+!/IS2              '        energy of activation         : ',F5.2/ &
+!/IS2              '        anelastic coefficient        : ',E11.3/ &
+!/IS2              '        anelastic exponent           : ',F5.2)
 !/IS2 2948 FORMAT ( '  &SIS2 ISC1 =',E9.3,', IS2BACKSCAT =',E9.3,   &
-!/IS2               ', IS2BREAK =',L3,', IS2DUPDATE =',L3,','/      &
-!/IS2               '       IS2DISP =',L3,', IS2DAMP =',F3.1,       &
+!/IS2               ', IS2ISOSCAT =',L3,', IS2BREAK =',L3,          &
+!/IS2               ', IS2DUPDATE =',L3,','/                        &
+!/IS2               '       IS2FLEXSTR =',E11.3,', IS2DISP =',L3,   &
+!/IS2               ', IS2DAMP =',F3.1,       &
 !/IS2               ', IS2FRAGILITY =',F4.2,', IS2DMIN =',F5.2,','/ &
 !/IS2               '       IS2C2 =',F12.8,', IS2C3 =',F8.4,        &
 !/IS2               ', IS2CONC =',F5.1,', IS2CREEPB =',E11.3,','/   &
 !/IS2               '       IS2CREEPC =',F5.2,', IS2CREEPD =',F5.2, &
 !/IS2               ', IS2CREEPN =',F5.2,', IS2BREAKE =',F5.2,      &
-!/IS2               ', IS2BREAKF =',F5.2,', IS2WIM1 =',F5.2,' /')
+!/IS2               ', IS2BREAKF =',F5.2,', IS2WIM1 =',F5.2,','/    &
+!/IS2               ', IS2ANDISB =',L3,', IS2ANDISE =',F5.2,        &
+!/IS2               ', IS2ANDISD =',E11.3,', IS2ANDISN=',F5.2, ' /')
+!/UOST 4500 FORMAT (/' Unresolved Obstacles Source Term (UOST) ',A,/ &
+!/UOST              ' --------------------------------------------------')
+!/UOST 4501 FORMAT ('    local alpha-beta file:  ',A,    &
+!/UOST              '    shadow alpha-beta file: ',A,/    &
+!/UOST              '    local calibration factor: ',F5.2,  &
+!/UOST              '    shadow calibration factor: ',F5.2)
+!/UOST 4502 FORMAT ('  &UOST UOSTFILELOCAL = ',A,', UOSTFILESHADOW = ',A,/ &
+!/UOST              '        UOSTFACTORLOCAL = ',F5.2', UOSTFACTORSHADOW = ',F5.2,' /')
 !
   950 FORMAT (/'  Propagation scheme : '/                             &
                ' --------------------------------------------------')
   951 FORMAT ( '       Type of scheme (structured) :',1X,A)
  2951 FORMAT ( '       Type of scheme(unstructured):',1X,A)
+ 2952 FORMAT ( '             wave setup computation:',1X,A)
   952 FORMAT ( '                                    ',1X,A)
 !/PR1  953 FORMAT ( '       CFLmax depth refraction     :',F9.3/)
 !/PR1 2953 FORMAT ( '  &PRO1 CFLTM =',F5.2,' /')
@@ -4870,7 +5236,8 @@
 !/SMC               '        LATMIN =',F5.1,', RFMAXD =', F9.2/     & 
 !/SMC               '        UNO3   =',L5,  ', AVERG  =',L5/        &
 !/SMC               '        LvSMC  =',i5,  ', NBISMC =',i9/        &
-!/SMC               '        ISHFT  =',i5,  ', JEQT   =',i9, ' /')
+!/SMC               '        ISHFT  =',i5,  ', JEQT   =',i9/        &
+!/SMC               '        SEAWND =',L5, ' /')
 !
 !/PR3  953 FORMAT ( '       CFLmax depth refraction     :',F9.3/      &
 !/PR3               '       Averaging area factor Cg    :',F8.2)
@@ -4879,9 +5246,25 @@
 !/PR3 2953 FORMAT ( '  &PRO3 CFLTM =',F5.2,                           &
 !/PR3                      ', WDTHCG = ',F4.2,', WDTHTH = ',F4.2,' /')
 !
- 2956 FORMAT ( '  &UNST UGOBCAUTO =',L3,', UGOBCDEPTH =', F8.3,','/    &
-               '        EXPFSN =',L3,', EXPFSPSI =',L3,', EXPFSFCT =', &
-               L3,', IMPFSN =',L3,' /' )
+ 2956 FORMAT ( '  &UNST UGOBCAUTO =',L3,', UGOBCDEPTH =', F8.3,        &
+               ', UGOBCFILE=',A,','/                                   &
+               ',  EXPFSN =',L3,',EXPFSPSI =',L3,                     &
+               ',  EXPFSFCT =', L3,',IMPFSN =',L3,',EXPTOTAL=',L3,    &
+               ',  IMPTOTAL=',L3,',IMPREFRACTION=', L3,               &
+               ',  IMPFREQSHIFT=', L3,', IMPSOURCE=', L3,             &
+               ',  SETUP_APPLY_WLV=', L3,                             &
+               ',  JGS_TERMINATE_MAXITER=', L3,                       &
+               ',  JGS_TERMINATE_DIFFERENCE=', L3,                    &
+               ',  JGS_TERMINATE_NORM=', L3,                          &
+               ',  JGS_LIMITER=', L3,                                 &
+               ',  JGS_USE_JACOBI=', L3,                              &
+               ',  JGS_BLOCK_GAUSS_SEIDEL=', L3,                      &
+               ',  JGS_MAXITER=', I5,                                 &
+               ',  JGS_PMIN=', F8.3,                                  &
+               ',  JGS_DIFF_THR=', F8.3,                              &
+               ',  JGS_NORM_THR=', F8.3,                              &
+               ',  JGS_NLEVEL=', I3,                                  &
+               ',  JGS_SOURCE_NONLINEAR=', L3 / )
 !
   960 FORMAT (/'  Miscellaneous ',A/                                   &
                ' --------------------------------------------------')
@@ -4927,6 +5310,17 @@
 !/IC3               ' --------------------------------------------------')
 !/IC4  971 FORMAT (/'  Empirical wave-ice physics   ',A/      &
 !/IC4               ' --------------------------------------------------')
+!/IC5  971 FORMAT (/'  Visco-elastic ice layer (SIC5) ',A/      &
+!/IC5               ' --------------------------------------------------')
+!/IC5 2971 FORMAT ( '       Min. Ice shear modulus G     : ', E10.1/, &
+!/IC5               '       Min. Wave period T           : ', F7.2/,  &
+!/IC5               '       Max. Wavenumber Ratio (Ko/Kr): ', E10.1/, &
+!/IC5               '       Max. Attenu. Rate (Ki)       : ', E10.1/, &
+!/IC5               '       Min. Water depth (d)         : ', F5.0/,  &
+!/IC5               '       Max. # of Newton Iter.       : ', F5.0/,  &
+!/IC5               '       Use Rand. Kick               : ', F5.0/,  &
+!/IC5               '       Excluded Imag. Corridor      : ', F9.4/ )
+!
  8972 FORMAT ( '       Wind input reduction factor in presence of ', &
                /'         ice :',F6.2, &
                /'         (0.0==> no reduction and 1.0==> no wind', &
@@ -4950,12 +5344,13 @@
                ', IGSTERMS = ',I2,', IGBCOVERWRITE =', L3,','/        & 
                '        IGSWELLMAX =', L3,', IGMAXFREQ =',F6.4,       &
                ', IGSOURCEATBP = ',I2,', IGKDMIN = ',F6.4,','/        &
-               '        IGFIXEDDEPTH = ',F6.2', IGEMPIRICAL = ',F8.6,' /')
+               '        IGFIXEDDEPTH = ',F6.2,', IGEMPIRICAL = ',F8.6,' /')
 !
- 2978 FORMAT ( '  &SIC2  IC2DISPER =',L3,', IC2TURB =',F8.2,          &
+ 2978 FORMAT ( '  &SIC2  IC2DISPER =',L3,', IC2TURB =',F6.2,          &
                ', IC2ROUGH  =',F10.6,','/                             &
                '        IC2REYNOLDS = ',F10.1,', IC2SMOOTH = ',F10.1, & 
-               ', IC2VISC =',F10.3,', IC2TURBS =',F8.2,' /')
+               ', IC2VISC =',F6.3,','/                                &
+               ',       IC2TURBS =',F8.2,', IC2DMAX =',F5.3,' /')
 !
  2979 FORMAT ( '  &SIC3 IC3MAXTHK =',F6.2, ', IC3MAXCNC =',F6.2,','/  &
                '        IC2TURB =',F8.2,                              &
@@ -4968,6 +5363,12 @@
                ', IC3VISC = ',E9.2,','/                               &
                '        IC3DENS = ',E9.2,', IC3ELAS = ',E9.2,' /')
 !
+ 2981 FORMAT ( '  &SIC5 IC5MINIG = ', E9.2, ', IC5MINWT = ', F5.2,    &
+               ', IC5MAXKRATIO = ', E9.2, ','/                        &
+               '        IC5MAXKI = ', E9.2, ', IC5MINHW = ', F4.0,    &
+               ', IC5MAXITER = ', F4.0, ','/                          &
+               '        IC5RKICK = ', F2.0, ', IC5KFILTER = ', F7.4,' /')
+!
  2966 FORMAT ( '  &MISC CICE0 =',F6.3,', CICEN =',F6.3,               &
                      ', LICE = ',F8.1,', PMOVE =',F6.3,','/           &
                '        XSEED =',F6.3,', FLAGTR = ', I1,              &
@@ -4979,9 +5380,11 @@
                '        FACBERG =',F4.1,', GSHIFT = ',E11.3,          &
                      ', STDX = ' ,F7.2,', STDY =',F7.2,','/           &
                '        STDT =', F8.2,                                &
-                     ', ICEHMIN = ',F5.2,', ICEHFAC = ',F5.2,','/     &
-               '        ICEHINIT = ',F5.2,', ICEDISP = ',L3,          &
-                     ', ICEWIND = ',F6.2,', ICEHDISP = ',F5.2,','/    &
+                     ', ICEHMIN =',F5.2,', ICEHFAC =',F5.2,','/       &
+               '        ICEHINIT =',F5.2,', ICEDISP =',L3,            &
+                     ', ICEHDISP =',F5.2,','/                         &
+               '        ICESLN = ',F6.2,', ICEWIND = ',F6.2,          &
+                     ', ICESNL = ',F6.2,', ICESDS = ',F5.2,','/       &
                '        ICEDDISP = ',F5.2,', ICEFDISP = ',F5.2,       &
                      ', NOLEAP = ',L3,' , TRCKCMPR = ',L3,' /')
 !
@@ -5069,11 +5472,11 @@
 !/ARC 4038 FORMAT (9F8.2)
 !/ARC 4039 FORMAT ( '       Arctic ICLBAC defined as ',I6)
 !/ARC 4040 FORMAT (9I8)
-!/RTD 4200 FORMAT ( '       AnglDin(NX,NY) defined : ')
-!/RTD 4201 FORMAT ( '       JY/IX',9I8)
-!/RTD 4202 FORMAT (I6,9F8.2)
-!/RTD 4203 FORMAT ( '       Polat/lon  =  ',2F9.3)
-!/RTD 4204 FORMAT ( '       AnglD(NSEA) set up ')
+!/RTD 4200 FORMAT ( '       AnglDin(NX,NY) defn checks  : ')
+!/RTD 4201 FORMAT ( '       JY/IX',4I8)
+!/RTD 4202 FORMAT (I12,4F8.2)
+!/RTD 4203 FORMAT ( '       Rotated pole lat/lon (deg.) :  ',2F9.3)
+!/RTD 4204 FORMAT ( '       Output dirns and x-y vectors will be set to True North')
   972 FORMAT (/'       Bottom level unit           :',I6/             &
                '       Limiting depth          (m) :',F8.2/           &
                '       Minimum depth           (m) :',F8.2/           &
@@ -5112,12 +5515,12 @@
   986 FORMAT ( '       Number of boundary points   :',I6/)
  1985 FORMAT ( '       No excluded points.'/)
  1986 FORMAT ( '       Number of excluded points   :',I6/)
-  987 FORMAT ( '         Nr.|  IX |  IY |  Long.  |   Lat.  '/        &
-               '       -----|-----|-----|---------|---------')
- 1987 FORMAT ( '         Nr.|  IX |  IY |     X     |     Y     '/    &
-               '       -----|-----|-----|-----------|-----------')
-  988 FORMAT ( '       ',I4,2(' |',I4),2(' |',F8.2))
- 1988 FORMAT ( '       ',I4,2(' |',I4),2(' |',F8.1,'E3'))
+  987 FORMAT ( '         Nr.|   IX  |   IY  |  Long.  |   Lat.  '/        &
+               '       -----|-------|-------|---------|---------')
+ 1987 FORMAT ( '         Nr.|   IX  |   IY  |     X     |     Y     '/    &
+               '       -----|-------|-------|-----------|-----------')
+  988 FORMAT ( '       ',I4,2(' |',I6),2(' |',F8.2))
+ 1988 FORMAT ( '       ',I4,2(' |',I6),2(' |',F8.1,'E3'))
   989 FORMAT ( ' ')
 !
   990 FORMAT (/'  Output boundary points : '/                         &
@@ -5246,6 +5649,9 @@
                '     ONLY FIRST PROPAGATION SCHEME WILL BE USED: ')
  1036 FORMAT (/' *** WAVEWATCH III ERROR IN W3GRID :'/                &
                '     ILLEGAL NUMBER OF !/ISn SWITCHES :',I3)
+ 1050 FORMAT (/' *** WAVEWATCH III ERROR IN W3GRID :'/                &
+               '     ROTATED POLE SWITCH IS SET (RTD), BUT'/          &
+               '     PLAT/PLON NAMELIST VALUES NOT SET IN ROTD' )
 !
  1040 FORMAT ( '       Space-time extremes DX      :',F10.2)
  1041 FORMAT ( '       Space-time extremes DX      :',F10.2)
@@ -5449,6 +5855,8 @@
 !/IS2                          READ (NDS,NML=SIS2,END=801,ERR=802,IOSTAT=J)
 !/DB1                        CASE('SDB1')
 !/DB1                          READ (NDS,NML=SDB1,END=801,ERR=802,IOSTAT=J)
+!/UOST                        CASE('UOST')
+!/UOST                          READ (NDS,NML=UOST,END=801,ERR=802,IOSTAT=J)
 !/PR1                        CASE('PRO1')
 !/PR1                          READ (NDS,NML=PRO1,END=801,ERR=802,IOSTAT=J)
 !/PR2                        CASE('PRO2')
@@ -5457,6 +5865,8 @@
 !/SMC                          READ (NDS,NML=PSMC,END=801,ERR=802,IOSTAT=J)
 !/PR3                        CASE('PRO3')
 !/PR3                          READ (NDS,NML=PRO3,END=801,ERR=802,IOSTAT=J)
+!/RTD                        CASE('ROTD') 
+!/RTD                          READ (NDS,NML=ROTD,END=801,ERR=802,IOSTAT=J)
 !/REF1                        CASE('REF1') 
 !/REF1                         READ (NDS,NML=REF1,END=801,ERR=802,IOSTAT=J)
 !/IG1                        CASE('SIG1') 
@@ -5467,6 +5877,8 @@
 !/IC3                         READ (NDS,NML=SIC3,END=801,ERR=802,IOSTAT=J)
 !/IC4                        CASE('SIC4 ') 
 !/IC4                         READ (NDS,NML=SIC4,END=801,ERR=802,IOSTAT=J)
+!/IC5                        CASE('SIC5 ') 
+!/IC5                         READ (NDS,NML=SIC5,END=801,ERR=802,IOSTAT=J)
                         CASE('UNST')
                           READ (NDS,NML=UNST,END=801,ERR=802,IOSTAT=J)
                         CASE('OUTS')

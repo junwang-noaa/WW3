@@ -88,7 +88,9 @@ $                           SWELLF5 : Relative viscous decay below threshold
 $                             Z0RAT : roughness for oscil. flow / mean flow 
 $   BYDRZ input         : Namelist SIN6
 $                          SINA0    : factor for negative input
-$                          SINU10   : wind speed scaling option
+$                          SINWS    : wind speed scaling option
+$                          SINFC    : high-frequency extent of the
+$                                     prognostic frequency region
 $
 $ Nonlinear interactions - - - - - - - - - - - - - - - - - - - - - - -
 $   Discrete I.A.       : Namelist SNL1
@@ -300,6 +302,23 @@ $                           EXPFSN    : Activation of N scheme
 $                           EXPFSPSI  : Activation of PSI scheme
 $                           EXPFSFCT  : Activation of FCT scheme
 $                           IMPFSN    : Activation of N implicit scheme
+$                           IMPTOTAL  : Activation of fully implicit scheme | Non splitting
+$                           EXPTOTAL  : Turn on implicit refraction (only with imptotal)
+$                           IMPREFRACTION  : Turn on implicit freq. shift (only with imptotal)
+$                           IMPFREQSHIFT  : Turn on implicit freq. shift terms (only with imptotal)
+$                           IMPSOURCE  : Turn on implicit source terms (only with imptotal)
+$                           JGS_TERMINATE_MAXITER  : max. Number of iterations
+$                           JGS_TERMINATE_DIFFERENCE  : terminate based on the total change of wave action
+$                           JGS_TERMINATE_NORM  : terminate based on the norm of the solution
+$                           JGS_USE_JACOBI  : Use Jacobi solver for imptotal
+$                           JGS_BLOCK_GAUSS_SEIDEL  : Use Block Gauss Seidel method for imptotal
+$                           JGS_MAXITER  : max. Number of solver iterations
+$                           JGS_PMIN  : % of grid points that do not need to converge during solver iteration. 
+$                           JGS_DIFF_THR  : implicit solver threshold for JGS_TERMINATE_DIFFERENCE
+$                           JGS_NORM_THR  : terminate based on the norm of the solution
+$                           SETUP_APPLY_WLV  : Compute wave setup (experimental)
+$                           SOLVERTHR_SETUP  : Solver threshold for setup computations
+$                           CRIT_DEP_SETUP  : Critical depths for setup computations
 $
 $ SMC grid propagation    : Namelist PSMC and default values
 $                           CFLTM  : Maximum CFL no. for propagation, 0.7
@@ -311,8 +330,24 @@ $                           ISHFT  : Shift number of i-index, default 0
 $                           JEQT   : Shift number of j-index, default 0  
 $                           NBISMC : No. of input boundary points,    0  
 $                           UNO3   : Use 3rd order advection scheme, .FALSE.
-$                           UNO3   : Add extra spatial averaging,    .FALSE.
+$                           AVERG  : Add extra spatial averaging,    .FALSE.
+$                           SEAWND : Use sea-point only wind input.  .FALSE.
 $ &PSMC DTIME = 39600.0, LATMIN=85.0, RFMAXD = 36.0, LvSMC=3, JEQT=1344  /
+$
+$ Rotated pole ------------------------------------------------------ $
+$   Pole  parameters    : Namelist ROTD
+$                           PLAT  : Rotated pole latitude
+$                           PLON  : Rotated pole longitude
+$                           UNROT : Logical, un-rotate directions to true north
+$
+$    These will be used to derive rotation angle corrections in the
+$    model. The corrections are used for rotation of boundary spectra 
+$    and for restoring conventional lat/lon orientation of the
+$    output spectra, mean direction or any related variables.
+$    The PLAT/LON example below is a standard setting for Met
+$    Office UK regional models.
+$
+$ &ROTD PLAT = 37.5, PLON = 177.5, UNROT = .TRUE. /
 $
 $ Output of 3D arrays------------------------------------------------- $
 $ In order to limit the use of memory, arrays for 3D output fiels (i.e. 

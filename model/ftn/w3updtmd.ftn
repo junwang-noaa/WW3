@@ -53,6 +53,7 @@
 !/                  ICEF and ICEDMAX at the first time step
 !/                  and add ICEH initialization in W3UICE.
 !/    13-Jan-2016 : Changed initial value of ICEDMAX    ( version 5.08 )
+!/    26-Mar-2018 : Sea-point only Wnd/Cur input.  JGLi ( version 6.04 )
 !/
 !/    Copyright 2009-2014 National Weather Service (NWS),
 !/       National Oceanic and Atmospheric Administration.  All rights
@@ -141,6 +142,7 @@
 !/    15-Dec-2004 : Multiple grid version.              ( version 3.06 )
 !/    27-Aug-2015 : Rename DT0,DTT by DT0T,DT0N         ( version 5.10 )
 !/    23-Mar-2016 : SMC grid Arctic part adjustment.    ( version 5.18 )
+!/    26-Mar-2018 : Sea-point only current on SMC grid. ( version 6.02 )
 !/
 !  1. Purpose :
 !
@@ -204,6 +206,7 @@
 !/ ------------------------------------------------------------------- /
       USE W3GDATMD, ONLY: NX, NY, NSEA, MAPSF
 !/ARC      USE W3GDATMD, ONLY: NARC, NGLO, ANGARC 
+!/SMC      USE W3GDATMD, ONLY: FSWND 
       USE W3WDATMD, ONLY: TIME
       USE W3ADATMD, ONLY: CX, CY, CA0, CAI, CD0, CDI
       USE W3IDATMD, ONLY: TC0, CX0, CY0, TCN, CXN, CYN
@@ -239,8 +242,16 @@
 !
       IF ( FLFRST ) THEN
           DO ISEA=1, NSEA
+!/SMC !!Li  For sea-point SMC grid current, the 1-D current is stored on
+!/SMC !!Li  2-D CX0(NSEA, 1) variable. 
+!/SMC        IF( FSWND ) THEN
+!/SMC            IX = ISEA 
+!/SMC            IY = 1
+!/SMC        ELSE
             IX        = MAPSF(ISEA,1)
             IY        = MAPSF(ISEA,2)
+!/SMC        ENDIF
+
             CA0(ISEA) = SQRT ( CX0(IX,IY)**2 + CY0(IX,IY)**2 )
             CAI(ISEA) = SQRT ( CXN(IX,IY)**2 + CYN(IX,IY)**2 )
             IF ( CA0(ISEA) .GT. 1.E-7) THEN
@@ -396,6 +407,7 @@
 !/    16-Sep-2013 : Rotating wind for Arctic part.      ( version 4.11 )
 !/    27-May-2014 : Adding OMPG parallelizations dir.   ( version 5.02 )
 !/    27-Aug-2015 : Rename DT0,DTT by DT0T,DT0N         ( version 5.10 )
+!/    26-Mar-2018 : Sea-point only wind for SMC grid.   ( version 6.xx )
 !/
 !  1. Purpose :
 !
@@ -470,6 +482,7 @@
 !/RWND      USE W3GDATMD, ONLY:   RWINDC
 !/ST2      USE W3GDATMD, ONLY: ZWIND, OFSTAB, FFNG, FFPS, CCNG, CCPS, SHSTAB
 !/ARC      USE W3GDATMD, ONLY: NARC, NGLO, ANGARC 
+!/SMC      USE W3GDATMD, ONLY: FSWND 
       USE W3WDATMD, ONLY: TIME, ASF
       USE W3ADATMD, ONLY: DW, CX, CY, UA, UD, U10, U10D, AS,          &
                           UA0, UAI, UD0, UDI, AS0, ASI
@@ -501,8 +514,16 @@
 !
       IF ( FLFRST ) THEN
           DO ISEA=1, NSEA
+!/SMC !!Li  For sea-point only SMC grid wind 1-D wind is stored on
+!/SMC !!Li  2-D WX0(NSEA, 1) variable.
+!/SMC        IF( FSWND ) THEN
+!/SMC            IX = ISEA 
+!/SMC            IY = 1
+!/SMC        ELSE
             IX        = MAPSF(ISEA,1)
             IY        = MAPSF(ISEA,2)
+!/SMC        ENDIF
+
             UA0(ISEA) = SQRT ( WX0(IX,IY)**2 + WY0(IX,IY)**2 )
             UAI(ISEA) = SQRT ( WXN(IX,IY)**2 + WYN(IX,IY)**2 )
             IF ( UA0(ISEA) .GT. 1.E-7) THEN
@@ -640,7 +661,7 @@
 !/                  | WAVEWATCH III           NOAA/NCEP |
 !/                  |           H. L. Tolman            |
 !/                  |                        FORTRAN 90 |
-!/                  | Last update :         05-Apr-2011 |
+!/                  | Last update :         06-Jun-2018 |
 !/                  +-----------------------------------+
 !/
 !/    19-Oct-1998 : Final FORTRAN 77                    ( version 1.18 )
@@ -653,6 +674,7 @@
 !/    30-Oct-2009 : Implement curvilinear grid type.    ( version 3.14 )
 !/                  (W. E. Rogers & T. J. Campbell, NRL)
 !/    30-Oct-2009 : Implement curvilinear grid type.    ( version 3.14 )
+!/    06-Jun-2018 : use W3PARALL and INIT_GET_ISEA      ( version 6.04 )
 !/
 !  1. Purpose :
 !
@@ -712,6 +734,8 @@
                           RLGTYPE, CLGTYPE, GTYPE, FLAGLL,            &
                           HPFAC, HQFAC
       USE W3ADATMD, ONLY: U10, U10D, CG
+      USE W3PARALL, only : INIT_GET_JSEA_ISPROC, INIT_GET_ISEA
+      USE W3PARALL, only : GET_JSEA_IBELONG
 !/T      USE W3ARRYMD, ONLY : PRTBLK
 !
       IMPLICIT NONE
@@ -724,7 +748,7 @@
 !/ ------------------------------------------------------------------- /
 !/ Local variables
 !/
-      INTEGER                 :: IX, IY, ISEA, JSEA, IK, ITH
+      INTEGER                 :: IX, IY, ISEA, JSEA, IK, ITH, ISPROC
 !/S      INTEGER, SAVE           :: IENT = 0
 !/T      INTEGER                 :: IX0, IXN, MAPOUT(NX,NY)
 !/T      INTEGER                 :: NXP = 60
@@ -749,9 +773,7 @@
 !  this is not clear what is going on betwen w3init and this ... 
       A(:,:,:)=0
       DO JSEA=1, NSEAL
-!/DIST        ISEA   = IAPROC + (JSEA-1)*NAPROC
-!/SHRD        ISEA   = JSEA
-!
+        CALL INIT_GET_ISEA(ISEA, JSEA)
         IF (GTYPE.EQ.UNGTYPE) THEN 
           XGR=1.  ! to be fixed later 
         ELSE
@@ -800,9 +822,7 @@
 ! Apply directional distribution ------------------------------------- *
 !
       DO JSEA=1, NSEAL
-!/DIST        ISEA   = IAPROC + (JSEA-1)*NAPROC
-!/SHRD        ISEA   = JSEA
-!
+        CALL INIT_GET_ISEA(ISEA, JSEA)
         U10DIR = U10D(ISEA)
         D1INT  = 0.
 !
@@ -872,7 +892,7 @@
 !/                  | WAVEWATCH III           NOAA/NCEP |
 !/                  |           H. L. Tolman            |
 !/                  |                        FORTRAN 90 |
-!/                  | Last update :         12-Jun-2012 |
+!/                  | Last update :         06-Jun-2018 |
 !/                  +-----------------------------------+
 !/
 !/    19-Oct-1998 : Final FORTRAN 77                    ( version 1.18 )
@@ -882,6 +902,7 @@
 !/    17-Aug-2010 : Add initialization ABPI0-N(:,0).  ( version 3.14.5 )
 !/    12-Jun-2012 : Add /RTD option or rotated grid option. 
 !/                  (Jian-Guo Li)                       ( version 4.06 )
+!/    06-Jun-2018 : Add DEBUGIOBC/SETUP/DEBUGW3ULEV     ( version 6.04 )
 !/
 !  1. Purpose :
 !
@@ -935,7 +956,7 @@
       USE W3GDATMD, ONLY: NSPEC, MAPWN, SIG2, DDEN
 !/RTD !!   Use rotation angle and action conversion sub.  JGLi12Jun2012
 !/RTD      USE W3GDATMD, ONLY: NK, NTH, NSPEC, AnglD 
-!/RTD      USE W3SERVMD, ONLY: w3acturn
+!/RTD      USE W3SERVMD, ONLY: W3ACTURN
       USE W3ADATMD, ONLY: CG
       USE W3ODATMD, ONLY: NBI, ABPI0, ABPIN, ISBPI, IPBPI, RDBPI,     &
                           BBPI0, BBPIN
@@ -959,6 +980,10 @@
 !
 ! 1.  Process BBPI0 -------------------------------------------------- *
 ! 1.a First intialization
+
+!/DEBUGIOBC     WRITE(740+IAPROC,*) 'Beginning of W3UBPT'
+!/DEBUGIOBC     FLUSH(740+IAPROC)
+
 !
       IF ( BBPI0(1,0) .EQ. -1. ) THEN
 !
@@ -999,7 +1024,7 @@
 !/RTD !!  Rotate the spectra if model is on rotated grid.  JGLi12Jun2012
 !/RTD        Spectr = BBPIN(:,IBI)
 !/RTD        AnglBP = AnglD(ISEA)
-!/RTD        CALL  w3acturn( NTH, NK, AnglBP, Spectr )
+!/RTD        CALL  W3ACTURN( NTH, NK, AnglBP, Spectr )
 !/RTD        BBPIN(:,IBI) = Spectr
 !/RTD
 !
@@ -1022,6 +1047,12 @@
 !/T0        WRITE (NDST,9001) IBI, ISBPI(IBI), HS1, HS2
 !/T0        END DO
 !
+!/DEBUGIOBC     WRITE(740+IAPROC,*) 'sum(abs(ABPI0))=', sum(abs(ABPI0))
+!/DEBUGIOBC     WRITE(740+IAPROC,*) 'sum(abs(ABPIN))=', sum(abs(ABPIN))
+!/DEBUGIOBC     WRITE(740+IAPROC,*) 'sum(abs(BBPI0))=', sum(abs(BBPI0))
+!/DEBUGIOBC     WRITE(740+IAPROC,*) 'sum(abs(BBPIN))=', sum(abs(BBPIN))
+!/DEBUGIOBC     WRITE(740+IAPROC,*) 'End of W3UBPT'
+!/DEBUGIOBC     FLUSH(740+IAPROC)
       RETURN
 !
 ! Formats
@@ -1327,6 +1358,7 @@
 !!    USE W3ADATMD, ONLY: U10, U10D, CG
       USE W3ADATMD, ONLY: CG
       USE W3IDATMD, ONLY: TIN, ICEI, BERGI
+      USE W3PARALL, only : INIT_GET_JSEA_ISPROC, INIT_GET_ISEA
 !/
       IMPLICIT NONE
 !/
@@ -1339,7 +1371,7 @@
 !/
       INTEGER                 :: IK, ITH, ISEA, JSEA, IX, IY, ISP
 !/S      INTEGER, SAVE            :: IENT = 0
-      INTEGER                 :: MAPICE(NY,NX)
+      INTEGER                 :: MAPICE(NY,NX), ISPROC
       LOGICAL                 :: LOCAL
 !/
 !/ ------------------------------------------------------------------- /
@@ -1379,10 +1411,11 @@
 !/IC0        IF ( ICEI(IX,IY).GE.FICEN .AND. MAPICE(IY,IX).EQ.0 ) THEN
 !/IC0            MAPSTA(IY,IX) = - ABS(MAPSTA(IY,IX))
 !/IC0            MAPICE(IY,IX) = 1
-!/IC0            IF ( LOCAL .AND. MOD(ISEA-IAPROC,NAPROC) .EQ. 0 ) THEN
+!AR: Take care here situation is not totally clear!
+!/IC0            CALL INIT_GET_JSEA_ISPROC(ISEA, JSEA, ISPROC)
+!/IC0            IF (LOCAL .AND. (IAPROC .eq. ISPROC)) THEN
 !/T                WRITE (NDST,9021) ISEA, IX, IY, MAPSTA(IY,IX),     &
 !/T                                  ICEI(IX,IY), 'ICE (NEW)'
-!/IC0                JSEA   = 1 + (ISEA-1)/NAPROC
 !/IC0                VA(:,JSEA) = 0.
 !/IC0              ELSE
 !/T                WRITE (NDST,9021) ISEA, IX, IY, MAPSTA(IY,IX),     &
@@ -1404,10 +1437,10 @@
 !/IC0            IF ( MAPST2(IY,IX) .EQ. 0 ) THEN
 !/IC0                MAPSTA(IY,IX) = ABS(MAPSTA(IY,IX))
 !
-!/IC0                IF ( LOCAL .AND. MOD(ISEA-IAPROC,NAPROC) .EQ. 0 ) THEN
+!/IC0                CALL INIT_GET_JSEA_ISPROC(ISEA, JSEA, ISPROC)
+!/IC0                IF ( LOCAL .AND. (IAPROC .eq. ISPROC) ) THEN
 !/T                    WRITE (NDST,9021) ISEA, IX, IY, MAPSTA(IY,IX), &
 !/T                                      ICEI(IX,IY), 'SEA (NEW)'
-!/IC0                    JSEA   = 1 + (ISEA-1)/NAPROC
 !/IC0                    VA(:,JSEA) = 0.
 !
 !/IC0                  ELSE
@@ -1546,9 +1579,15 @@
       USE W3DISPMD, ONLY: WAVNU1
       USE W3TRIAMD, ONLY: SETUGIOBP
       USE W3TIMEMD
+      USE W3PARALL, only : INIT_GET_JSEA_ISPROC, INIT_GET_ISEA
+      USE W3PARALL, only : GET_JSEA_IBELONG
+      USE W3DISPMD, ONLY: WAVNU1
 !/TIDE      USE W3GDATMD, ONLY: YGRD
 !/TIDE      USE W3IDATMD, ONLY: FLLEVTIDE, WLTIDE, NTIDE
 !/TIDE      USE W3TIDEMD
+!/SETUP      USE W3WDATMD, ONLY: ZETA_SETUP
+!/SETUP      USE W3GDATMD, ONLY : DO_CHANGE_WLV
+
 
 !/T3      USE W3ARRYMD, ONLY: PRT2DS
 !/
@@ -1564,20 +1603,24 @@
       INTEGER                 :: ISEA, JSEA, IX, IY, IK, I1, I2,      &
                                  ISPEC, IK0, ITH
 !/S      INTEGER, SAVE           :: IENT = 0
-      INTEGER                 :: MAPDRY(NY,NX)
+      INTEGER                 :: MAPDRY(NY,NX), ISPROC
       REAL                    :: DWO(NSEA), KDCHCK, WNO(0:NK+1),      &
                                  CGO(0:NK+1), DEPTH,                  &
                                  RDK, RD1, RD2, TA(NTH,NK),           &
                                  OWN(NK), DWN(NK)
       REAL                    :: KDMAX = 4., RDKMIN = 0.05
+      REAL                    :: WLVeff
 !/T3      REAL                    :: OUT(NK,NTH)
       LOGICAL                 :: LOCAL
+      INTEGER                 :: IBELONG
 !
 !/TIDE      INTEGER          :: J
 !/TIDE      INTEGER(KIND=4)  :: TIDE_KD0, INT24, INTDYS       ! "Gregorian day constant"
 !/TIDE      REAL             :: WLEVTIDE, TIDE_ARG, WLEVTIDE2(1)
 !/TIDE      REAL(KIND=8)     :: d1,h,TIDE_HOUR,HH,pp,s,p,enp,dh,dpp,ds,dp,dnp,tau
 !/TIDE      REAL             :: FX(44),UX(44),VX(44)
+!/DEBUGW3ULEV           WRITE(740+IAPROC,*) 'Beginning of W3ULEV, step 1'
+!/DEBUGW3ULEV           FLUSH(740+IAPROC)
       
 !/
 !/ ------------------------------------------------------------------- /
@@ -1585,12 +1628,16 @@
 !/S      CALL STRACE (IENT, 'W3ULEV')
 !
       LOCAL   = IAPROC .LE. NAPROC
+!/DEBUGW3ULEV           WRITE(740+IAPROC,*) 'Beginning of W3ULEV, step 2'
+!/DEBUGW3ULEV           FLUSH(740+IAPROC)
 !
 !/T      WRITE (NDST,9000) KDMAX, RDKMIN
 !
 ! 1.  Preparations --------------------------------------------------- *
 ! 1.a Check NK
 !
+!/DEBUGW3ULEV           WRITE(740+IAPROC,*) 'Beginning of W3ULEV, step 3'
+!/DEBUGW3ULEV           FLUSH(740+IAPROC)
       IF ( NK .LT. 2 ) THEN
           IF ( IAPROC .EQ. NAPERR ) WRITE (NDSE,1000)
           CALL EXTCDE ( 1 )
@@ -1606,6 +1653,8 @@
 !
       MAPDRY = MOD(MAPST2/2,2)
       MAPST2 = MAPST2 - 2*MAPDRY
+!/DEBUGW3ULEV           WRITE(740+IAPROC,*) 'Beginning of W3ULEV, step 4'
+!/DEBUGW3ULEV           FLUSH(740+IAPROC)
 !
 ! 1.d Update water levels and save old
 !
@@ -1628,6 +1677,8 @@
 !/TIDE!  ONLY THE FRACTIONAL PART OF A SOLAR DAY NEED BE RETAINED FOR COMPU-
 !/TIDE!  TING THE LUNAR TIME TAU.
 !/TIDE!
+!/DEBUGW3ULEV           WRITE(740+IAPROC,*) 'Beginning of W3ULEV, step 5'
+!/DEBUGW3ULEV           FLUSH(740+IAPROC)
       DO ISEA=1, NSEA
         IX     = MAPSF(ISEA,1)
         IY     = MAPSF(ISEA,2)
@@ -1667,9 +1718,15 @@
 !/TIDE          ELSE 
 !
         WLV(ISEA) = WLEV(IX,IY)
+        WLVeff=WLV(ISEA)
+!/SETUP     IF (DO_CHANGE_WLV) THEN
+!/SETUP       WLVeff=WLVeff + ZETA_SETUP(ISEA)
+!/SETUP     END IF
 !/TIDE          ENDIF 
-        DW (ISEA) = MAX ( 0. , WLV(ISEA)-ZB(ISEA) )
+        DW (ISEA) = MAX ( 0. , WLVeff-ZB(ISEA) )
         END DO
+!/DEBUGW3ULEV           WRITE(740+IAPROC,*) 'Beginning of W3ULEV, step 6'
+!/DEBUGW3ULEV           FLUSH(740+IAPROC)
 !
 ! 2.  Loop over all sea points --------------------------------------- *
 !
@@ -1707,8 +1764,8 @@
 !
             IF ( WLV(ISEA)-ZB(ISEA) .LE.0. ) THEN
                 IF ( MAPDRY(IY,IX) .EQ. 0 ) THEN
-                    IF ( LOCAL .AND. MOD(ISEA-IAPROC,NAPROC).EQ.0 ) THEN
-                        JSEA   = 1 + (ISEA-1)/NAPROC
+                    CALL GET_JSEA_IBELONG(ISEA, JSEA, IBELONG)
+                    IF ( LOCAL .AND. (IBELONG .eq. 1) ) THEN
                         VA(:,JSEA) = 0.
                       END IF
                     MAPDRY(IY,IX) = 1
@@ -1729,8 +1786,8 @@
 !
 ! Resets the spectrum to zero
 !
-                    IF ( LOCAL .AND. MOD(ISEA-IAPROC,NAPROC).EQ.0 ) THEN
-                        JSEA   = 1 + (ISEA-1)/NAPROC
+                    CALL GET_JSEA_IBELONG(ISEA, JSEA, IBELONG)
+                    IF ( LOCAL .AND. (IBELONG .eq. 1) ) THEN
                         VA(:,JSEA) = 0.
                       END IF
 !
@@ -1762,8 +1819,8 @@
 !/T2              END IF
 !
             IF ( RDK.LT.RDKMIN .OR. MAPSTA(IY,IX).LT.0 ) CYCLE
-            IF ( MOD(ISEA-IAPROC,NAPROC) .NE. 0 ) CYCLE
-            JSEA   = 1 + (ISEA-1)/NAPROC
+            CALL GET_JSEA_IBELONG(ISEA, JSEA, IBELONG)
+            IF ( IBELONG .eq. 0) CYCLE
 !
             IF ( .NOT. LOCAL ) CYCLE
 !
@@ -1778,7 +1835,7 @@
 !
             VA(:,JSEA) = 0.
 !
-!/T3            CALL PRT2DS ( NDST, NK, NK, NTH, OUT, SIG(1), ' ',    &
+!/T3            CALL PRT2DS ( NDST, NK, NK, NTH, OUT, SIG, ' ',    &
 !/T3                 TPI, 0., 1.E-5, 'F(f,th)', 'm2s', 'Before' )
 !
 ! 2.e Redistribute discrete action density
@@ -1857,7 +1914,7 @@
 !/T3              OUT(IK,ITH) = A(ITH,IK,JSEA) * SIG(IK) / CG(IK,ISEA)
 !/T3              END DO
 !
-!/T3            CALL PRT2DS ( NDST, NK, NK, NTH, OUT, SIG(1), ' ',    &
+!/T3            CALL PRT2DS ( NDST, NK, NK, NTH, OUT, SIG, ' ',    &
 !/T3                 TPI, 0., 1.E-5, 'F(f,th)', 'm2s', 'After' )
 !
 !/T2          ELSE
@@ -1865,6 +1922,8 @@
           END IF
 !
         END DO
+!/DEBUGW3ULEV           WRITE(740+IAPROC,*) 'Beginning of W3ULEV, step 7'
+!/DEBUGW3ULEV           FLUSH(740+IAPROC)
 !
 ! 3.  Reconstruct new MAPST2 ----------------------------------------- *
 !
@@ -1872,11 +1931,19 @@
 !
 ! 4. Re-generates the boundary data ---------------------------------- *
 !
+!/DEBUGW3ULEV           WRITE(740+IAPROC,*) 'Beginning of W3ULEV, step 8'
+!/DEBUGW3ULEV           FLUSH(740+IAPROC)
       IF (GTYPE.EQ.UNGTYPE) THEN 
+!/DEBUGW3ULEV           WRITE(740+IAPROC,*) 'Beginning of W3ULEV, step 9'
+!/DEBUGW3ULEV           FLUSH(740+IAPROC)
         CALL SETUGIOBP
+!/DEBUGW3ULEV           WRITE(740+IAPROC,*) 'Beginning of W3ULEV, step 10'
+!/DEBUGW3ULEV           FLUSH(740+IAPROC)
 !/REF1      ELSE 
 !/REF1        CALL W3SETREF
       ENDIF 
+!/DEBUGW3ULEV           WRITE(740+IAPROC,*) 'Beginning of W3ULEV, step 11'
+!/DEBUGW3ULEV           FLUSH(740+IAPROC)
 !
       RETURN
 !
