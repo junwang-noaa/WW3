@@ -58,7 +58,7 @@
 !/    27-Aug-2015 : Sice add as additional output       ( version 5.10 )
 !/                  (in source terms)
 !/    27-Jun-2017 : Expanding WMO table to 2 digits JHA ( version 6.02 )
-
+!/    18-Aug-2018 : S_{ice} IC5 (Q. Liu)                ( version 6.06 )
 !/
 !/    Copyright 2009-2014 National Weather Service (NWS),
 !/       National Oceanic and Atmospheric Administration.  All rights
@@ -143,7 +143,7 @@
 !     - Transfder file written to ww3.yymmddhh.spc with multiple
 !       spectra and times in file. yymmddhh relates to first
 !       output (NDSTAB).
-!     - !/IC1 !/IC2 !/IC3 !/IC4 are not included in dissipation term
+!     - !/IC1 !/IC2 !/IC3 !/IC4 !/IC5 are not included in dissipation term
 !       FIXME: ICE is a dummy variable at the moment
 !              Include ice parameters in point output file out_pnt.ww3
 !              Ice coupling to SIN, SDS and SIC similar to w3srcemd.ftn
@@ -179,7 +179,7 @@
       USE W3WDATMD, ONLY: TIME
       USE W3ODATMD, ONLY: NDSE, NDST, NDSO, NOPTS, PTLOC, PTNME,     &
                           DPO, WAO, WDO, ASO, CAO, CDO, SPCO, FNMPRE,&
-                          ICEO, ICEHO, ICEFO
+                          ICEO, ICEHO, ICEFO, DIMP
       USE W3BULLMD, ONLY: NPTAB, NFLD, NPMAX, BHSMIN, BHSDROP, IYY,  &
                           HST, TPT, DMT, ASCBLINE, CSVBLINE
 !/NCO       USE W3BULLMD, ONLY: CASCBLINE
@@ -285,7 +285,8 @@
         END IF
 !
       DIMXP  = ((NK+1)/2) * ((NTH-1)/2)
-      ALLOCATE ( XPART(6,0:DIMXP) )
+      ALLOCATE ( XPART(DIMP,0:DIMXP) )
+      XPART  = UNDEF
 !
 !--- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 ! 3.  Read general data and first fields from file
@@ -676,6 +677,7 @@
 !/IC2      WRITE(NDSO,3960)
 !/IC3      WRITE(NDSO,3960)
 !/IC4      WRITE(NDSO,3960)
+!/IC5      WRITE(NDSO,3960)
 
       DO
         DTEST  = DSEC21 ( TIME , TOUT )
@@ -883,6 +885,9 @@
 !/IC4 3960 FORMAT (/' *** WAVEWATCH-III WARNING IN W3OUTP :'/         &
 !/IC4               '     Ice source terms !/IC4 skipped'/            &
 !/IC4               '     in dissipation term.'/)
+!/IC5 3960 FORMAT (/' *** WAVEWATCH-III WARNING IN W3OUTP :'/         &
+!/IC5               '     Ice source terms !/IC5 skipped'/            &
+!/IC5               '     in dissipation term.'/)
 !
 !/
 !/ Internal subroutine W3EXPO ---------------------------------------- /
@@ -1414,8 +1419,8 @@
 !
 ! spectral partitioning
 !
-            IF ( ITYPE.EQ.4 ) CALL W3PART                             &
-                ( E, UABS, UDIRCA, DEPTH, WN, NPART, XPART, DIMXP )
+            IF ( ITYPE.EQ.4 ) CALL W3PART                              &
+               ( E, UABS, UDIRCA, DEPTH, WN, NPART, XPART, DIMXP )
 !
 ! nondimensional parameters
 !
@@ -1622,7 +1627,7 @@
 !/ST4                                  DAIR/DWAT, ASO(J), UDIRR,      &
 !/ST4                            Z0, CD, TAUWX, TAUWY,TAUWNX, TAUWNY, &
 !/ST4                            XIN, DIA, LLWS, IX, IY, LAMBDA )
-!/ST6                    CALL W3SIN6 (A, CG, WN2, USTAR, UDIRR, CD,   &
+!/ST6                    CALL W3SIN6 (A, CG, WN2, UABS, USTAR, UDIRR, CD,   &
 !/ST6                          TAUWX, TAUWY, TAUWNX, TAUWNY, XIN, DIA )
 !/STX                    CALL W3SINX
                   END IF
@@ -2128,8 +2133,8 @@
                       END DO
 !
                   ELSEIF ( OTYPE .GE. 2 ) THEN
-                      CALL W3BULL (NPART, XPART, DIMXP, UABS, UDIR, &
-                              J, IOUT, TIMEV )
+                      CALL W3BULL (NPART, XPART, DIMXP, UABS,         &
+                                   UDIR, J, IOUT, TIMEV )
 !
                     IF ( FLAGLL ) THEN
                       X = M2KM * PTLOC(1,J)
@@ -2235,7 +2240,7 @@
   943 FORMAT (1X,I8.8,1X,I6.6,2(F8.1,'E3'),2X,'''',A10,'''',     &
               1X,I3,F7.1,F5.1,f6.1,F5.2,F6.1)
   941 FORMAT ('        hs     tp     lp       theta     sp      wf')
-  942 FORMAT (I3,3F8.2,2F9.2,F7.2)
+  942 FORMAT (I3,3F8.2,2F9.2,10F7.2)
 !
 ! 
 !/NCO  960 FORMAT ( 'Location : ',A,' (',F5.2,A,1X,F6.2,A,')'/              &

@@ -116,8 +116,10 @@
 !/    13-Dec-2015 : Implicit integration of Sice (F.A.) ( version 5.10 )
 !/    30-Jul-2017 : Adds TWS in interface               ( version 6.04 )
 !/    07-Jan-2018 : Allows variable ice scaling (F.A.)  ( version 6.04 )
-!/    01-Jan-2018 : Add implicit source term integration ( version 6.04 )
+!/    01-Jan-2018 : Add implicit source term integration ( version 6.04)
 !/    01-Jan-2018 : within PDLIB (A. Roland, M. Dutour    
+!/    18-Aug-2018 : S_{ice} IC5 (Q. Liu)                ( version  6.06)
+!/    26-Aug-2018 : UOST (Mentaschi et al. 2015, 2018)  ( version 6.06 )
 !/
 !/    Copyright 2009-2013 National Weather Service (NWS),
 !/       National Oceanic and Atmospheric Administration.  All rights
@@ -320,6 +322,8 @@
 !             viscoelastic sea ice model (Wang and Shen 2010).
 !     !/IC4   Dissipation via interaction with ice as a function of freq.
 !             (empirical/parametric methods)
+!     !/IC5   Dissipation via interaction with ice according to a
+!             viscoelastic sea ice model (Mosig et al. 2015).
 !     !/DB0   No depth-limited breaking.                 ( Choose one )
 !     !/DB1   Battjes-Janssen depth-limited breaking.
 !     !/DBX   User-defined bottom friction.
@@ -354,10 +358,9 @@
                           XFC, XFLT, XREL, XFT, FXFM, FXPM, DDEN,     &
                           FTE, FTF, FHMAX, ECOS, ESIN, IICEDISP,      &
                           ICESCALES, IICESMOOTH
-
       USE W3GDATMD, ONLY: FSSOURCE, optionCall
       USE W3GDATMD, ONLY: B_JGS_NLEVEL, B_JGS_SOURCE_NONLINEAR
-!/REF1 USE W3GDATMD, ONLY: IOBP, IOBPD, GTYPE, UNGTYPE
+!/REF1 USE W3GDATMD, ONLY: IOBP, IOBPD, GTYPE, UNGTYPE, REFPARS
       USE W3WDATMD, ONLY: TIME
       USE W3ODATMD, ONLY: NDSE, NDST, IAPROC
       USE W3IDATMD, ONLY: INFLAGS1, INFLAGS2, ICEP2
@@ -400,6 +403,7 @@
 !/IC2      USE W3SIC2MD
 !/IC3      USE W3SIC3MD
 !/IC4      USE W3SIC4MD
+!/IC5      USE W3SIC5MD
 !/IS1      USE W3SIS1MD
 !/IS2      USE W3SIS2MD
 !/IS2      USE W3GDATMD, ONLY : IS2PARS
@@ -414,6 +418,7 @@
 !/XXX      USE W3SXXXMD
 !/S      USE W3SERVMD, ONLY: STRACE
 !/NNT      USE W3SERVMD, ONLY: EXTCDE
+!/UOST      USE W3UOSTMD, ONLY : UOST_SRCTRMCOMPUTE
 !/PDLIB    USE W3PARALL, ONLY : Z_status_rev
 !/PDLIB    USE PDLIB_W3PROFSMD, ONLY : B_JAC, ASPAR_JAC, ASPAR_DIAG_SOURCES
 !/PDLIB    USE yowNodepool,    ONLY: PDLIB_CCON, NPA, PDLIB_I_DIAG, PDLIB_JA, PDLIB_IA_P
@@ -489,6 +494,7 @@
 !/IC2                                 VSIC(NSPEC), VDIC(NSPEC),            &
 !/IC3                                 VSIC(NSPEC), VDIC(NSPEC),            &
 !/IC4                                 VSIC(NSPEC), VDIC(NSPEC),            &
+!/IC5                                 VSIC(NSPEC), VDIC(NSPEC),            &
 !/DB1                                 VSDB(NSPEC), VDDB(NSPEC),            &
 !/DBX                                 VSDB(NSPEC), VDDB(NSPEC),            &
 !/TR1                                 VSTR(NSPEC), VDTR(NSPEC),            &
@@ -499,8 +505,8 @@
 !/IS1                                 VSIR(NSPEC), VDIR(NSPEC),            &
 !/IS2                                 VSIR(NSPEC), VDIR(NSPEC),VDIR2(NSPEC), &
 !/XXX                                 VSXX(NSPEC), VDXX(NSPEC),            &
+!/UOST                                 VSUO(NSPEC), VDUO(NSPEC),            &
                                  VS  (NSPEC), VD  (NSPEC), EB(NK)
-!/ST6      REAL                    :: SWL(NSPEC), DWL(NSPEC)
 !/ST3      LOGICAL                 :: LLWS(NSPEC) 
 !/ST4      LOGICAL                 :: LLWS(NSPEC)
 !/ST4      REAL                    :: BRLAMBDA(NSPEC)
@@ -525,7 +531,6 @@
 !/S      CALL STRACE (IENT, 'W3SRCE')
 !
 !/T      FLTEST = .TRUE.
-
 !
       DEPTH  = MAX ( DMIN , D_INP )
       IKS1 = 1
@@ -564,6 +569,10 @@
 !/IC3      VDIC = 0.
 !/IC4      VSIC = 0.
 !/IC4      VDIC = 0.
+!/UOST      VSUO = 0.
+!/UOST      VDUO = 0.
+!/IC5      VSIC = 0.
+!/IC5      VDIC = 0.
 !
 !/IS1      VSIR = 0.
 !/IS1      VDIR = 0.
@@ -573,8 +582,6 @@
 !
 !/ST6      VSWL = 0.
 !/ST6      VDWL = 0.
-!/ST6      SWL  = 0.
-!/ST6      DWL  = 0.
 !
 !/ST0      ZWND   = 10.
 !/ST1      ZWND   = 10.
@@ -735,11 +742,15 @@
 !/ST4      FAGE   = 0.
 !/ST4      FHIGH  = MAX( (FFXFM + FAGE ) * MAX(FMEAN1,FMEANWS), FFXPM / USTAR)
 !/ST4      FHIGI  = FFXFA * FMEAN1
-!/ST6      FHIGH  = MAX (FXFM * FMEAN, FXPM / USTAR)
+!/ST6      IF (FXFM .LE. 0) THEN
+!/ST6          FHIGH = SIG(NK)
+!/ST6      ELSE
+!/ST6          FHIGH  = MAX (FXFM * FMEAN, FXPM / USTAR)
+!/ST6      ENDIF
 !
 ! 1.f Prepare output file for !/NNT option
 !
-!/NNT      IF ( IT .eq. 0 ) THEN
+!/NNT      IF ( IT .EQ. 0 ) THEN
 !/NNT          J      = LEN_TRIM(FNMPRE)
 !/NNT          WRITE (FNAME(11:13),'(I3.3)') IAPROC
 !/NNT          OPEN (NDSD,FILE=FNMPRE(:J)//FNAME,FORM='UNFORMATTED',   &
@@ -780,7 +791,7 @@
 !/DEBUGSRC!/ST4          WRITE(740+IAPROC,*) '2 : W3SIN4(min/max/sum)VDIN=', minval(VDIN), maxval(VDIN), sum(VDIN)
 !/DEBUGSRC!/ST4        END IF
 
-!/ST6        CALL W3SIN6 ( SPEC, CG1, WN2, USTAR, USTDIR, CD,             &
+!/ST6        CALL W3SIN6 ( SPEC, CG1, WN2, U10ABS, USTAR, USTDIR, CD,     &
 !/ST6                      TAUWX, TAUWY, TAUWAX, TAUWAY, VSIN, VDIN )
 !/STX        CALL W3SINX
 !
@@ -826,9 +837,7 @@
 ! 2.c2   optional dissipation parameterisations
 !
 !/ST6        IF (SWL6S6) THEN
-!/ST6           CALL W3SWL6 ( SPEC, CG1, WN1,       SWL,  DWL )
-!/ST6           VSWL = VSWL + SWL
-!/ST6           VDWL = VDWL + DWL
+!/ST6           CALL W3SWL6 ( SPEC, CG1, WN1, VSWL, VDWL )
 !/ST6        END IF
 !
 ! 2.d Bottom interactions.
@@ -846,11 +855,17 @@
 !/BSX        CALL W3SBSX
 !/PDLIB      ENDIF
 !
-! 2.e Additional sources.
+! 2.e Unresolved Obstacles Source Term
+!
+!/UOST        ! UNRESOLVED OBSTACLES
+!/UOST        CALL UOST_SRCTRMCOMPUTE(IX, IY, SPEC, CG1, DT,            &
+!/UOST                                       U10ABS, U10DIR, VSUO, VDUO)
+!
+! 2.f Additional sources.
 !
 !/XXX        CALL W3SXXX
 !
-! 2.f Dump training data if necessary
+! 2.g Dump training data if necessary
 !
 !/NNT        WRITE (SCREEN,8888) TIME, DTTOT, FLAGNN, QCERR
 !/NNT        WRITE (NDSD2,8888) TIME, DTTOT, FLAGNN, QCERR
@@ -918,6 +933,7 @@
 !/BS1          VS(IS) = VS(IS) + VSBS(IS)
 !/BSX          VS(IS) = VS(IS) + VSBS(IS)
 !/XXX          VS(IS) = VS(IS) + VSXX(IS)
+!/UOST         VS(IS) = VS(IS) + VSUO(IS)
           VD(IS) =  VDIN(IS) + VDNL(IS)  &
                  + VDDS(IS) + VDBT(IS) 
 !/ST6          VD(IS) = VD(IS) + VDWL(IS)
@@ -926,6 +942,7 @@
 !/BS1          VD(IS) = VD(IS) + VDBS(IS)
 !/BSX          VD(IS) = VD(IS) + VDBS(IS)
 !/XXX          VD(IS) = VD(IS) + VDXX(IS)
+!/UOST         VD(IS) = VD(IS) + VDUO(IS)
           DAMAX  = MIN ( DAM(IS) , MAX ( XREL*SPECINIT(IS) , AFILT ) )
           AFAC   = 1. / MAX( 1.E-10 , ABS(VS(IS)/DAMAX) )
           DT     = MIN ( DT , AFAC / ( MAX ( 1.E-10,                  &
@@ -1183,7 +1200,11 @@
 !/ST4        NKH    = MAX ( 2 , MIN ( NKH1 ,                           &
 !/ST4                 INT ( FACTI2 + FACTI1*LOG(MAX(1.E-7,FHIGH)) ) ) )
 !
-!/ST6        FHIGH  = SIG(NK)
+!/ST6        IF (FXFM .LE. 0) THEN
+!/ST6            FHIGH = SIG(NK)
+!/ST6        ELSE
+!/ST6            FHIGH = MIN ( SIG(NK), MAX(FXFM * FMEAN, FXPM / USTAR) )
+!/ST6        ENDIF
 !/ST6        NKH    = MAX ( 2 , MIN ( NKH1 ,                           &
 !/ST6                 INT ( FACTI2 + FACTI1*LOG(MAX(1.E-7,FHIGH)) ) ) )
 !
@@ -1240,13 +1261,13 @@
 !
 ! 7.  Check if integration complete ---------------------------------- *
 !
-        IF (srce_call .eq. srce_imp_post) THEN
-          EXIT
-        ENDIF
-        IF ( DTTOT .GE. 0.9999*DTG ) THEN
-!          IF (IX == DEBUG_NODE) WRITE(*,*) 'DTTOT, DTG', DTTOT, DTG
-          EXIT
-        ENDIF
+          IF (srce_call .eq. srce_imp_post) THEN
+            EXIT
+            ENDIF
+          IF ( DTTOT .GE. 0.9999*DTG ) THEN
+!            IF (IX == DEBUG_NODE) WRITE(*,*) 'DTTOT, DTG', DTTOT, DTG
+            EXIT
+            ENDIF
         END DO ! INTEGRATIN LOOP
 !/DEBUGSRC     IF (IX .eq. DEBUG_NODE) THEN
 !/DEBUGSRC       WRITE(740+IAPROC,*) 'NSTEPS=', NSTEPS
@@ -1359,6 +1380,7 @@
 !/IC2                              IX, IY, VSIC, VDIC, WN_R, CG_ICE, ALPHA_LIU, R)
 !/IC3      CALL W3SIC3 ( SPEC,DEPTH, CG1,  WN1, IX, IY, VSIC, VDIC )
 !/IC4      CALL W3SIC4 ( SPEC,DEPTH, CG1,       IX, IY, VSIC, VDIC )
+!/IC5      CALL W3SIC5 ( SPEC,DEPTH, CG1,  WN1, IX, IY, VSIC, VDIC )
 !
 !/IS1      CALL W3SIS1 ( SPEC, ICE, VSIR )
    SPEC2 = SPEC
@@ -1375,6 +1397,7 @@
 !/IC2             ATT=EXP(ICE*VDIC(IS)*DTG)
 !/IC3             ATT=EXP(ICE*VDIC(IS)*DTG)
 !/IC4             ATT=EXP(ICE*VDIC(IS)*DTG)
+!/IC5             ATT=EXP(ICE*VDIC(IS)*DTG)
 !/IS1             ATT=ATT*EXP(ICE*VDIR(IS)*DTG)
 !/IS2             ATT=ATT*EXP(ICE*VDIR2(IS)*DTG)
 !/IS2             IF (IS2PARS(2).EQ.0) THEN ! Reminder : IS2PARS(2) = IS2BACKSCAT
@@ -1465,23 +1488,23 @@
 !/DEBUGSRC     IF (IX .eq. DEBUG_NODE) THEN
 !/DEBUGSRC       WRITE(740+IAPROC,*) '5 : sum(SPEC)=', sum(SPEC)
 !/DEBUGSRC     END IF
-
 !/REF1        IF (REFLEC(1).GT.0.OR.REFLEC(2).GT.0.OR.(REFLEC(4).GT.0.AND.BERG.GT.0)) THEN 
 !/REF1          CALL W3SREF ( SPEC, CG1, WN1, EMEAN, FMEAN, DEPTH, CX, CY,   &
-!/REF1                        REFLEC, REFLED, DELX, DELY, DELA, TRNX, TRNY,  &
+!/REF1                        REFLEC, REFLED, TRNX, TRNY,  &
 !/REF1                        BERG, DTG, IX, IY,  VREF )
-!/REF1          SPEC(:) = SPEC(:)+DTG*VREF(:) 
-!/REF1        ELSE
 !/REF1! Treatment specific to unstructured grids: Dirichlet boundary condition
-!/REF1! the energies in directions from shore are set to zero. 
-!/REF1          IF (GTYPE.EQ.UNGTYPE) THEN 
-!/REF1          IF (IOBP(IX).EQ.0) THEN 
-!/REF1            DO IK=1, NK 
-!/REF1              DO ITH=1, NTH
-!/REF1                IF (IOBPD(ITH,IX).EQ.0) SPEC(ITH+(IK-1)*NTH)=0.
-!/REF1                END DO
-!/REF1              END DO 
-!/REF1            END IF
+!/REF1! the energies in directions from shore are set to the reflected value
+!/REF1          IF (GTYPE.EQ.UNGTYPE.AND.REFPARS(3).LT.0.5) THEN 
+!/REF1            IF (IOBP(IX).EQ.0) THEN 
+!/REF1              DO IK=1, NK 
+!/REF1                DO ITH=1, NTH
+!/REF1                  IF (IOBPD(ITH,IX).EQ.0) SPEC(ITH+(IK-1)*NTH) = DTG*VREF(ITH+(IK-1)*NTH)
+!/REF1                  END DO
+!/REF1                END DO 
+!/REF1              END IF
+!/REF1          ELSE
+!/REF1! If not, we have a Neuman boundary condition with the source term feeding energy
+!/REF1            SPEC(:) = SPEC(:)+DTG*VREF(:) 
 !/REF1            END IF
 !/REF1          END IF
 !
