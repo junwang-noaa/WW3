@@ -6,7 +6,7 @@
 !/                  | WAVEWATCH III           NOAA/NCEP |
 !/                  |           H. L. Tolman            |
 !/                  |                        FORTRAN 90 |
-!/                  | Last update :         27-Aug-2015 |
+!/                  | Last update :         12-Sep-2018 |
 !/                  +-----------------------------------+
 !/
 !/    19-Oct-1998 : Final FORTRAN 77                    ( version 1.18 )
@@ -33,6 +33,7 @@
 !/    11-Nov-2013 : SMC and rotated grid incorporated in the main 
 !/                  trunk                               ( version 4.13 )
 !/    27-Aug-2015 : ICEH and ICEF added as output       ( version 5.10 )
+!/    12-Sep-2018 : Added new partitioned output fields ( version 6.06 )
 !/
 !/    Copyright 2009-2012 National Weather Service (NWS),
 !/       National Oceanic and Atmospheric Administration.  All rights
@@ -120,13 +121,15 @@
                           THS, FP0, THP0, FP1, THP1, DTDYN, FCUT,     &
                           ABA, ABD, UBA, UBD, SXX, SYY, SXY, USERO,   &
                           PHS, PTP, PLP, PDIR, PSI, PWS, PWST, PNR,   &
+                          PTM1, PT1, PT2, PEP,                        &
+                          PTHP0, PQP, PSW, PPE, PGW, QP,              &
                           TAUOX, TAUOY, TAUWIX,BHD,                   &
                           TAUWIY, PHIAW, PHIOC, TUSX, TUSY, PRMS, TPMS,&
                           USSX, USSY, MSSX, MSSY, MSCX, MSCY, CHARN,  &
                           TAUWNX, TAUWNY, TAUBBL, PHIBBL, CFLXYMAX,   &
                           CFLTHMAX, CFLKMAX, BEDFORMS, WHITECAP, T02, &
                           CGE, T01, HSIG, STMAXE, STMAXD, HMAXE,      &
-                          HCMAXE, HMAXD, HCMAXD
+                          HCMAXE, HMAXD, HCMAXD, MSSD, MSCD, WBT
       USE W3ODATMD, ONLY: NDSO, NDSE, NDST, NOGRP, NGRPP, IDOUT,      &
                           UNDEF, FLOGRD, FNMPRE, NOSWLL, NOGE
 !
@@ -602,7 +605,7 @@
       DOUBLE PRECISION        :: XDS, XDSQ
       LOGICAL                 :: FLONE, FLTWO, FLDIR, FLTRI
 !/T      LOGICAL                 :: LTEMP(NGRPP)
-      CHARACTER               :: OLDTID*8, FNAME*16, ENAME*4,         &
+      CHARACTER               :: OLDTID*8, FNAME*32, ENAME*7,         &
                                  FORMG*12, FORMF*11, UNITS*10, FSCS*7
       CHARACTER, SAVE         :: TIMEID*8 = '00000000'
       CHARACTER, SAVE         :: FILEID*13 = 'WAVEWATCH III'
@@ -1066,6 +1069,17 @@
                   CALL W3S2XY ( NSEA, NSEA, NX+1, NY, HCMAXD, MAPSF, X1)
                 ENDIF
 !
+              ELSE IF ( IFI .EQ. 2 .AND. IFJ .EQ. 17 ) THEN
+                FLONE  = .TRUE.
+                FSC    = 0.001
+                UNITS  = '1'
+                ENAME  = '.wbt'
+                IF ( ITYPE .EQ. 4 ) THEN
+                   XS1    = WBT
+                ELSE
+                  CALL W3S2XY ( NSEA, NSEA, NX+1, NY, WBT, MAPSF, X1)
+                ENDIF
+!
               ELSE IF ( IFI .EQ. 4 .AND. IFJ .EQ. 1 ) THEN
                 FLONE  = .TRUE.
                 FSC    = 0.01
@@ -1148,6 +1162,114 @@
 !
               ELSE IF ( IFI .EQ. 4 .AND. IFJ .EQ. 7 ) THEN
                 FLONE  = .TRUE.
+                FSC    = 1.0
+                UNITS  = 'degree'
+                ENAME  = '.pdp'
+!/RTD                  ! Rotate direction back to standard pole
+!/RTD                  IF ( FLAGUNR ) CALL W3THRTN(NSEA, PTHP0(:,IPART), AnglD, .FALSE.)
+                DO ISEA=1, NSEA
+                  IF ( PTHP0(ISEA,IPART) .NE. UNDEF ) THEN
+                      PTHP0(ISEA,IPART) =                           &
+                            MOD ( 630-RADE*PTHP0(ISEA,IPART) , 360. )
+                    END IF
+                  END DO
+                IF ( ITYPE .EQ. 4 ) THEN
+                   XS1    = PTHP0(:,IPART)
+                ELSE
+                CALL W3S2XY ( NSEA, NSEA, NX+1, NY, PTHP0(:,IPART),   &
+                                                            MAPSF, X1 )
+                ENDIF
+!
+              ELSE IF ( IFI .EQ. 4 .AND. IFJ .EQ. 8 ) THEN
+                FLONE  = .TRUE.
+                FSC    = 0.01
+                UNITS  = '1'
+                ENAME  = '.pqp'
+                IF ( ITYPE .EQ. 4 ) THEN
+                   XS1    = PQP(:,IPART)
+                ELSE
+                CALL W3S2XY ( NSEA, NSEA, NX+1, NY, PQP(:,IPART), MAPSF, X1 )
+                ENDIF
+!
+              ELSE IF ( IFI .EQ. 4 .AND. IFJ .EQ. 9 ) THEN
+                FLONE  = .TRUE.
+                FSC    = 0.01
+                UNITS  = '1'
+                ENAME  = '.ppe'
+                IF ( ITYPE .EQ. 4 ) THEN
+                   XS1    = PPE(:,IPART)
+                ELSE
+                CALL W3S2XY ( NSEA, NSEA, NX+1, NY, PPE(:,IPART), MAPSF, X1 )
+                ENDIF
+!
+              ELSE IF ( IFI .EQ. 4 .AND. IFJ .EQ. 10 ) THEN
+                FLONE  = .TRUE.
+                FSC    = 0.0001
+                UNITS  = 's-1'
+                ENAME  = '.pgw'
+                IF ( ITYPE .EQ. 4 ) THEN
+                   XS1    = PGW(:,IPART)
+                ELSE
+                CALL W3S2XY ( NSEA, NSEA, NX+1, NY, PGW(:,IPART), MAPSF, X1 )
+                ENDIF
+!
+              ELSE IF ( IFI .EQ. 4 .AND. IFJ .EQ. 11 ) THEN
+                FLONE  = .TRUE.
+                FSC    = 0.0001
+                UNITS  = '1'
+                ENAME  = '.psw'
+                IF ( ITYPE .EQ. 4 ) THEN
+                   XS1    = PSW(:,IPART)
+                ELSE
+                CALL W3S2XY ( NSEA, NSEA, NX+1, NY, PSW(:,IPART), MAPSF, X1 )
+                ENDIF
+!
+              ELSE IF ( IFI .EQ. 4 .AND. IFJ .EQ. 12 ) THEN
+                FLONE  = .TRUE.
+                FSC    = 0.01
+                UNITS  = 's'
+                ENAME  = '.ptm10'
+                IF ( ITYPE .EQ. 4 ) THEN
+                   XS1    = PTM1(:,IPART)
+                ELSE
+                CALL W3S2XY ( NSEA, NSEA, NX+1, NY, PTM1(:,IPART), MAPSF, X1 )
+                ENDIF
+!
+              ELSE IF ( IFI .EQ. 4 .AND. IFJ .EQ. 13 ) THEN
+                FLONE  = .TRUE.
+                FSC    = 0.01
+                UNITS  = 's'
+                ENAME  = '.pt01'
+                IF ( ITYPE .EQ. 4 ) THEN
+                   XS1    = PT1(:,IPART)
+                ELSE
+                CALL W3S2XY ( NSEA, NSEA, NX+1, NY, PT1(:,IPART), MAPSF, X1 )
+                ENDIF
+!
+              ELSE IF ( IFI .EQ. 4 .AND. IFJ .EQ. 14 ) THEN
+                FLONE  = .TRUE.
+                FSC    = 0.01
+                UNITS  = 's'
+                ENAME  = '.pt02'
+                IF ( ITYPE .EQ. 4 ) THEN
+                   XS1    = PT2(:,IPART)
+                ELSE
+                CALL W3S2XY ( NSEA, NSEA, NX+1, NY, PT2(:,IPART), MAPSF, X1 )
+                ENDIF
+!
+              ELSE IF ( IFI .EQ. 4 .AND. IFJ .EQ. 15 ) THEN
+                FLONE  = .TRUE.
+                FSC    = 0.02
+                UNITS  = 'm2 s rad-1'
+                ENAME  = '.pep'
+                IF ( ITYPE .EQ. 4 ) THEN
+                   XS1    = PEP(:,IPART)
+                ELSE
+                CALL W3S2XY ( NSEA, NSEA, NX+1, NY, PEP(:,IPART), MAPSF, X1 )
+                ENDIF
+!
+              ELSE IF ( IFI .EQ. 4 .AND. IFJ .EQ. 16 ) THEN
+                FLONE  = .TRUE.
                 FSC    = 0.001
                 UNITS  = '1'
                 ENAME  = '.tws'
@@ -1157,7 +1279,7 @@
                 CALL W3S2XY ( NSEA, NSEA, NX+1, NY, PWST(:), MAPSF, X1 )
                 ENDIF 
 !
-              ELSE IF ( IFI .EQ. 4 .AND. IFJ .EQ. 8 ) THEN
+              ELSE IF ( IFI .EQ. 4 .AND. IFJ .EQ. 17 ) THEN
                 FLONE  = .TRUE.
                 FSC    = 1.
                 UNITS  = '1'
@@ -1784,6 +1906,53 @@
                                                              MAPSF, X2 )
                 ENDIF
 !
+              ELSE IF ( IFI .EQ. 8 .AND. IFJ .EQ. 3 ) THEN
+                FLONE  = .TRUE.
+                FSC    = 0.1
+                UNITS  = 'degree'
+                ENAME  = '.msd'
+!/RTD                ! Rotate direction back to standard pole
+!/RTD                IF ( FLAGUNR ) CALL W3THRTN(NSEA, MSSD, AnglD, .FALSE.)
+                DO ISEA=1, NSEA
+                  IF ( MSSD(ISEA) .NE. UNDEF )  THEN
+                    MSSD(ISEA) = MOD ( 630. - RADE*MSSD(ISEA) , 180. )
+                    END IF
+                  END DO
+                IF ( ITYPE .EQ. 4 ) THEN
+                   XS1    = MSSD(1:NSEA)
+                ELSE
+                CALL W3S2XY ( NSEA, NSEA, NX+1, NY, MSSD(1:NSEA), MAPSF, X1 )
+                ENDIF
+!
+              ELSE IF ( IFI .EQ. 8 .AND. IFJ .EQ. 4 ) THEN
+                FLONE  = .TRUE.
+                FSC    = 0.1
+                UNITS  = 'degree'
+                ENAME  = '.mcd'
+!/RTD                ! Rotate direction back to standard pole
+!/RTD                IF ( FLAGUNR ) CALL W3THRTN(NSEA, MSCD, AnglD, .FALSE.)
+                DO ISEA=1, NSEA
+                  IF ( MSCD(ISEA) .NE. UNDEF )  THEN
+                    MSCD(ISEA) = MOD ( 630. - RADE*MSCD(ISEA) , 180. )
+                    END IF
+                  END DO
+                IF ( ITYPE .EQ. 4 ) THEN
+                   XS1    = MSCD(1:NSEA)
+                ELSE
+                CALL W3S2XY ( NSEA, NSEA, NX+1, NY, MSCD(1:NSEA), MAPSF, X1 )
+                ENDIF
+!
+              ELSE IF ( IFI .EQ. 8 .AND. IFJ .EQ. 5 ) THEN
+                FLONE  = .TRUE.
+                FSC    = 0.01
+                UNITS  = '1'
+                ENAME  = '.qp'
+                IF ( ITYPE .EQ. 4 ) THEN
+                   XS1    = QP
+                ELSE
+                  CALL W3S2XY ( NSEA, NSEA, NX+1, NY, QP, MAPSF, X1 )
+                ENDIF
+!
               ELSE IF ( IFI .EQ. 9 .AND. IFJ .EQ. 1 ) THEN
                 FLONE  = .TRUE.
                 FSC    = 0.1
@@ -1857,6 +2026,7 @@
                 ENDIF
 !
               ELSE
+                WRITE (NDSE,990) IFI,IFJ
                 WRITE (NDSE,999)
                 CALL EXTCDE ( 1 )
 !
@@ -1975,7 +2145,7 @@
 !
               ELSE IF ( ITYPE .EQ. 3 ) THEN
 !
-                FNAME(13:16) = ENAME
+                FNAME(13:) = ENAME
                 IF ( IDFM .EQ. 3 ) THEN
                   IF(GTYPE .NE. UNGTYPE) THEN
                     JJ     = LEN_TRIM(FNMPRE)
@@ -2153,7 +2323,7 @@
 !
               ELSE IF ( ITYPE .EQ. 4 ) THEN
 !
-                FNAME(13:16) = ENAME
+                FNAME(13:) = ENAME
                 JJ     = LEN_TRIM(FNMPRE)
                 OPEN (NDSDAT,FILE=FNMPRE(:JJ)//FNAME,ERR=800,     &
                       IOSTAT=IERR)
@@ -2211,6 +2381,8 @@
               1X,A4,1X,A7,1X,A10,2I2,1X,A11,I4)
   961 FORMAT (1X,2E12.4,2I8)
 !
+  990 FORMAT (/' *** WAVEWATCH III ERROR IN W3EXGO :'/           &
+               '     GROUP',I2,' PARAMETER',I3,' NOT LISTED '    )
   999 FORMAT (/' *** WAVEWATCH III ERROR IN W3EXGO :'/                &
                '     PLEASE UPDATE FIELDS !!! '/)
 !

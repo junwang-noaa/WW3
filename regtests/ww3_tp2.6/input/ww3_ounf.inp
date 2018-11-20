@@ -4,7 +4,7 @@ $--------------------------------------------------------------------- $
 $ First output time (yyyymmdd hhmmss), increment of output (s), 
 $ and number of output times.
 $
- 20020101 000000   60  3600
+ 20100801 000000  10  3600
 $
 $ Fields requested --------------------------------------------------- $
 $
@@ -13,7 +13,7 @@ $ file for a full documentation of field output options. Namelist type
 $ selection is used here (for alternative F/T flags, see ww3_shel.inp).
 $
  N
- HS LM T02 T01 T0M1 UST CHA CGE DTD FC CFX CFD
+ HS LM T02 T01 TM10 UST CHA CGE DTD FC CFX CFD
 $
 $--------------------------------------------------------------------- $
 $ netCDF version [3,4]

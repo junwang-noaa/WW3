@@ -29,7 +29,9 @@
 
   for par in mpi np nr nth rtst ww3 shrd dist omp \
              prop1D prop2D time fetch hur1mg \
-             multi01 multi02 multi03 multi04 multi05
+             multi01 multi02 multi03 multi04 multi05 \
+             hybd shwtr unstr pdlib smcgr mudice infgrv \
+             uost assim multi06 multi07 multi08
   do
     eval " value=\$$par"
 #   echo "$par = $value"
@@ -82,6 +84,7 @@
   echo "  echo '      Multi 06 (curv. + reg. grds)       : $multi06'"          >> matrix.head
   echo "  echo '      Multi 07 (unstr. + reg. grds)      : $multi07'"          >> matrix.head
   echo "  echo '      Multi 08 (with ice)                : $multi08'"          >> matrix.head
+  echo "  echo '      Assim Update of the restart file   : $assim'"             >> matrix.head
   echo "  echo ' '"                                                            >> matrix.head
   if [ -n "$filter" ]
   then
@@ -885,7 +888,7 @@
     echo "$rtst -s ST4_WRT  -w work_ST4_WRT  $ww3 ww3_ts1" >> matrix.body
     echo "$rtst -s ST4_GMD  -w work_ST4_GMD  $ww3 ww3_ts1" >> matrix.body
     echo "$rtst -s ST4_TSA  -w work_ST4_TSA  $ww3 ww3_ts1" >> matrix.body
-    echo "$rtst -s ST6      -w work_ST6      $ww3 ww3_ts1" >> matrix.body
+    echo "$rtst -s ST6      -w work_ST6  -o netcdf  $ww3 ww3_ts1" >> matrix.body
   fi
 
 # fetch limited growth, no switch sharing here
@@ -1823,7 +1826,6 @@
     then
       echo "$rtst -s ST6_PR3_UNO_OMP -w work_ST6_PR3_UNO_OMP -m grdset_a -f -O -n $np $ww3 mww3_test_05" >> matrix.body
     fi
-
 # - - - - - - - - - - - - 
 
   fi
@@ -1841,15 +1843,17 @@
   if [ "$smcgr" = 'y' ] && [ "$shrd" = 'y' ] && [ "$dist" != 'y' ]
   then
     echo ' ' >> matrix.body
-    echo "$rtst $ww3 -w work_SHRD_SMC ww3_tp2.10" >> matrix.body
-    echo "$rtst $ww3 -w work_SHRD_RTD ww3_tp2.11" >> matrix.body
+    echo "$rtst $ww3 -w work_SHRD_SMC -o both ww3_tp2.10" >> matrix.body
+    echo "$rtst $ww3 -w work_SHRD_RTD -o both ww3_tp2.11" >> matrix.body
+    echo "$rtst -w work_SHRD $ww3 -o both ww3_tp2.16" >> matrix.body
   fi
 
   if [ "$smcgr" = 'y' ] && [ "$dist" = 'y' ]
   then
     echo ' ' >> matrix.body
-    echo "$rtst -s MPI -w work_MPI -f -p $mpi -n $np $ww3 ww3_tp2.10" >> matrix.body
-    echo "$rtst -s MPI -w work_MPI -f -p $mpi -n $np $ww3 ww3_tp2.11" >> matrix.body
+    echo "$rtst -s MPI -w work_MPI -f -p $mpi -n $np $ww3 -o both ww3_tp2.10" >> matrix.body
+    echo "$rtst -s MPI -w work_MPI -f -p $mpi -n $np $ww3 -o both ww3_tp2.11" >> matrix.body
+    echo "$rtst -s MPI -w work_MPI -f -p $mpi -n $np $ww3 -o both ww3_tp2.16" >> matrix.body
   fi
 
 # mud/ice cases
@@ -1879,15 +1883,19 @@
     echo "$rtst -g 2500m         -w work_2500m_IC3 -i input_IC3             $ww3 ww3_tic1.1" >> matrix.body
     echo "$rtst                  -w work_IC3_nondisp -i input_IC3_nondisp   $ww3 ww3_tic1.1" >> matrix.body
     echo "$rtst -g CGICE_CHENG   -w work_IC3_CGICE_CHENG -i input_IC3NL     $ww3 ww3_tic1.1" >> matrix.body
-    echo "$rtst -g 1000m         -w work_IC4_M1 -i input_IC4/M1             $ww3 ww3_tic1.1" >> matrix.body
-    echo "$rtst -g 1000m         -w work_IC4_M2 -i input_IC4/M2             $ww3 ww3_tic1.1" >> matrix.body
-    echo "$rtst -g 1000m         -w work_IC4_M3 -i input_IC4/M3             $ww3 ww3_tic1.1" >> matrix.body
-    echo "$rtst -g 1000m         -w work_IC4_M4 -i input_IC4/M4             $ww3 ww3_tic1.1" >> matrix.body
-    echo "$rtst -g 1000m         -w work_IC4_M5 -i input_IC4/M5             $ww3 ww3_tic1.1" >> matrix.body
-    echo "$rtst                  -w work_IC4_M6 -i input_IC4/M6             $ww3 ww3_tic1.1" >> matrix.body
-    echo "$rtst -g 206H          -w work_IC4_M6H -i input_IC4/M6            $ww3 ww3_tic1.1" >> matrix.body
-    echo "$rtst -g 206L          -w work_IC4_M6L -i input_IC4/M6            $ww3 ww3_tic1.1" >> matrix.body
-    echo "$rtst                  -w work_IC4_M7  -i input_IC4/M7            $ww3 ww3_tic1.1" >> matrix.body
+    echo "$rtst -g 1000m         -w work_IC4_M1 -i input_IC4_M1             $ww3 ww3_tic1.1" >> matrix.body
+    echo "$rtst -g 1000m         -w work_IC4_M2 -i input_IC4_M2             $ww3 ww3_tic1.1" >> matrix.body
+    echo "$rtst -g 1000m         -w work_IC4_M3 -i input_IC4_M3             $ww3 ww3_tic1.1" >> matrix.body
+    echo "$rtst -g 1000m         -w work_IC4_M4 -i input_IC4_M4             $ww3 ww3_tic1.1" >> matrix.body
+    echo "$rtst -g 1000m         -w work_IC4_M5 -i input_IC4_M5             $ww3 ww3_tic1.1" >> matrix.body
+    echo "$rtst                  -w work_IC4_M6 -i input_IC4_M6             $ww3 ww3_tic1.1" >> matrix.body
+    echo "$rtst -g 206H          -w work_IC4_M6H -i input_IC4_M6            $ww3 ww3_tic1.1" >> matrix.body
+    echo "$rtst -g 206L          -w work_IC4_M6L -i input_IC4_M6            $ww3 ww3_tic1.1" >> matrix.body
+    echo "$rtst                  -w work_IC4_M7  -i input_IC4_M7            $ww3 ww3_tic1.1" >> matrix.body
+    echo "$rtst -g 350m          -w w350m_IC5  -i input_IC5                 $ww3 ww3_tic1.1" >> matrix.body
+    echo "$rtst -g 1000m         -w w1000m_IC5 -i input_IC5                 $ww3 ww3_tic1.1" >> matrix.body
+    echo "$rtst -g 2500m         -w w2500m_IC5 -i input_IC5                 $ww3 ww3_tic1.1" >> matrix.body
+    echo "$rtst -g 1000m         -w w1000m_IC5  -i input_IC5 -o both        $ww3 ww3_tic1.1" >> matrix.body
     echo "$rtst                  -w work_IC3_A0.5k -i input_IC3_A0.5k       $ww3 ww3_tic1.2" >> matrix.body
     echo "$rtst                  -w work_IC3_A1.0k -i input_IC3_A1.0k       $ww3 ww3_tic1.2" >> matrix.body
     echo "$rtst                  -w work_IC3_A2.5k -i input_IC3_A2.5k       $ww3 ww3_tic1.2" >> matrix.body
@@ -1938,6 +1946,7 @@
   fi
 
 
+ # unstructured grid with PDLIB for domain decomposition and implicit solver
  if [ "$pdlib" = 'y' ] && [ "$dist" = 'y' ]
  then
    echo ' ' >> matrix.body
@@ -1945,9 +1954,40 @@
    echo "$rtst -s MPI -s NO_PDLIB -w work_ma -m grdset_a -f -p $mpi -n $np $ww3 ww3_tp2.17" >> matrix.body
    echo "$rtst -s MPI -s PDLIB -w work_b -g b -f -p $mpi -n $np $ww3 ww3_tp2.17" >> matrix.body
    echo "$rtst -s MPI -s PDLIB -w work_c -g c -f -p $mpi -n $np $ww3 ww3_tp2.17" >> matrix.body
+   echo "$rtst -s MPI -s PDLIB -w work_pdlib -g pdlib -f -p $mpi -n $np $ww3 ww3_tp2.6" >> matrix.body 
    echo "$rtst -s MPI -s PDLIB -w work_mb -m grdset_b -f -p $mpi -n $np $ww3 ww3_tp2.17" >> matrix.body
    echo "$rtst -s MPI -s PDLIB -w work_mc -m grdset_c -f -p $mpi -n $np $ww3 ww3_tp2.17" >> matrix.body
  fi
+
+ #Unresolved Obstacles Source Term (UOST) 
+ if [ "$uost" = 'y' ] 
+ then
+   echo ' ' >> matrix.body
+   if [ "$dist" = 'y' ]
+   then 
+     echo "$rtst -s MPI -w work_rg_shel_MPI -i input_rg_shel $ww3 ww3_ts4" >> matrix.body
+     echo "$rtst -s MPI -w work_rg_multi_MPI -i input_rg_multi -m grdset $ww3 ww3_ts4" >> matrix.body
+     echo "$rtst -s MPI -w work_ug_MPI -i input_ug $ww3 ww3_ts4" >> matrix.body
+   else 
+     echo "$rtst -w work_rg_shel -i input_rg_shel $ww3 ww3_ts4" >> matrix.body
+     echo "$rtst -w work_rg_multi -i input_rg_multi -m grdset $ww3 ww3_ts4" >> matrix.body
+     echo "$rtst -w work_ug -i input_ug $ww3 ww3_ts4" >> matrix.body
+   fi
+ fi
+
+ #Test of updating the restart spectra 
+ if [ "$assim" = 'y' ]
+ then
+   echo ' ' >> matrix.body
+   echo "$rtst -s ST4 -w work_UPD0F_O    -i input_UPD0F_O    $ww3 ww3_ta1" >> matrix.body
+   echo "$rtst -s ST4 -w work_UPD0F_U    -i input_UPD0F_U    $ww3 ww3_ta1" >> matrix.body
+   echo "$rtst -s ST4 -w work_UPD2_O     -i input_UPD2_O     $ww3 ww3_ta1" >> matrix.body
+   echo "$rtst -s ST4 -w work_UPD2_U     -i input_UPD2_U     $ww3 ww3_ta1" >> matrix.body
+   echo "$rtst -s ST4 -w work_UPD2_U_cap -i input_UPD2_U_cap $ww3 ww3_ta1" >> matrix.body
+   echo "$rtst -s ST4 -w work_UPD3_O     -i input_UPD3_O     $ww3 ww3_ta1" >> matrix.body
+   echo "$rtst -s ST4 -w work_UPD3_U     -i input_UPD3_U     $ww3 ww3_ta1" >> matrix.body
+   echo "$rtst -s ST4 -w work_UPD3_U_cap -i input_UPD3_U_cap $ww3 ww3_ta1" >> matrix.body
+  fi
 
 # --------------------------------------------------------------------------- #
 # 3.  End of script output                                                    #

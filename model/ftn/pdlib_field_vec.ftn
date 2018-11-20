@@ -142,6 +142,27 @@ MODULE PDLIB_FIELD_VEC
       IF ( FLGRDALL( 2, 10) ) THEN
         IH = IH + 1
       END IF
+      IF ( FLGRDALL( 2, 11) ) THEN
+        IH = IH + 1
+      END IF
+      IF ( FLGRDALL( 2, 12) ) THEN
+        IH = IH + 1
+      END IF
+      IF ( FLGRDALL( 2, 13) ) THEN
+        IH = IH + 1
+      END IF
+      IF ( FLGRDALL( 2, 14) ) THEN
+        IH = IH + 1
+      END IF
+      IF ( FLGRDALL( 2, 15) ) THEN
+        IH = IH + 1
+      END IF
+      IF ( FLGRDALL( 2, 16) ) THEN
+        IH = IH + 1
+      END IF
+      IF ( FLGRDALL( 2, 17) ) THEN
+        IH = IH + 1
+      END IF
       IF ( FLGRDALL( 3, 1) ) THEN
         DO IK=E3DF(2,1),E3DF(3,1)
           IH = IH + 1
@@ -168,39 +189,54 @@ MODULE PDLIB_FIELD_VEC
         END DO
       END IF
       IF ( FLGRDALL( 4, 1) ) THEN
-        DO K=0, NOSWLL
-          IH = IH + 1
-        END DO
+        IH = IH + NOSWLL + 1
       END IF
       IF ( FLGRDALL( 4, 2) ) THEN
-        DO K=0, NOSWLL
-          IH = IH + 1
-        END DO
+        IH = IH + NOSWLL + 1
       END IF
       IF ( FLGRDALL( 4, 3) ) THEN
-        DO K=0, NOSWLL
-          IH = IH + 1
-        END DO
+        IH = IH + NOSWLL + 1
       END IF
       IF ( FLGRDALL( 4, 4) ) THEN
-        DO K=0, NOSWLL
-          IH = IH + 1
-        END DO
+        IH = IH + NOSWLL + 1
       END IF
       IF ( FLGRDALL( 4, 5) ) THEN
-        DO K=0, NOSWLL
-          IH = IH + 1
-        END DO
+        IH = IH + NOSWLL + 1
       END IF
       IF ( FLGRDALL( 4, 6) ) THEN
-        DO K=0, NOSWLL
-          IH = IH + 1
-        END DO
+        IH = IH + NOSWLL + 1
       END IF
       IF ( FLGRDALL( 4, 7) ) THEN
-        IH = IH + 1
+        IH = IH + NOSWLL + 1
       END IF
       IF ( FLGRDALL( 4, 8) ) THEN
+        IH = IH + NOSWLL + 1
+      END IF
+      IF ( FLGRDALL( 4, 9) ) THEN
+        IH = IH + NOSWLL + 1
+      END IF
+      IF ( FLGRDALL( 4,10) ) THEN
+        IH = IH + NOSWLL + 1
+      END IF
+      IF ( FLGRDALL( 4,11) ) THEN
+        IH = IH + NOSWLL + 1
+      END IF
+      IF ( FLGRDALL( 4,12) ) THEN
+        IH = IH + NOSWLL + 1
+      END IF
+      IF ( FLGRDALL( 4,13) ) THEN
+        IH = IH + NOSWLL + 1
+      END IF
+      IF ( FLGRDALL( 4,14) ) THEN
+        IH = IH + NOSWLL + 1
+      END IF
+      IF ( FLGRDALL( 4,15) ) THEN
+        IH = IH + NOSWLL + 1
+      END IF
+      IF ( FLGRDALL( 4,16) ) THEN
+        IH = IH + 1
+      END IF
+      IF ( FLGRDALL( 4,17) ) THEN
         IH = IH + 1
       END IF
       IF ( FLGRDALL( 5, 1) ) THEN
@@ -307,6 +343,15 @@ MODULE PDLIB_FIELD_VEC
       END IF
       IF ( FLGRDALL( 8, 2) ) THEN
         IH = IH + 1
+        IH = IH + 1
+      END IF
+      IF ( FLGRDALL( 8, 3) ) THEN
+        IH = IH + 1
+      END IF
+      IF ( FLGRDALL( 8, 4) ) THEN
+        IH = IH + 1
+      END IF
+      IF ( FLGRDALL( 8, 5) ) THEN
         IH = IH + 1
       END IF
       IF ( FLGRDALL( 9, 1) ) THEN
@@ -826,7 +871,10 @@ MODULE PDLIB_FIELD_VEC
                           CFLXYMAX, CFLTHMAX, CFLKMAX, WHITECAP, &
                           BEDFORMS, PHIBBL, TAUBBL, T01,         &
                           P2SMS, US3D, EF,  TH1M, STH1M, TH2M,   &
-                          STH2M, HSIG, TAUICE, PHICE
+                          STH2M, HSIG, TAUICE, PHICE, PTHP0, PQP,&
+                          PPE, PGW, PSW, PTM1, PT1, PT2, PEP,   &
+                          QP, MSSD, MSCD, STMAXE, STMAXD, HMAXE, &
+                          HCMAXE, HMAXD, HCMAXD, WBT
       USE W3GDATMD, ONLY: NK, NSEAL
       USE W3ODATMD, ONLY: NDST, IAPROC, NAPROC, NTPROC, FLOUT,   &
                           NAPFLD, NAPPNT, NAPRST, NAPBPT, NAPTRK,&
@@ -937,6 +985,34 @@ MODULE PDLIB_FIELD_VEC
               IH = IH + 1
               Arrexch(IH,JSEA)=HSIG(JSEA)
             END IF
+            IF ( FLGRDALL( 2, 11) ) THEN
+              IH = IH + 1
+              Arrexch(IH,JSEA)=STMAXE(JSEA)
+            END IF
+            IF ( FLGRDALL( 2, 12) ) THEN
+              IH = IH + 1
+              Arrexch(IH,JSEA)=STMAXD(JSEA)
+            END IF
+            IF ( FLGRDALL( 2, 13) ) THEN
+              IH = IH + 1
+              Arrexch(IH,JSEA)=HMAXE(JSEA)
+            END IF
+            IF ( FLGRDALL( 2, 14) ) THEN
+              IH = IH + 1
+              Arrexch(IH,JSEA)=HCMAXE(JSEA)
+            END IF
+            IF ( FLGRDALL( 2, 15) ) THEN
+              IH = IH + 1
+              Arrexch(IH,JSEA)=HMAXD(JSEA)
+            END IF
+            IF ( FLGRDALL( 2, 16) ) THEN
+              IH = IH + 1
+              Arrexch(IH,JSEA)=HCMAXD(JSEA)
+            END IF
+            IF ( FLGRDALL( 2, 17) ) THEN
+              IH = IH + 1
+              Arrexch(IH,JSEA)=WBT(JSEA)
+            END IF
             IF ( FLGRDALL( 3, 1) ) THEN 
               DO IK=E3DF(2,1),E3DF(3,1)
                 IH = IH + 1
@@ -1004,10 +1080,64 @@ MODULE PDLIB_FIELD_VEC
               END DO
             END IF
             IF ( FLGRDALL( 4, 7) ) THEN
+              DO IK=0, NOSWLL
+                IH = IH + 1
+                Arrexch(IH,JSEA)=PTHP0(JSEA,IK)
+              END DO
+            END IF
+            IF ( FLGRDALL( 4, 8) ) THEN
+              DO IK=0, NOSWLL
+                IH = IH + 1
+                Arrexch(IH,JSEA)=PQP(JSEA,IK)
+              END DO
+            END IF
+            IF ( FLGRDALL( 4, 9) ) THEN
+              DO IK=0, NOSWLL
+                IH = IH + 1
+                Arrexch(IH,JSEA)=PPE(JSEA,IK)
+              END DO
+            END IF
+            IF ( FLGRDALL( 4,10) ) THEN
+              DO IK=0, NOSWLL
+                IH = IH + 1
+                Arrexch(IH,JSEA)=PGW(JSEA,IK)
+              END DO
+            END IF
+            IF ( FLGRDALL( 4,11) ) THEN
+              DO IK=0, NOSWLL
+                IH = IH + 1
+                Arrexch(IH,JSEA)=PSW(JSEA,IK)
+              END DO
+            END IF
+            IF ( FLGRDALL( 4,12) ) THEN
+              DO IK=0, NOSWLL
+                IH = IH + 1
+                Arrexch(IH,JSEA)=PTM1(JSEA,IK)
+              END DO
+            END IF
+            IF ( FLGRDALL( 4,13) ) THEN
+              DO IK=0, NOSWLL
+                IH = IH + 1
+                Arrexch(IH,JSEA)=PT1(JSEA,IK)
+              END DO
+            END IF
+            IF ( FLGRDALL( 4,14) ) THEN
+              DO IK=0, NOSWLL
+                IH = IH + 1
+                Arrexch(IH,JSEA)=PT2(JSEA,IK)
+              END DO
+            END IF
+            IF ( FLGRDALL( 4,15) ) THEN
+              DO IK=0, NOSWLL
+                IH = IH + 1
+                Arrexch(IH,JSEA)=PEP(JSEA,IK)
+              END DO
+            END IF
+            IF ( FLGRDALL( 4,16) ) THEN
               IH = IH + 1
               Arrexch(IH,JSEA)=PWST(JSEA)
             END IF
-            IF ( FLGRDALL( 4, 8) ) THEN
+            IF ( FLGRDALL( 4,17) ) THEN
               IH = IH + 1
               Arrexch(IH,JSEA)=PNR(JSEA)
             END IF
@@ -1163,6 +1293,18 @@ MODULE PDLIB_FIELD_VEC
               IH = IH + 1
               Arrexch(IH,JSEA)=MSCY(JSEA)
             END IF
+            IF ( FLGRDALL( 8, 3) ) THEN
+              IH = IH + 1
+              Arrexch(IH,JSEA)=MSSD(JSEA)
+            END IF
+            IF ( FLGRDALL( 8, 4) ) THEN
+              IH = IH + 1
+              Arrexch(IH,JSEA)=MSCD(JSEA)
+            END IF
+            IF ( FLGRDALL( 8, 5) ) THEN
+              IH = IH + 1
+              Arrexch(IH,JSEA)=QP(JSEA)
+            END IF
             IF ( FLGRDALL( 9, 1) ) THEN
               IH = IH + 1
               Arrexch(IH,JSEA)=DTDYN(JSEA)
@@ -1304,6 +1446,34 @@ MODULE PDLIB_FIELD_VEC
                 IH = IH + 1
                 HSIG(1:NSEA) = ARRtotal(IH,:)
               END IF
+              IF ( FLGRDALL( 2, 11) ) THEN
+                IH = IH + 1
+                STMAXE(1:NSEA) = ARRtotal(IH,:)
+              END IF
+              IF ( FLGRDALL( 2, 12) ) THEN
+                IH = IH + 1
+                STMAXD(1:NSEA) = ARRtotal(IH,:)
+              END IF
+              IF ( FLGRDALL( 2, 13) ) THEN
+                IH = IH + 1
+                HMAXE(1:NSEA) = ARRtotal(IH,:)
+              END IF
+              IF ( FLGRDALL( 2, 14) ) THEN
+                IH = IH + 1
+                HCMAXE(1:NSEA) = ARRtotal(IH,:)
+              END IF
+              IF ( FLGRDALL( 2, 15) ) THEN
+                IH = IH + 1
+                HMAXD(1:NSEA) = ARRtotal(IH,:)
+              END IF
+              IF ( FLGRDALL( 2, 16) ) THEN
+                IH = IH + 1
+                HCMAXD(1:NSEA) = ARRtotal(IH,:)
+              END IF
+              IF ( FLGRDALL( 2, 17) ) THEN
+                IH = IH + 1
+                WBT(1:NSEA) = ARRtotal(IH,:)
+              END IF
               IF ( FLGRDALL( 3, 1) ) THEN 
                 DO IK=E3DF(2,1),E3DF(3,1)
                   IH = IH + 1
@@ -1371,10 +1541,64 @@ MODULE PDLIB_FIELD_VEC
                 END DO
               END IF
               IF ( FLGRDALL( 4, 7) ) THEN
+                DO K=0, NOSWLL
+                  IH = IH + 1
+                  PTHP0(1:NSEA,K) = ARRtotal(IH,:)
+                END DO
+              END IF
+              IF ( FLGRDALL( 4, 8) ) THEN
+                DO K=0, NOSWLL
+                  IH = IH + 1
+                  PQP(1:NSEA,K) = ARRtotal(IH,:)
+                END DO
+              END IF
+              IF ( FLGRDALL( 4, 9) ) THEN
+                DO K=0, NOSWLL
+                  IH = IH + 1
+                  PPE(1:NSEA,K) = ARRtotal(IH,:)
+                END DO
+              END IF
+              IF ( FLGRDALL( 4,10) ) THEN
+                DO K=0, NOSWLL
+                  IH = IH + 1
+                  PGW(1:NSEA,K) = ARRtotal(IH,:)
+                END DO
+              END IF
+              IF ( FLGRDALL( 4,11) ) THEN
+                DO K=0, NOSWLL
+                  IH = IH + 1
+                  PSW(1:NSEA,K) = ARRtotal(IH,:)
+                END DO
+              END IF
+              IF ( FLGRDALL( 4,12) ) THEN
+                DO K=0, NOSWLL
+                  IH = IH + 1
+                  PTM1(1:NSEA,K) = ARRtotal(IH,:)
+                END DO
+              END IF
+              IF ( FLGRDALL( 4,13) ) THEN
+                DO K=0, NOSWLL
+                  IH = IH + 1
+                  PT1(1:NSEA,K) = ARRtotal(IH,:)
+                END DO
+              END IF
+              IF ( FLGRDALL( 4,14) ) THEN
+                DO K=0, NOSWLL
+                  IH = IH + 1
+                  PT2(1:NSEA,K) = ARRtotal(IH,:)
+                END DO
+              END IF
+              IF ( FLGRDALL( 4,15) ) THEN
+                DO K=0, NOSWLL
+                  IH = IH + 1
+                  PEP(1:NSEA,K) = ARRtotal(IH,:)
+                END DO
+              END IF
+              IF ( FLGRDALL( 4,16) ) THEN
                 IH = IH + 1
                 PWST(1:NSEA) = ARRtotal(IH,:)
               END IF
-              IF ( FLGRDALL( 4, 8) ) THEN
+              IF ( FLGRDALL( 4,17) ) THEN
                 IH = IH + 1
                 PNR(1:NSEA) = ARRtotal(IH,:)
               END IF
@@ -1529,6 +1753,18 @@ MODULE PDLIB_FIELD_VEC
                 MSCX(1:NSEA) = ARRtotal(IH,:)
                 IH = IH + 1
                 MSCY(1:NSEA) = ARRtotal(IH,:)
+              END IF
+              IF ( FLGRDALL( 8, 3) ) THEN
+                IH = IH + 1
+                MSSD(1:NSEA) = ARRtotal(IH,:)
+              END IF
+              IF ( FLGRDALL( 8, 4) ) THEN
+                IH = IH + 1
+                MSCD(1:NSEA) = ARRtotal(IH,:)
+              END IF
+              IF ( FLGRDALL( 8, 5) ) THEN
+                IH = IH + 1
+                QP(1:NSEA) = ARRtotal(IH,:)
               END IF
               IF ( FLGRDALL( 9, 1) ) THEN
                 IH = IH + 1

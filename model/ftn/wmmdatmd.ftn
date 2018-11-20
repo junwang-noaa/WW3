@@ -302,7 +302,7 @@
 !/MPI      INTEGER                 :: MPI_COMM_MWAVE
 !/MPI      INTEGER, PARAMETER      :: MTAGB = 0
 !/MPI      INTEGER, PARAMETER      :: MTAG0 = 1000
-!/MPI      INTEGER, PARAMETER      :: MTAG1 = 10000
+!/MPI      INTEGER, PARAMETER      :: MTAG1 = 100000
 !/MPI      INTEGER, PARAMETER      :: MTAG2 = 1500000
 !/MPI      INTEGER, PARAMETER      :: MTAG_UB = 2**21-1 !MPI_TAG_UB on Cray XC40
       INTEGER, ALLOCATABLE    :: MDSF(:,:), GRANK(:), GRGRP(:),       &
@@ -526,6 +526,7 @@
           HGSTGE(I,J)%NSN1     =  0
           HGSTGE(I,J)%NSMX     =  0
 !/MPI          HGSTGE(I,J)%NRQHGS   =  0
+!/MPI          HGSTGE(I,J)%NRQOUT   =  0
           HGSTGE(I,J)%INIT     = .FALSE.
           EQSTGE(I,J)%VTIME(1) = -1
           EQSTGE(I,J)%VTIME(2) =  0
@@ -534,6 +535,7 @@
           EQSTGE(I,J)%NSND     =  0
           EQSTGE(I,J)%NAVMAX   =  1
 !/MPI          EQSTGE(I,J)%NRQEQS   =  0
+!/MPI          EQSTGE(I,J)%NRQOUT   =  0
           EQSTGE(I,J)%INIT     = .FALSE.
           END DO
         END DO
@@ -1030,7 +1032,9 @@
 !/
 !/    06-Jun-2018 : Origination.                        ( version 6.04 )
 !/
-!  1. Purpose :
+!  1. Purpose : Introduce mapping for ISPROC and JSEA when using PDLIB
+!               in the Multigrid approach 
+!             
 !  2. Method :
 !  3. Parameters :
 !

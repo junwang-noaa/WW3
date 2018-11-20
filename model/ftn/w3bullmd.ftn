@@ -17,7 +17,7 @@
 !/
 !/ ------------------------------------------------------------------- /
       USE W3GDATMD, ONLY: GNAME, NK, NTH, NSPEC, FLAGLL
-      USE W3ODATMD, ONLY: NOPTS, PTLOC, PTNME
+      USE W3ODATMD, ONLY: NOPTS, PTLOC, PTNME, DIMP
       USE CONSTANTS, ONLY: PI, TPI
       USE W3WDATMD, ONLY: TIME
       USE W3TIMEMD, ONLY: DSEC21
@@ -143,7 +143,7 @@
       INTEGER, INTENT(IN)     :: NPART, DIMXP, IOUT 
       INTEGER, INTENT(INOUT)  :: TIMEV(2)
       REAL, INTENT(IN)        :: UABS,    &
-                                 UD, XPART(6,0:DIMXP)
+                                 UD, XPART(DIMP,0:DIMXP)
       INTEGER                 :: IPG1,IPI(NPMAX), ILEN(NPMAX), IP,     &
                                  IPNOW, IFLD, INOTAB, IPNT, ITAB,      &
                                  DOUTP, FCSTI, NZERO
