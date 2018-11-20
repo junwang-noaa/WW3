@@ -143,7 +143,6 @@
         LOGICAL                 :: L360=.FALSE., LPLC, INGRD, BRNCHCL, BRNCHCR, INGRID
         LOGICAL                 :: OUTorREST
         INTEGER                 :: INTYPE
-        CHARACTER               :: COMSTR*1, IDTIME*23
         INTEGER, ALLOCATABLE    :: MAPSTA_NG(:,:),MAPST2_NG(:,:)
         INTEGER, ALLOCATABLE    :: NOINT(:),NOINT2(:),MAPSTATMP(:,:)
         INTEGER                 :: iNOINT,iNOINT2,JSEA,iloops
@@ -2350,23 +2349,6 @@
                     END IF
                   END IF
 !
-! Restart variables 
-!
-                  IF ( (.NOT.OUTorRESTflag) .AND. ACTIVE ) THEN
-                    DO IK = 1,NSPEC
-                      IF ( WDATAS(IGRID)%VA(IK,GSEA) .NE. UNDEF ) THEN
-                        SUMRES(IK) = SUMRES(IK) + WT
-                        IF ( VAAUX(IK) .EQ. UNDEF ) THEN
-                          VAAUX(IK) = WDATAS(IGRID)%VA(IK,GSEA)*WT
-                        ELSE
-                          VAAUX(IK) = VAAUX(IK) +WDATAS(IGRID)%VA(IK,GSEA)*WT
-                        END IF
-                      END IF
-                    END DO
-                  END IF
-!
-                END DO
-
 !
 ! Group 8 variables
 !
@@ -2421,6 +2403,22 @@
                       QPAUX = QPAUX + WADATS(IGRID)%QP(GSEA)*WT
                     END IF
                   END IF
+
+! Restart variables 
+!
+                  IF ( (.NOT.OUTorRESTflag) .AND. ACTIVE ) THEN
+                    DO IK = 1,NSPEC
+                      IF ( WDATAS(IGRID)%VA(IK,GSEA) .NE. UNDEF ) THEN
+                        SUMRES(IK) = SUMRES(IK) + WT
+                        IF ( VAAUX(IK) .EQ. UNDEF ) THEN
+                          VAAUX(IK) = WDATAS(IGRID)%VA(IK,GSEA)*WT
+                        ELSE
+                          VAAUX(IK) = VAAUX(IK) +WDATAS(IGRID)%VA(IK,GSEA)*WT
+                        END IF
+                      END IF
+                    END DO
+                  END IF
+
 !
 ! End of loop through the points per grid to obtain interpolated values
                 END DO   !/ IPTS = 1, ...
@@ -3182,25 +3180,6 @@
                            TAUBBLAUX(2) / REAL( SUMGRD )
                   END IF
                 END IF
-!                
-! Restart varaibles 
-!
-                DO IK = 1,NSPEC
-                  IF ( VAAUX(IK) .NE. UNDEF ) THEN
-                    VAAUX(IK) = VAAUX(IK) / SUMRES(IK)
-                    IF ( VA(IK,ISEA) .EQ. UNDEF )  THEN
-                      VA(IK,ISEA) = VAAUX(IK) / REAL( SUMGRD )
-                    ELSE
-                      VA(IK,ISEA) = VA(IK,ISEA) +                     &
-                          VAAUX(IK) / REAL( SUMGRD )
-                    END IF
-                  END IF
-                END DO
-!
-!
-              END IF !IF ( USEGRID(IG) )
-!
-            END DO !DO IG = 1,GR_INTS(ISEA)%NGRDS
 !
 ! Group 8 variables
 !
@@ -3253,10 +3232,26 @@
                   QP(ISEA) = QP(ISEA) + QPAUX / REAL( SUMWT8(5)+SUMGRD )
                 END IF
 !
-              END IF !/ ( USEGRID(IG) )
+!                
+! Restart varaibles 
+!
+                DO IK = 1,NSPEC
+                  IF ( VAAUX(IK) .NE. UNDEF ) THEN
+                    VAAUX(IK) = VAAUX(IK) / SUMRES(IK)
+                    IF ( VA(IK,ISEA) .EQ. UNDEF )  THEN
+                      VA(IK,ISEA) = VAAUX(IK) / REAL( SUMGRD )
+                    ELSE
+                      VA(IK,ISEA) = VA(IK,ISEA) +                     &
+                          VAAUX(IK) / REAL( SUMGRD )
+                    END IF
+                  END IF
+                END DO
+!
+!
+              END IF !IF ( USEGRID(IG) )
 !
 ! End of Second loop
-            END DO !/ IG = 1, GR_INTS
+            END DO !DO IG = 1,GR_INTS(ISEA)%NGRDS
 !
 ! Convert select variables back to polar notation. This is done because just
 ! prior to writing to file the w3iogo routine converts these variables 
