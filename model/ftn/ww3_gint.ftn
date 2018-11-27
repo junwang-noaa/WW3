@@ -243,8 +243,6 @@
 !
         END DO
 !
-        CLOSE(NDSI)
-!
         IF ( NOSWLL_MIN .NE. OUTPTS(NG)%NOSWLL ) THEN
            WRITE (NDSO,907) NOSWLL_MIN, OUTPTS(NG)%NOSWLL
            NOSWLL_MIN = MIN (NOSWLL_MIN,OUTPTS(NG)%NOSWLL)
@@ -253,6 +251,7 @@
         CALL NEXTLN ( COMSTR, NDSI, NDSE )
         READ (NDSI,'(I1)',END=2001,ERR=2002) EXTRA
 
+        CLOSE(NDSI)
 !
 ! 3.e Allocate memory for integration map and initialize with grid status map
 !
@@ -1192,11 +1191,11 @@
         USSY     = UNDEF
         PRMS     = UNDEF
         TPMS     = UNDEF
-        US3D     = UNDEF
-        P2SMS    = UNDEF
+        IF (US3DF(1).GT.0) US3D     = UNDEF
+        IF (P2MSF(1).GT.0) P2SMS    = UNDEF
         TAUICE   = UNDEF
         PHICE    = UNDEF
-        USSP     = UNDEF
+        IF (USSPF(1).GT.0) USSP     = UNDEF
 !
 ! Group 7 variables
 !
