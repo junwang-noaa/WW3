@@ -907,7 +907,7 @@
         j = 4
         impFieldActive(i)   = any(inpmap(:,j).lt.0)
         impFieldName(i)     = 'seaice'
-        impFieldStdName(i)  = 'sea_ice_concentration'
+        impFieldStdName(i)  = 'ice_fraction'
         impFieldInitRqrd(i) = .true.
         mbgFieldActive(i)   = impFieldActive(i).and.includeIbg
       endif
