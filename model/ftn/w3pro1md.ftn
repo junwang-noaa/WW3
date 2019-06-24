@@ -805,7 +805,9 @@
 !/ ------------------------------------------------------------------- /
       SUBROUTINE W3KTP1 ( ISEA, FACTH, FACK, CTHG0, CG, WN, DEPTH,    &
                           DDDX, DDDY, CX, CY, DCXDX, DCXDY, DCYDX,    &
-                          DCYDY, DCDX, DCDY, VA )
+                          DCYDY, DCDX, DCDY, DADP, DADQ, &
+                          DPDX, DPDY, DQDX, DQDY, Alpha, &
+                          VA )
 !/
 !/                  +-----------------------------------+
 !/                  | WAVEWATCH III           NOAA/NCEP |
@@ -846,7 +848,7 @@
 !     Local variables.
 !     ----------------------------------------------------------------
 !       DSDD    R.A.  Partial derivative of sigma for depth.
-!       FRK, FRG, FKC
+!       FRK, FRG, FRGp, FRGq, FKC
 !               R.A.  Partial velocity terms.
 !       DWNI    R.A.  Inverse band width.
 !       CTH-WN  R.A.  Propagation velocities of local fluxes.
@@ -902,7 +904,8 @@
 !/ ------------------------------------------------------------------- /
       USE CONSTANTS
       USE W3GDATMD, ONLY: NK, NTH, NSPEC, SIG, DSIP, ECOS, ESIN, ES2, &
-                          ESC, EC2, FACHFA, MAPWN, FLCTH, FLCK, CTMAX
+                          ESC, EC2, FACHFA, MAPWN, FLCTH, FLCK, CTMAX,&
+                          iclose,iclose_trpl
       USE W3ADATMD, ONLY: IS0, IS2
       USE W3IDATMD, ONLY: FLCUR
       USE W3ODATMD, ONLY: NDST
@@ -917,7 +920,8 @@
       INTEGER, INTENT(IN)     :: ISEA
       REAL, INTENT(IN)        :: FACTH, FACK, CTHG0, CG(0:NK+1),      &
                                  WN(0:NK+1), DEPTH, DDDX, DDDY,       &
-                                 CX, CY, DCXDX, DCXDY, DCYDX, DCYDY
+                                 CX, CY, DCXDX, DCXDY, DCYDX, DCYDY,  &
+                                 DADP, DADQ, DPDX, DPDY, DQDX, DQDY, Alpha
       REAL, INTENT(IN)        :: DCDX(0:NK+1), DCDY(0:NK+1)
       REAL, INTENT(INOUT)     :: VA(NSPEC)
 !/
@@ -926,13 +930,15 @@
 !/
       INTEGER                 :: ITH, IK, ISP, ITH0
 !/S      INTEGER, SAVE           :: IENT = 0
-      REAL                    :: FDDMAX, FDG, DCYX, DCXXYY, DCXY,     &
-                                 DCXX, DCXYYX, DCYY, FKD, FKD0, CTHB, &
-                                 CWNB
+      REAL                    :: FDDMAX, FDG, FDGp, FDGq, DCYX, DCXXYY,    &
+                                 DCXY, DCXX, DCXYYX, DCYY, FKD, FKD0, &
+                                 CTHB, CWNB, SinAlpha, CosAlpha
       REAL                    :: VCTH(NSPEC), VCWN(1-NTH:NSPEC+NTH),  &
                                  VAA(1-NTH:NSPEC+NTH), VFLTH(NSPEC),  &
                                  VFLWN(1-NTH:NSPEC), DSDD(0:NK+1),    &
-                                 FRK(NK), FRG(NK), FKC(NTH), DWNI(NK)
+                                 FRK(NK), FRGp(NK), FRGq(NK),         &
+                                 FKC(NTH), DWNI(NK), FRG(NK)
+      REAL :: A, B, C, D, E, F
 !/
 !/ ------------------------------------------------------------------- /
 !/
@@ -973,8 +979,19 @@
 ! 2.a Set slope filter for depth refraction
 !
           FDDMAX = 0.
-          FDG    = FACTH * CTHG0
-!
+          if (iclose.eq.iclose_trpl) then
+            FDG    = max(-1.e-1,min(1.e-1,FACTH * CTHG0))
+            FDGp   = max(-1.e-1,min(1.e-1,-FACTH * DERA*(DADP*DPDX+DADP*DPDY)))
+            FDGq   = max(-1.e-1,min(1.e-1,-FACTH * DERA*(DADQ*DQDX+DADQ*DQDY)))
+            CosAlpha = cos(Alpha*DERA)
+            SinAlpha = sin(Alpha*DERA)
+          else
+             FDG = FACTH * CTHG0
+             FDGp = 0.0
+             FDGq = 0.0
+             CosAlpha = 1.0
+             SinAlpha = 0.0
+          endif
           DO ITH=1, NTH
             FDDMAX = MAX ( FDDMAX , ABS (                             &
                ESIN(ITH)*DDDX - ECOS(ITH)*DDDY ) )
@@ -983,21 +1000,40 @@
           DO IK=1, NK
             FRK(IK) = FACTH * DSDD(IK) / WN(IK)
             FRK(IK) = FRK(IK) / MAX ( 1. , FRK(IK)*FDDMAX/CTMAX )
-            FRG(IK) = FDG * CG(IK)
+            FRGp(IK) = FDGp * CG(IK)
+            FRGq(IK) = FDGq * CG(IK)
+            FRG(IK)  = FDG * CG(IK)
             END DO
 !
 ! 2.b Depth refraction and great-circle propagation
 !
+          A=0;B=0;C=0
           DO ISP=1, NSPEC
-            VCTH(ISP) = FRG(MAPWN(ISP)) * ECOS(ISP)                   &
+            !print*,'a',FRG(MAPWN(ISP)) * ECOS(ISP)
+            !print*,'b',FRGx(MAPWN(ISP)) * ECOS(ISP)
+            !print*,'c',FRGy(MAPWN(ISP)) * ESIN(ISP) 
+            if (abs(FRG(MAPWN(ISP)) * ECOS(ISP))>A) &
+                 A=FRG(MAPWN(ISP)) * (ECOS(ISP)*cosAlpha-ESIN(ISP)*sinAlpha)
+            if (abs(FRGp(MAPWN(ISP)) * ECOS(ISP))>B) &
+                 B=abs(FRGp(MAPWN(ISP)) * ECOS(ISP))
+            if (abs(FRGq(MAPWN(ISP)) * ESIN(ISP))>C) &
+                 C=abs(FRGq(MAPWN(ISP)) * ESIN(ISP))
+
+            VCTH(ISP) = FRGp(MAPWN(ISP)) * ECOS(ISP)+                 &
+                        FRGq(MAPWN(ISP)) * ESIN(ISP)+                 &
+                        FRG(MAPWN(ISP)) * (ECOS(ISP)*cosAlpha-ESIN(ISP)*sinAlpha) &
               + FRK(MAPWN(ISP)) * ( ESIN(ISP)*DDDX - ECOS(ISP)*DDDY )
             END DO
+!            if (Alpha<1) &
+!                 print*,A,B,C
+            !stop
 !/DEBUG      WRITE(740+IAPROC,*) 'pro1 FACTH=', FACTH
 !/DEBUG      WRITE(740+IAPROC,*) 'pro1 CTHG0=', CTHG0
 !/DEBUG      WRITE(740+IAPROC,*) 'pro1 FDG=', FDG
 !/DEBUG      WRITE(740+IAPROC,*) 'pro1 FDDMAX=', FDDMAX
 !/DEBUG      WRITE(740+IAPROC,*) 'pro1 sum(FRK)=', sum(FRK)
-!/DEBUG      WRITE(740+IAPROC,*) 'pro1 sum(FRG)=', sum(FRG)
+!/DEBUG      WRITE(740+IAPROC,*) 'pro1 sum(FRGx)=', sum(FRGx)
+!/DEBUG      WRITE(740+IAPROC,*) 'pro1 sum(FRGy)=', sum(FRGy)
 !/DEBUG      WRITE(740+IAPROC,*) 'pro1 sum(DSDD)=', sum(DSDD)
 !/DEBUG      WRITE(740+IAPROC,*) 'ISEA=', ISEA, ' sum(VCTH)=', sum(VCTH)
 !/DEBUG      FLUSH(740+IAPROC)
@@ -1016,10 +1052,12 @@
 !/REFRX          DO IK=1, NK
 !/REFRX            FRK(IK) = FACTH * CG(IK) * WN(IK) / SIG(IK)
 !/REFRX            FRK(IK) = FRK(IK) / MAX ( 1. , FRK(IK)*FDDMAX/CTMAX )
-!/REFRX            FRG(IK) = FDG * CG(IK)
+!/REFRX            FRGx(IK) = FDGx * CG(IK)
+!/REFRX            FRGy(IK) = FDGy * CG(IK)
 !/REFRX          END DO
 !/REFRX          DO ISP=1, NSPEC
-!/REFRX            VCTH(ISP) = FRG(MAPWN(ISP)) * ECOS(ISP)            &
+!/REFRX            VCTH(ISP) = FRGx(MAPWN(ISP)) * ECOS(ISP)           &
+!/REFRX                        + FRGy(MAPWN(ISP)) * ESIN(ISP)         &
 !/REFRX              + FRK(MAPWN(ISP)) * ( ESIN(ISP)*DCDX(MAPWN(ISP)) &
 !/REFRX              - ECOS(ISP)*DCDY(MAPWN(ISP)) )
 !/REFRX          END DO

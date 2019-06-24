@@ -1616,12 +1616,17 @@
                            ELSE
                              IXrel = IX
                            END IF
+                           if (Alphatp(iy,ixrel)<1)&
 !/PR1                      CALL W3KTP1 ( ISEA, FACTH, FACK, CTHG0S(ISEA), &
 !/PR1                           CG(:,ISEA), WN(:,ISEA), DEPTH,            &
 !/PR1                           DDDX(IY,IXrel), DDDY(IY,IXrel), CX(ISEA),       &
 !/PR1                           CY(ISEA), DCXDX(IY,IXrel), DCXDY(IY,IXrel),     &
 !/PR1                           DCYDX(IY,IXrel), DCYDY(IY,IXrel),               &
-!/PR1                           DCDX(:,IY,IXrel), DCDY(:,IY,IXrel), VA(:,JSEA))
+!/PR1                           DCDX(:,IY,IXrel), DCDY(:,IY,IXrel),             &
+!/PR1                           DADP(IY,IXrel), DADQ(IY,IXrel),                 &
+!/PR1                           DPDXtp(IY,IXrel), DPDYtp(IY,IXrel),                 &
+!/PR1                           DQDXtp(IY,IXrel), DQDYtp(IY,IXrel),AlphaTP(IY,IXrel),&
+!/PR1                           VA(:,JSEA))
 !/PR2                      CALL W3KTP2 ( ISEA, FACTH, FACK, CTHG0S(ISEA), &
 !/PR2                           CG(:,ISEA), WN(:,ISEA), DEPTH,            &
 !/PR2                           DDDX(IY,IXrel), DDDY(IY,IXrel), CX(ISEA),       &
@@ -1755,7 +1760,7 @@
                      IK        = 1 + (ISPEC-1)/NTH
                      ITHROT    = 1 + MOD(ITH+NTH/2-1,NTH) 
                      ISPECROT  = ITHROT+(IK-1)*NTH 
-                     CALL W3GATHROT ( ISPECROT, FIELDGHOST )
+                     CALL W3GATH ( ISPECROT, FIELDGHOST )
                   ENDIF 
 !/SMC !!Li   Otherwise use SMC sub to gether field
 !/SMC                CALL W3GATHSMC ( ISPEC, FIELD )
@@ -1916,7 +1921,11 @@
 !/PR1                           DDDX(IY,IXrel), DDDY(IY,IXrel), CX(ISEA),       &
 !/PR1                           CY(ISEA), DCXDX(IY,IXrel), DCXDY(IY,IXrel),     &
 !/PR1                           DCYDX(IY,IXrel), DCYDY(IY,IXrel),               &
-!/PR1                           DCDX(:,IY,IXrel), DCDY(:,IY,IXrel), VA(:,JSEA))
+!/PR1                           DCDX(:,IY,IXrel), DCDY(:,IY,IXrel),             &
+!/PR1                           DADP(IY,IXrel), DADQ(IY,IXrel),                 &
+!/PR1                           DPDXtp(IY,IXrel), DPDYtp(IY,IXrel),                 &
+!/PR1                           DQDXtp(IY,IXrel), DQDYtp(IY,IXrel),AlphaTP(IY,IXrel), &
+!/PR1                           VA(:,JSEA))
 !/PR2                      CALL W3KTP2 ( ISEA, FACTH, FACK, CTHG0S(ISEA),       &
 !/PR2                           CG(:,ISEA), WN(:,ISEA), DEPTH,                  &
 !/PR2                           DDDX(IY,IXrel), DDDY(IY,IXrel), CX(ISEA),       &

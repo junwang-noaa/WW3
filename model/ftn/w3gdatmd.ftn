@@ -207,6 +207,7 @@
 !      ZB        R.A.  Public   Bottom levels on storage grid.
 !      CLATS(I)  R.A.  Public   (Inverse) cosine of latitude at sea points.
 !      CTHG0S    R.A.  Public   Constant in great-circle refr. term at sea points.
+!      TRP_GC    R.A.  Public   Great-circle correction in tripolar grid.
 !      TRNX/Y    R.A.  Public   Transparencies in X/Y for sub-grid
 !      CTRNX/Y   R.A.  Public   Sub-grid transparencies for SMC grid.
 !      ANGARC    R.A.  Public   Rotation angle in degree for Arctic cells. 
@@ -643,6 +644,7 @@
         REAL   , POINTER :: CLATS(:)  ! COS(LAT), DEFINED ON SEA POINTS
         REAL   , POINTER :: CLATIS(:) ! INVERSE OF COS(LAT) DEFINED ON ISEA
         REAL   , POINTER :: CTHG0S(:) ! TAN(Y)/R, DEFINED ON ISEA
+        REAL   , POINTER :: TRP_GC(:) ! spatial
 
         REAL   , POINTER :: TRNX(:,:), TRNY(:,:) ! TRANSPARENCY INFORMATION ON IX,IY
 !/SMC        REAL, POINTER         :: CTRNX(:), CTRNY(:), CLATF(:)
@@ -655,6 +657,8 @@
         REAL   , POINTER :: GSQRT(:,:) ! SQRT(G) DEFINED ON IX,IY
         REAL   , POINTER :: DPDXtp(:,:), DPDYtp(:,:) ! DP/DX & DP/DY DEFINED ON IX,IY
         REAL   , POINTER :: DQDXtp(:,:), DQDYtp(:,:) ! DQ/DX & DQ/DY DEFINED ON IX,IY
+        REAL   , POINTER :: DADP(:,:), DADQ(:,:) ! Da/DP & Da/DQ DEFINED ON IX,IY
+        REAL   , POINTER :: AlphaTP(:,:)
         REAL   , POINTER :: GSQRTtp(:,:) ! SQRT(G) DEFINED ON IX,IY
         REAL   , POINTER :: HPFAC(:,:) ! H_P = SQRT(G_PP) DEFINED ON IX,IY
         REAL   , POINTER :: HQFAC(:,:) ! H_Q = SQRT(G_QQ) DEFINED ON IX,IY
@@ -1020,6 +1024,8 @@
       REAL   , POINTER :: GSQRT(:,:) ! SQRT(G) DEFINED ON IX,IY
       REAL   , POINTER :: DPDXtp(:,:), DPDYtp(:,:) ! DP/DX & DP/DY DEFINED ON IX,IY
       REAL   , POINTER :: DQDXtp(:,:), DQDYtp(:,:) ! DQ/DX & DQ/DY DEFINED ON IX,IY
+      REAL   , POINTER :: DADP(:,:), DADQ(:,:) ! Da/DP & Da/DQ DEFINED ON IX,IY
+      REAL   , POINTER :: AlphaTP(:,:)
       REAL   , POINTER :: GSQRTtp(:,:) ! SQRT(G) DEFINED ON IX,IY
       REAL   , POINTER :: HPFAC(:,:) ! H_P = SQRT(G_PP) DEFINED ON IX,IY
       REAL   , POINTER :: HQFAC(:,:) ! H_Q = SQRT(G_QQ) DEFINED ON IX,IY
@@ -1481,6 +1487,9 @@
                  GRIDS(IMOD)%DPDYtp(MY,MX),    &
                  GRIDS(IMOD)%DQDXtp(MY,MX),    &
                  GRIDS(IMOD)%DQDYtp(MY,MX),    &
+                 GRIDS(IMOD)%DADP(MY,MX),    &
+                 GRIDS(IMOD)%DADQ(MY,MX),    &
+                 GRIDS(IMOD)%AlphaTP(MY,MX),    &
                  GRIDS(IMOD)%GSQRTtp(MY,MX),   &
                  GRIDS(IMOD)%HPFAC(MY,MX),   &
                  GRIDS(IMOD)%HQFAC(MY,MX),   &
@@ -2077,6 +2086,9 @@
           DPDYtp   => GRIDS(IMOD)%DPDYtp
           DQDXtp   => GRIDS(IMOD)%DQDXtp
           DQDYtp   => GRIDS(IMOD)%DQDYtp
+          DADP     => GRIDS(IMOD)%DADP
+          DADQ     => GRIDS(IMOD)%DADQ
+          AlphaTP    => GRIDS(IMOD)%AlphaTP
           GSQRTtp  => GRIDS(IMOD)%GSQRTtp
           HPFAC  => GRIDS(IMOD)%HPFAC
           HQFAC  => GRIDS(IMOD)%HQFAC
@@ -2585,10 +2597,14 @@
         CASE ( RLGTYPE )
           CALL W3CGDM( IJG, FLAGLL, ICLOSE, PTILED, QTILED,            &
                        PRANGE, QRANGE, LBI, UBI, LBO, UBO, XGRD, YGRD, &
-                       MASK=MASK,NFD=NFD, SPHERE=SPHERE, DX=SX, DY=SY,           &
+                       NFD=NFD, SPHERE=SPHERE, DX=SX, DY=SY,           &
                        DXDP=DXDP, DYDP=DYDP, DXDQ=DXDQ, DYDQ=DYDQ,     &
                        DPDX=DPDX, DPDY=DPDY, DQDX=DQDX, DQDY=DQDY,     &
                        HPFC=HPFAC, HQFC=HQFAC, GSQR=GSQRT,             &
+                       GSQRtp=GSQRTtp,&
+                       DPDXtp=DPDXtp, DPDYtp=DPDYtp, &
+                       DQDXtp=DQDXtp, DQDYtp=DQDYtp, &
+                       DADP=DADP, DADQ=DADQ, Alpha=AlphaTP, &
 #if defined(TEST_W3GDATMD) || defined(TEST_W3GDATMD_W3GNTX)
                        COSA=COSA,                                      &
 #endif
@@ -2600,22 +2616,27 @@
         CASE ( CLGTYPE )
           CALL W3CGDM( IJG, FLAGLL, ICLOSE, PTILED, QTILED,            &
                        PRANGE, QRANGE, LBI, UBI, LBO, UBO, XGRD, YGRD, &
-                       MASK=MASK, NFD=NFD, SPHERE=SPHERE,                         &
+                       NFD=NFD, SPHERE=SPHERE,                         &
                        DXDP=DXDP, DYDP=DYDP, DXDQ=DXDQ, DYDQ=DYDQ,     &
                        DPDX=DPDX, DPDY=DPDY, DQDX=DQDX, DQDY=DQDY,     &
                        HPFC=HPFAC, HQFC=HQFAC, GSQR=GSQRT,             &
+                       GSQRtp=GSQRTtp,&
+                       DPDXtp=DPDXtp, DPDYtp=DPDYtp, &
+                       DQDXtp=DQDXtp, DQDYtp=DQDYtp, &
+                       DADP=DADP, DADQ=DADQ, Alpha=AlphaTP, &
 #if defined(TEST_W3GDATMD) || defined(TEST_W3GDATMD_W3GNTX)
                        COSA=COSA,                                      &
 #endif
-                       RC=ISTAT )
+                       RC=ISTAT)
+
           IF ( ISTAT.NE.0 ) THEN
               WRITE (NDSE,1004) GTYPE
               CALL EXTCDE (4)
             END IF
-            call ReadTriPolFile(XGRD,YGRD,LBI,UBI,LBO,UBO, &
-                                MASK=MASK, DPDX=DPDXtp, &
-                                DPDY=DPDYtp, DQDX=DQDXtp, DQDY=DQDYtp, &
-                                GSQR=GSQRTtp)
+!            call ReadTriPolFile(XGRD,YGRD,LBI,UBI,LBO,UBO, &
+!                                MASK=MASK, DPDX=DPDXtp, &
+!                                DPDY=DPDYtp, DQDX=DQDXtp, DQDY=DQDYtp, &
+!                                GSQR=GSQRTtp)
             
         END SELECT
 !

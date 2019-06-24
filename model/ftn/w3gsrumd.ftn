@@ -91,7 +91,7 @@
 !     sequential index in a counterclockwise order beginning with the cell's
 !     lower-left corner grid point.  That is, when moving from vertex 1 to
 !     vertex 2 to vertex 3, etc., the grid cell interior is always to the left.
-!     Note that though cell will be counterclockwise w.r.t. indices, this does 
+!     Note that though cell will be counterclockwise w.r.t. indices, this does
 !     not necessarily mean that the cell will be counterclockwise geographically,
 !     specifically in situation of curvilinear grid.
 !
@@ -1518,7 +1518,7 @@
               'W3GFCL_R8 - ENCLOSING CELL:',IB,JB,K,(IS(L),JS(L),L=1,4)
               IF ( PRESENT(POLE) ) POLE = LPLC
               INGRID = .TRUE.
-              EXIT CELL_LOOP 
+              EXIT CELL_LOOP
             END IF !point in cell
         END DO CELL_LOOP
       IF ( INGRID ) RETURN
@@ -1610,7 +1610,7 @@
             IF ( NLEVEL .GE. MAX_FNCL_LEVEL ) EXIT LEVEL_LOOP
         END DO LEVEL_LOOP
 !
-!-----return cell that is shortest distance from target point 
+!-----return cell that is shortest distance from target point
       IS(:) = IS1(:)
       JS(:) = JS1(:)
       XS(:) = XS1(:)
@@ -1919,7 +1919,7 @@
                   WRITE(*,'(A,4(2I6))') &
                   'W3GFCD_R8 - ENCLOSING CELL:',(IS(L),JS(L),L=1,4)
                   IF ( PRESENT(POLE) ) POLE = LPLC
-                EXIT CELL_LOOP 
+                EXIT CELL_LOOP
               END IF !point in cell
             END DO !J
         END DO CELL_LOOP
@@ -2547,7 +2547,7 @@
       REAL(8), PARAMETER :: SMALL = 1D-6
       REAL(8) :: LEPS
       LOGICAL :: LDBG, FNCL, POLE
-      INTEGER :: I, J, L 
+      INTEGER :: I, J, L
       LOGICAL :: M, MSK(4)
       INTEGER :: LVL, N, NS, ICC, JCC
       REAL(8) :: XT, YT, XS(4), YS(4), DW(4)
@@ -3462,14 +3462,14 @@
 !
 !  2. Method :
 !
-!     Calculates cross products for vertex to vertex (i.e. cell side) 
+!     Calculates cross products for vertex to vertex (i.e. cell side)
 !     vs vertex to target. If all cross products have the same sign,
-!     the point is considered to be within the cell. Since they can 
+!     the point is considered to be within the cell. Since they can
 !     be "all positive" *or* "all negative", there are no pre-conditions
 !     that the order of specification of the vertices be clockwise vs.
 !     counter-clockwise geographically.  The logical variable POLE is
 !     set to true if the grid cell includes a pole.
-!     
+!
 !  3. Parameters :
 !
 !     Return parameter
@@ -3811,7 +3811,7 @@
 !     of the (P,Q) index coordinates:
 !
 !         x = x(p,q),  y = y(p,q),  dp = dq = 1.
-!  
+!
 !     When using spherical coordinates (llg=T) x = longitude and
 !     y = latitude in degrees.  The optional sphere input (default is true)
 !     controls whether or not the spherical coordinate metric is applied.
@@ -3861,7 +3861,7 @@
 !
 !         uvec_p = (1/h_p)*(dx/dp)*uvec_x + (1/h_p)*(dy/dp)*uvec_y,
 !         uvec_q = (1/h_q)*(dx/dq)*uvec_x + (1/h_q)*(dy/dq)*uvec_y.
-!  
+!
 !     The local cell rotation angle is (assuming orthogonal):
 !
 !         cos(theta) = (1/h_p)*dx/dp,
@@ -3956,7 +3956,11 @@
                             HPFC, HQFC, APPC, AQQC, APQC, &
                             DXDP, DYDP, DXDQ, DYDQ, &
                             DPDX, DPDY, DQDX, DQDY, &
-                            COSA, COSC, SINC, ANGL, RC )
+                            COSA, COSC, SINC, ANGL, RC, &
+                            GSQRtp, DPDXtp, DPDYtp, DQDXtp, DQDYtp, &
+                            DADP, DADQ, DADX, DADY, Alpha)
+! Add w3tripmd
+      use W3TRIPMD, ONLY: ReadTriPolFile
 !     Single precision interface
       LOGICAL, INTENT(IN)   :: IJG
       LOGICAL, INTENT(IN)   :: LLG
@@ -3994,6 +3998,16 @@
       REAL(4), INTENT(OUT), OPTIONAL :: SINC(LBO(1):UBO(1),LBO(2):UBO(2))
       REAL(4), INTENT(OUT), OPTIONAL :: ANGL(LBO(1):UBO(1),LBO(2):UBO(2))
       INTEGER, INTENT(OUT), OPTIONAL :: RC
+      REAL, INTENT(OUT), OPTIONAL :: GSQRtp(LBO(1):UBO(1),LBO(2):UBO(2))
+      REAL, INTENT(OUT), OPTIONAL :: DPDXtp(LBO(1):UBO(1),LBO(2):UBO(2))
+      REAL, INTENT(OUT), OPTIONAL :: DPDYtp(LBO(1):UBO(1),LBO(2):UBO(2))
+      REAL, INTENT(OUT), OPTIONAL :: DQDXtp(LBO(1):UBO(1),LBO(2):UBO(2))
+      REAL, INTENT(OUT), OPTIONAL :: DQDYtp(LBO(1):UBO(1),LBO(2):UBO(2))
+      REAL, INTENT(OUT), OPTIONAL :: DADP(LBO(1):UBO(1),LBO(2):UBO(2))
+      REAL, INTENT(OUT), OPTIONAL :: DADQ(LBO(1):UBO(1),LBO(2):UBO(2))
+      REAL, INTENT(OUT), OPTIONAL :: DADX(LBO(1):UBO(1),LBO(2):UBO(2))
+      REAL, INTENT(OUT), OPTIONAL :: DADY(LBO(1):UBO(1),LBO(2):UBO(2))
+      REAL, INTENT(OUT), OPTIONAL :: Alpha(LBO(1):UBO(1),LBO(2):UBO(2))
 
 !     Local parameters
       INTEGER, PARAMETER :: M = 1 ! order of derivative
@@ -4290,11 +4304,16 @@
               IF (PRESENT(ANGL)) ANGL(I1,I2) = ANGLL
             END DO !I1
         END DO !I2
+        call ReadTriPolFile(real(X),real(Y),LBI,UBI,LBO,UBO, &
+                            MASK=MASK, DPDX=DPDXtp, &
+                            DPDY=DPDYtp, DQDX=DQDXtp, DQDY=DQDYtp, &
+                            GSQR=GSQRtp, DADP=DADP, DADQ=DADQ, Alpha=Alpha)
 !
 ! -------------------------------------------------------------------- /
 ! 4.  Clean up
 !
       DEALLOCATE ( K, C, K2, C2 )
+
 
       END SUBROUTINE W3CGDM_R4
 !/
@@ -4307,7 +4326,12 @@
                             HPFC, HQFC, APPC, AQQC, APQC, &
                             DXDP, DYDP, DXDQ, DYDQ, &
                             DPDX, DPDY, DQDX, DQDY, &
-                            COSA, COSC, SINC, ANGL, RC )
+                            COSA, COSC, SINC, ANGL, RC, &
+                            GSQRtp, DPDXtp, DPDYtp, DQDXtp, DQDYtp,&
+                            DADP, DADQ, DADX, DADY, Alpha)
+! Add w3tripmd
+      use W3TRIPMD, ONLY: ReadTriPolFile
+
 !     Double precision interface
       LOGICAL, INTENT(IN)   :: IJG
       LOGICAL, INTENT(IN)   :: LLG
@@ -4345,6 +4369,16 @@
       REAL(8), INTENT(OUT), OPTIONAL :: SINC(LBO(1):UBO(1),LBO(2):UBO(2))
       REAL(8), INTENT(OUT), OPTIONAL :: ANGL(LBO(1):UBO(1),LBO(2):UBO(2))
       INTEGER, INTENT(OUT), OPTIONAL :: RC
+      REAL, INTENT(OUT), OPTIONAL :: GSQRtp(LBO(1):UBO(1),LBO(2):UBO(2))
+      REAL, INTENT(OUT), OPTIONAL :: DPDXtp(LBO(1):UBO(1),LBO(2):UBO(2))
+      REAL, INTENT(OUT), OPTIONAL :: DPDYtp(LBO(1):UBO(1),LBO(2):UBO(2))
+      REAL, INTENT(OUT), OPTIONAL :: DQDXtp(LBO(1):UBO(1),LBO(2):UBO(2))
+      REAL, INTENT(OUT), OPTIONAL :: DQDYtp(LBO(1):UBO(1),LBO(2):UBO(2))
+      REAL, INTENT(OUT), OPTIONAL :: DADP(LBO(1):UBO(1),LBO(2):UBO(2))
+      REAL, INTENT(OUT), OPTIONAL :: DADQ(LBO(1):UBO(1),LBO(2):UBO(2))
+      REAL, INTENT(OUT), OPTIONAL :: DADX(LBO(1):UBO(1),LBO(2):UBO(2))
+      REAL, INTENT(OUT), OPTIONAL :: DADY(LBO(1):UBO(1),LBO(2):UBO(2))
+      REAL, INTENT(OUT), OPTIONAL :: Alpha(LBO(1):UBO(1),LBO(2):UBO(2))
 
 !     Local parameters
       INTEGER, PARAMETER :: M = 1 ! order of derivative
@@ -4642,6 +4676,11 @@
               IF (PRESENT(ANGL)) ANGL(I1,I2) = ANGLL
             END DO !I1
         END DO !I2
+        call ReadTriPolFile(real(X),real(Y),LBI,UBI,LBO,UBO, &
+                            MASK=MASK, DPDX=DPDXtp, &
+                            DPDY=DPDYtp, DQDX=DQDXtp, DQDY=DQDYtp, &
+                            GSQR=GSQRtp, DADP=DADP, DADQ=DADQ, Alpha=Alpha)
+
 !
 ! -------------------------------------------------------------------- /
 ! 4.  Clean up
@@ -6538,7 +6577,7 @@
 !/
       SUBROUTINE W3FDWT_R4 ( N, ND, M, Z, X, C )
 !     Single precision interface
-      INTEGER, INTENT(IN)  :: N, ND, M 
+      INTEGER, INTENT(IN)  :: N, ND, M
       REAL(4), INTENT(IN)  :: Z
       REAL(4), INTENT(IN)  :: X(0:ND)
       REAL(4), INTENT(OUT) :: C(0:ND,0:M)
@@ -6581,7 +6620,7 @@
 !/
       SUBROUTINE W3FDWT_R8 ( N, ND, M, Z, X, C )
 !     Double precision interface
-      INTEGER, INTENT(IN)  :: N, ND, M 
+      INTEGER, INTENT(IN)  :: N, ND, M
       REAL(8), INTENT(IN)  :: Z
       REAL(8), INTENT(IN)  :: X(0:ND)
       REAL(8), INTENT(OUT) :: C(0:ND,0:M)
