@@ -135,8 +135,18 @@
 
 # GRID STRT BOUND OUTF OUTP TRCK GRIB GINT GX* UPRSTR LIBWW3
 #  reg_programs = non-NetCDF programs
-  reg_programs="ww3_grid" 
-  reg_programs="$reg_programs ww3_strt"
+#  cdf_programs = NetCDF programs
+  reg_programs="" 
+  cdf_programs=""
+  
+  if [ -n "`grep TRPL $switch_file`" ]
+  then
+      cdf_programs="$cdf_programs ww3_grid"
+      cdf_programs="$cdf_programs ww3_strt"
+  else
+      reg_programs="$reg_programs ww3_grid"
+      reg_programs="$reg_programs ww3_strt"
+  fi
   reg_programs="$reg_programs ww3_bound"
   reg_programs="$reg_programs ww3_outf"
   reg_programs="$reg_programs ww3_outp"
@@ -148,8 +158,7 @@
   reg_programs="$reg_programs ww3_uprstr" 
 
 # PRNC OUNF OUNP BOUNC TRNC
-# cdf_programs = NetCDF programs
-  cdf_programs="ww3_prnc"
+  cdf_programs="$cdf_programs ww3_prnc"
   cdf_programs="$cdf_programs ww3_ounf"
   cdf_programs="$cdf_programs ww3_ounp"
   cdf_programs="$cdf_programs ww3_bounc"
@@ -206,7 +215,7 @@
     reg_programs="$reg_programs ww3_prep"
   fi
 
-  if [ -n "`grep OASIS $switch_file`" ]  || [ -n "`grep PDLIB $switch_file`" ]
+  if [ -n "`grep OASIS $switch_file`" ]  || [ -n "`grep PDLIB $switch_file`" ] || [ -n "`grep TRPL $switch_file`" ]
   then
     cdf_programs="$cdf_programs ww3_shel"
   else

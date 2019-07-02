@@ -2498,7 +2498,7 @@
 !
 !/ ------------------------------------------------------------------- /
       USE W3SERVMD, ONLY: EXTCDE
-      USE W3TRIPMD, ONLY: ReadTriPolFile
+!/TRPL      USE W3TRIPMD, ONLY: ReadTriPolFile
 !/S      USE W3SERVMD, ONLY: STRACE
 !
       IMPLICIT NONE
@@ -2601,10 +2601,7 @@
                        DXDP=DXDP, DYDP=DYDP, DXDQ=DXDQ, DYDQ=DYDQ,     &
                        DPDX=DPDX, DPDY=DPDY, DQDX=DQDX, DQDY=DQDY,     &
                        HPFC=HPFAC, HQFC=HQFAC, GSQR=GSQRT,             &
-                       GSQRtp=GSQRTtp,&
-                       DPDXtp=DPDXtp, DPDYtp=DPDYtp, &
-                       DQDXtp=DQDXtp, DQDYtp=DQDYtp, &
-                       DADP=DADP, DADQ=DADQ, Alpha=AlphaTP, &
+                       DADP=DADP, DADQ=DADQ, &
 #if defined(TEST_W3GDATMD) || defined(TEST_W3GDATMD_W3GNTX)
                        COSA=COSA,                                      &
 #endif
@@ -2620,10 +2617,7 @@
                        DXDP=DXDP, DYDP=DYDP, DXDQ=DXDQ, DYDQ=DYDQ,     &
                        DPDX=DPDX, DPDY=DPDY, DQDX=DQDX, DQDY=DQDY,     &
                        HPFC=HPFAC, HQFC=HQFAC, GSQR=GSQRT,             &
-                       GSQRtp=GSQRTtp,&
-                       DPDXtp=DPDXtp, DPDYtp=DPDYtp, &
-                       DQDXtp=DQDXtp, DQDYtp=DQDYtp, &
-                       DADP=DADP, DADQ=DADQ, Alpha=AlphaTP, &
+                       DADP=DADP, DADQ=DADQ, &
 #if defined(TEST_W3GDATMD) || defined(TEST_W3GDATMD_W3GNTX)
                        COSA=COSA,                                      &
 #endif
@@ -2633,10 +2627,10 @@
               WRITE (NDSE,1004) GTYPE
               CALL EXTCDE (4)
             END IF
-!            call ReadTriPolFile(XGRD,YGRD,LBI,UBI,LBO,UBO, &
-!                                MASK=MASK, DPDX=DPDXtp, &
-!                                DPDY=DPDYtp, DQDX=DQDXtp, DQDY=DQDYtp, &
-!                                GSQR=GSQRTtp)
+!/TRPL            call ReadTriPolFile(XGRD,YGRD,LBI,UBI,LBO,UBO, &
+!/TRPL                                MASK=MASK, DPDX=DPDXtp, &
+!/TRPL                                DPDY=DPDYtp, DQDX=DQDXtp, DQDY=DQDYtp, &
+!/TRPL                                GSQR=GSQRTtp, Alpha=AlphaTP)
             
         END SELECT
 !

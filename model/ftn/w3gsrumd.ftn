@@ -3957,10 +3957,7 @@
                             DXDP, DYDP, DXDQ, DYDQ, &
                             DPDX, DPDY, DQDX, DQDY, &
                             COSA, COSC, SINC, ANGL, RC, &
-                            GSQRtp, DPDXtp, DPDYtp, DQDXtp, DQDYtp, &
-                            DADP, DADQ, DADX, DADY, Alpha)
-! Add w3tripmd
-      use W3TRIPMD, ONLY: ReadTriPolFile
+                            DADP, DADQ, DADX, DADY)
 !     Single precision interface
       LOGICAL, INTENT(IN)   :: IJG
       LOGICAL, INTENT(IN)   :: LLG
@@ -3998,16 +3995,10 @@
       REAL(4), INTENT(OUT), OPTIONAL :: SINC(LBO(1):UBO(1),LBO(2):UBO(2))
       REAL(4), INTENT(OUT), OPTIONAL :: ANGL(LBO(1):UBO(1),LBO(2):UBO(2))
       INTEGER, INTENT(OUT), OPTIONAL :: RC
-      REAL, INTENT(OUT), OPTIONAL :: GSQRtp(LBO(1):UBO(1),LBO(2):UBO(2))
-      REAL, INTENT(OUT), OPTIONAL :: DPDXtp(LBO(1):UBO(1),LBO(2):UBO(2))
-      REAL, INTENT(OUT), OPTIONAL :: DPDYtp(LBO(1):UBO(1),LBO(2):UBO(2))
-      REAL, INTENT(OUT), OPTIONAL :: DQDXtp(LBO(1):UBO(1),LBO(2):UBO(2))
-      REAL, INTENT(OUT), OPTIONAL :: DQDYtp(LBO(1):UBO(1),LBO(2):UBO(2))
       REAL, INTENT(OUT), OPTIONAL :: DADP(LBO(1):UBO(1),LBO(2):UBO(2))
       REAL, INTENT(OUT), OPTIONAL :: DADQ(LBO(1):UBO(1),LBO(2):UBO(2))
       REAL, INTENT(OUT), OPTIONAL :: DADX(LBO(1):UBO(1),LBO(2):UBO(2))
       REAL, INTENT(OUT), OPTIONAL :: DADY(LBO(1):UBO(1),LBO(2):UBO(2))
-      REAL, INTENT(OUT), OPTIONAL :: Alpha(LBO(1):UBO(1),LBO(2):UBO(2))
 
 !     Local parameters
       INTEGER, PARAMETER :: M = 1 ! order of derivative
@@ -4304,10 +4295,6 @@
               IF (PRESENT(ANGL)) ANGL(I1,I2) = ANGLL
             END DO !I1
         END DO !I2
-        call ReadTriPolFile(real(X),real(Y),LBI,UBI,LBO,UBO, &
-                            MASK=MASK, DPDX=DPDXtp, &
-                            DPDY=DPDYtp, DQDX=DQDXtp, DQDY=DQDYtp, &
-                            GSQR=GSQRtp, DADP=DADP, DADQ=DADQ, Alpha=Alpha)
 !
 ! -------------------------------------------------------------------- /
 ! 4.  Clean up
@@ -4327,10 +4314,7 @@
                             DXDP, DYDP, DXDQ, DYDQ, &
                             DPDX, DPDY, DQDX, DQDY, &
                             COSA, COSC, SINC, ANGL, RC, &
-                            GSQRtp, DPDXtp, DPDYtp, DQDXtp, DQDYtp,&
-                            DADP, DADQ, DADX, DADY, Alpha)
-! Add w3tripmd
-      use W3TRIPMD, ONLY: ReadTriPolFile
+                            DADP, DADQ, DADX, DADY)
 
 !     Double precision interface
       LOGICAL, INTENT(IN)   :: IJG
@@ -4369,16 +4353,10 @@
       REAL(8), INTENT(OUT), OPTIONAL :: SINC(LBO(1):UBO(1),LBO(2):UBO(2))
       REAL(8), INTENT(OUT), OPTIONAL :: ANGL(LBO(1):UBO(1),LBO(2):UBO(2))
       INTEGER, INTENT(OUT), OPTIONAL :: RC
-      REAL, INTENT(OUT), OPTIONAL :: GSQRtp(LBO(1):UBO(1),LBO(2):UBO(2))
-      REAL, INTENT(OUT), OPTIONAL :: DPDXtp(LBO(1):UBO(1),LBO(2):UBO(2))
-      REAL, INTENT(OUT), OPTIONAL :: DPDYtp(LBO(1):UBO(1),LBO(2):UBO(2))
-      REAL, INTENT(OUT), OPTIONAL :: DQDXtp(LBO(1):UBO(1),LBO(2):UBO(2))
-      REAL, INTENT(OUT), OPTIONAL :: DQDYtp(LBO(1):UBO(1),LBO(2):UBO(2))
       REAL, INTENT(OUT), OPTIONAL :: DADP(LBO(1):UBO(1),LBO(2):UBO(2))
       REAL, INTENT(OUT), OPTIONAL :: DADQ(LBO(1):UBO(1),LBO(2):UBO(2))
       REAL, INTENT(OUT), OPTIONAL :: DADX(LBO(1):UBO(1),LBO(2):UBO(2))
       REAL, INTENT(OUT), OPTIONAL :: DADY(LBO(1):UBO(1),LBO(2):UBO(2))
-      REAL, INTENT(OUT), OPTIONAL :: Alpha(LBO(1):UBO(1),LBO(2):UBO(2))
 
 !     Local parameters
       INTEGER, PARAMETER :: M = 1 ! order of derivative
@@ -4676,10 +4654,6 @@
               IF (PRESENT(ANGL)) ANGL(I1,I2) = ANGLL
             END DO !I1
         END DO !I2
-        call ReadTriPolFile(real(X),real(Y),LBI,UBI,LBO,UBO, &
-                            MASK=MASK, DPDX=DPDXtp, &
-                            DPDY=DPDYtp, DQDX=DQDXtp, DQDY=DQDYtp, &
-                            GSQR=GSQRtp, DADP=DADP, DADQ=DADQ, Alpha=Alpha)
 
 !
 ! -------------------------------------------------------------------- /

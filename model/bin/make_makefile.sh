@@ -96,7 +96,7 @@
   for type in mach nco grib mcp c90 nec netcdf scrip scripnc \
               shared mpp mpiexp thread GSE prop \
               stress s_ln source stab s_nl snls s_bot s_db miche s_tr s_bs \
-              dstress s_ice s_is reflection s_xx \
+              dstress trpl s_ice s_is reflection s_xx \
               wind windx rwind curr currx mgwind mgprop mggse \
               subsec tdyn dss0 pdif tide refrx ig rotag arctic nnt mprf \
               cou oasis agcm ogcm igcm trknc setup pdlib memck uost
@@ -180,6 +180,11 @@
                ID='Diagnostic stress comp'
                TS='FLD'
                OK='FLD0 FLD1 FLD2' ;;
+#sort:trpl:
+      trpl)    TY='upto1'
+	       ID='Switch for NetCDF Tripolar inputs'
+	       OK='TRPL';;
+	       
 #sort:s_ln:
       s_ln   ) TY='one'
                ID='linear input'
@@ -467,6 +472,7 @@
       stab   ) stab=$sw ;;
       stress ) stress=$sw ;;
       dstress) dstress=$sw ;;
+      trpl   ) trpl=$sw ;;
       scrip  ) scrip=$sw ;;
       scripnc) scripnc=$sw ;;
       s_nl   ) s_nl=$sw ;;
@@ -582,6 +588,10 @@
          dsx='w3fld1md' ;;
    FLD2) ds=$NULL
          dsx='w3fld1md w3fld2md' ;;
+  esac
+
+  case $trpl in
+   TRPL) trp='w3tripmd' ;;
   esac
 
   case $s_ln in
@@ -859,16 +869,15 @@
                core=
                data='w3wdatmd w3gdatmd w3adatmd w3idatmd w3odatmd wmmdatmd'
                prop=
-                 IO='w3iogrmd w3tripmd'
-             source="w3parall w3triamd $stx $nlx $btx $is $uostmd"
-                 IO='w3iogrmd w3tripmd'
+             source="w3parall w3triamd $stx $nlx $btx $is $uostmd $trp"
+                 IO='w3iogrmd'
                 aux="constants w3servmd w3arrymd w3dispmd w3gsrumd w3timemd w3nmlgridmd $pdlibyow $memcode" ;;
      ww3_strt) IDstring='Initial conditions program'
                core=
                data="$memcode w3gdatmd w3wdatmd w3adatmd w3idatmd w3odatmd"
                prop=
-             source="$pdlibcode $pdlibyow $db $tr $trx $bt $setupcode $stx $nlx $btx $is wmmdatmd w3parall $uostmd"
-                 IO='w3iogrmd w3iorsmd w3tripmd'
+             source="$pdlibcode $pdlibyow $db $tr $trx $bt $setupcode $stx $nlx $btx $is wmmdatmd w3parall $uostmd $trp"
+                 IO='w3iogrmd w3iorsmd'
                 aux="constants w3triamd w3servmd w3arrymd w3dispmd w3gsrumd w3timemd" ;;
      ww3_bound) IDstring='boundary conditions program'
                core=
@@ -889,7 +898,7 @@
                data="$memcode w3gdatmd w3adatmd w3idatmd w3odatmd w3wdatmd wmmdatmd"
                prop=
              source="$pdlibcode $pdlibyow $db $bt $setupcode w3triamd $stx $nlx $btx  $is $uostmd"
-                 IO="w3iogrmd $oasismd $agcmmd $ogcmmd $igcmmd w3tripmd"
+                 IO="w3iogrmd $oasismd $agcmmd $ogcmmd $igcmmd"
                 aux="constants w3servmd w3timemd $tidecode w3arrymd w3dispmd w3gsrumd w3parall" ;;
      ww3_prnc) IDstring='NetCDF field preprocessor'
                core='w3fldsmd'
@@ -909,9 +918,9 @@
                core='w3fldsmd w3initmd w3wavemd w3wdasmd w3updtmd'
                data="wmmdatmd $memcode w3gdatmd w3wdatmd w3adatmd w3idatmd w3odatmd"
                prop="$pr"
-             source="$pdlibcode $setupcode w3triamd w3srcemd $dsx $flx $ln $st $nl $bt $ic"
+             source="$pdlibcode $setupcode w3triamd w3srcemd $dsx $flx $ln $st $nl $bt $ic $trp"
              source="$source $is $db $tr $bs $xx $refcode $igcode w3parall $uostmd"
-                 IO="w3iogrmd w3iogomd w3iopomd w3iotrmd w3iorsmd w3iobcmd $oasismd $agcmmd $ogcmmd $igcmmd w3tripmd"
+                 IO="w3iogrmd w3iogomd w3iopomd w3iotrmd w3iorsmd w3iobcmd $oasismd $agcmmd $ogcmmd $igcmmd"
                  IO="$IO w3iosfmd w3partmd"
                 aux="constants w3servmd w3timemd $tidecode w3arrymd w3dispmd w3cspcmd w3gsrumd $cplcode"
                 aux="$aux w3nmlshelmd $pdlibyow" ;;
@@ -975,8 +984,8 @@
                core='w3initmd'
                data="wmmdatmd $memcode w3gdatmd w3wdatmd w3adatmd w3idatmd w3odatmd"
                prop=
-             source="$pdlibcode $pdlibyow $db $bt $setupcode w3parall w3triamd $stx $nlx $btx  $is $uostmd"
-                 IO='w3iogrmd w3iogomd w3iorsmd w3iopomd w3tripmd'
+             source="$pdlibcode $pdlibyow $db $bt $setupcode w3parall w3triamd $stx $nlx $btx  $is $uostmd $trp"
+                 IO='w3iogrmd w3iogomd w3iorsmd w3iopomd'
                 aux="constants w3servmd w3timemd w3arrymd w3dispmd w3gsrumd"
                 aux="$aux w3nmlounfmd $smco" ;;
      ww3_outp) IDstring='Point output'
