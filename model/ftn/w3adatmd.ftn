@@ -501,7 +501,8 @@
 !/PDLIB      INTEGER               :: NBFIELD, PDLIB_MPI_TYPE
 !/MPI        INTEGER               :: BSTAT(MPIBUF), BISPL(MPIBUF)
 !/MPI        INTEGER, POINTER      :: IRQSG1(:,:), IRQSG2(:,:)
-!/MPI        REAL, POINTER         :: GSTORE(:,:), SSTORE(:,:)
+!/MPI        REAL, POINTER         :: GSTORE(:,:), GSTORE2(:,:), &
+!/MPI                                 SSTORE(:,:)
         REAL, POINTER         :: SPPNT(:,:,:)
 !
         INTEGER               :: ITIME, IPASS, IDLAST, NSEALM
@@ -615,7 +616,8 @@
 !/MPI                                 NSPLOC
 !/MPI      INTEGER, POINTER        :: BSTAT(:), BISPL(:)
 !/MPI      INTEGER, POINTER        :: IRQSG1(:,:), IRQSG2(:,:)
-!/MPI      REAL, POINTER           :: GSTORE(:,:), SSTORE(:,:)
+!/MPI      REAL, POINTER           :: GSTORE(:,:), GSTORE2(:,:),           &
+!/MPI                                 SSTORE(:,:)
       REAL, POINTER           :: SPPNT(:,:,:)
 !
       INTEGER, POINTER        :: ITIME, IPASS, IDLAST, NSEALM
@@ -2847,6 +2849,7 @@
 !/MPI        END IF
 !
 !/MPI      GSTORE => WADATS(IMOD)%GSTORE
+!/MPI      GSTORE2 => WADATS(IMOD)%GSTORE2
 !/MPI      SSTORE => WADATS(IMOD)%SSTORE
 !
       RETURN

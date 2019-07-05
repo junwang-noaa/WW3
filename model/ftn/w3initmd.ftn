@@ -60,7 +60,7 @@
 !/
 !/    Copyright 2009-2013 National Weather Service (NWS),
 !/       National Oceanic and Atmospheric Administration.  All rights
-!/       reserved.  WAVEWATCH III is a trademark of the NWS. 
+!/       reserved.  WAVEWATCH III is a trademark of the NWS.
 !/       No unauthorized use without permission.
 !/
 !/    Note: Changes in version numbers not logged above.
@@ -151,14 +151,14 @@
 !/    01-May-2007 : Move O7a output to W3IOPP.          ( version 3.11 )
 !/    08-May-2007 : Starting from calm as an option.    ( version 3.11 )
 !/    17-May-2007 : Adding NTPROC/NAPROC separation.    ( version 3.11 )
-!/    21-Jun-2007 : Dedicated output processes.         ( version 3.11 
+!/    21-Jun-2007 : Dedicated output processes.         ( version 3.11
 !/    13-Sep-2009 : Add coupling option                 ( version 3.14 )
 !/    30-Oct-2009 : Implement run-time grid selection.  ( version 3.14 )
 !/                  (W. E. Rogers & T. J. Campbell, NRL)
 !/    30-Oct-2009 : Implement curvilinear grid type.    ( version 3.14 )
 !/                  (W. E. Rogers & T. J. Campbell, NRL)
 !/    29-Oct-2010 : Implement unstructured grids        ( version 3.14.1 )
-!/                  (A. Roland and F. Ardhuin) 
+!/                  (A. Roland and F. Ardhuin)
 !/    06-Dec-2010 : Change from GLOBAL (logical) to ICLOSE (integer) to
 !/                  specify index closure for a grid.   ( version 3.14 )
 !/                  (T. J. Campbell, NRL)
@@ -181,14 +181,14 @@
 !     ----------------------------------------------------------------
 !       IMOD    Int.   I   Model number.
 !       FEXT    Char   I   Extension of data files.
-!       MDS     I.A.   I   Array with dataset numbers (see below), 
+!       MDS     I.A.   I   Array with dataset numbers (see below),
 !                          saved as NDS in W3ODATMD.
 !                           1: General output unit number ("log file").
 !                           2: Error output unit number.
 !                           3: Test output unit number.
 !                           4: "screen", i.e., direct output location,
 !                              can be the screen or the output file of
-!                              the shell. 
+!                              the shell.
 !                           5: Model definition file unit number.
 !                           6: Restart file unit number.
 !                           7: Grid output file unit number.
@@ -248,7 +248,7 @@
 !      W3IOGR    Subr. W3IOGRMD Read/write model definition file.
 !      W3IORS    Subr. W3IORSMD Read/write restart file.
 !      W3IOPP    Subr. W3IOPOMD Preprocess point output.
-!      CALL MPI_COMM_SIZE, CALL MPI_COMM_RANK 
+!      CALL MPI_COMM_SIZE, CALL MPI_COMM_RANK
 !                Subr. mpif.h   Standard MPI routines.
 !     ----------------------------------------------------------------
 !
@@ -271,9 +271,9 @@
 !       restart file. To assure consistency within the model, the
 !       water level and ice coverage are re-evaluated at the 0th
 !       time step in the actual wave model routine.
-!     - When running regtests in cases where disk is non-local 
+!     - When running regtests in cases where disk is non-local
 !       (i.e. NFS used), there can be a huge improvment in compute
-!       time by using /var/tmp/ for log files. 
+!       time by using /var/tmp/ for log files.
 !       See commented line at "OPEN (MDS(1),FILE=..."
 !
 !  8. Structure :
@@ -358,7 +358,7 @@
                           UA, UD, U10, U10D, AS
 !/MPI      USE W3ADATMD, ONLY: MPI_COMM_WAVE, MPI_COMM_WCMP
       USE W3IDATMD, ONLY: FLLEV, FLCUR, FLWIND, FLICE, FLMDN, FLMTH,  &
-                          FLMVS, FLIC1, FLIC2, FLIC3, FLIC4, FLIC5 
+                          FLMVS, FLIC1, FLIC2, FLIC3, FLIC4, FLIC5
       USE W3DISPMD, ONLY: WAVNU1, WAVNU3
       USE W3PARALL, ONLY : AC_tot
       USE W3PARALL, ONLY: SET_UP_NSEAL_NSEALM
@@ -542,7 +542,7 @@
 !/MPI      END IF
 !!!/PDLIB    CALL W3SETG(IMOD, NDSE, NDST)
 !
-           LPDLIB = .FALSE. 
+           LPDLIB = .FALSE.
 !/PDLIB    LPDLIB = .TRUE.
            IF (FSTOTALIMP .and. .NOT. LPDLIB) THEN
              WRITE(NDSE,*) 'IMPTOTAL is selected'
@@ -562,7 +562,7 @@
 !!/DEBUGMPI     CALL TEST_MPI_STATUS("Case 5")
 !/SHRD       TFILE  = 'test.' // FEXT(:IE)
 !/DIST      IW     = 1 + INT ( LOG10 ( REAL(NAPROC) + 0.5 ) )
-!/DIST      IW     = MAX ( 3 , MIN ( 9 , IW ) ) 
+!/DIST      IW     = MAX ( 3 , MIN ( 9 , IW ) )
 !/DIST      WRITE (FORMAT,'(A5,I1.1,A1,I1.1,A4)')                     &
 !/DIST                   '(A4,I', IW, '.', IW, ',2A)'
 !/DIST      WRITE (TFILE,FORMAT) 'test',                             &
@@ -655,7 +655,7 @@
 ! 2.b Save MAPSTA
 !
       ALLOCATE ( MAPTST(NY,NX) )
-      MAPTST  = MAPSTA 
+      MAPTST  = MAPSTA
 
 !/MEMCHECK       WRITE(740+IAPROC,*) 'memcheck_____:', 'WW3_INIT SECTION 2b'
 !/MEMCHECK       call getMallocInfo(mallinfos)
@@ -774,7 +774,7 @@
 !/DIST                    IAPPRO(ISP) = -1
 !/DIST                 END IF
 !/DIST              END IF
-!/DIST            END DO 
+!/DIST            END DO
 !/DIST          END DO
 !
 ! 2.c.6 Second sweep filling IAPPRO
@@ -941,10 +941,10 @@
 !
       DO J=1, NOTYPE
         J0 = (J-1)*5
-        TONEXT(1,J) =        ODAT(J0+1) 
+        TONEXT(1,J) =        ODAT(J0+1)
         TONEXT(2,J) =        ODAT(J0+2)
         DTOUT (  J) = REAL ( ODAT(J0+3) )
-        TOLAST(1,J) =        ODAT(J0+4) 
+        TOLAST(1,J) =        ODAT(J0+4)
         TOLAST(2,J) =        ODAT(J0+5)
       END DO
 !
@@ -1007,12 +1007,12 @@
 !/TIMINGS       CALL PRINT_MY_TIME("Before NOTYPE loop")
       DO J=1, NOTYPE
 !
-! ... check time step  
+! ... check time step
 !
         DTOUT(J) = MAX ( 0. , DTOUT(J) )
         FLOUT(J) = FLOUT(J) .AND. ( DTOUT(J) .GT. 0.5 )
 !
-! ... get first time 
+! ... get first time
 !
         IF ( FLOUT(J) ) THEN
             TOUT = TONEXT(:,J)
@@ -1077,7 +1077,7 @@
 !
 ! 5.  Define wavenumber grid ----------------------------------------- *
 ! 5.a Calculate depth
-! 
+!
 !/T      ALLOCATE ( MAPOUT(NX,NY), XOUT(NX,NY) )
 !/T      XOUT = -1.
 !
@@ -1186,7 +1186,7 @@
           DEPTH  = MAX ( DMIN , DW(IS) )
         ELSE
           DEPTH = DMIN
-          END IF 
+          END IF
 !
 !/T1        WRITE (NDST,9051) IS, DEPTH
 !
@@ -1203,7 +1203,7 @@
 !/DEBUGINIT     WRITE(740+IAPROC,*) 'W3INIT, aft BLOCK_SOLVER_INIT, step 9.6'
 !/DEBUGINIT     FLUSH(740+IAPROC)
 !
-! Commented by FA with version 4.12 
+! Commented by FA with version 4.12
 !      DO IK=1, NK
 !        CG(IK,0) = CG(IK,1)
 !        WN(IK,0) = WN(IK,1)
@@ -1545,7 +1545,7 @@
 !     - Each processor has to be able to send out individual error
 !       messages in this routine !
 !     - No testing on IMOD, since only called by W3INIT.
-!     - In version 3.09 STORE was split into a send and receive 
+!     - In version 3.09 STORE was split into a send and receive
 !       buffer, to avoid/reduce possible conflicts between the FORTRAN
 !       and MPI standards when a gather is posted in a given buffer
 !       right after a send is completed.
@@ -1570,14 +1570,15 @@
 !
 !/S      USE W3SERVMD, ONLY: STRACE
 !
-      USE W3GDATMD, ONLY: NSEA
+      USE W3GDATMD, ONLY: NSEA, NTH
       USE W3ADATMD, ONLY: NSEALM
 !/MPI      USE W3GDATMD, ONLY: NSPEC
 !/MPI      USE W3WDATMD, ONLY: VA
 !/MPI      USE W3ADATMD, ONLY: MPI_COMM_WAVE, WW3_FIELD_VEC,         &
 !/MPI                          WW3_SPEC_VEC, IAPPRO, WADATS,         &
 !/MPI                          NRQSG1, IRQSG1, NRQSG2, IRQSG2,       &
-!/MPI                          GSTORE, SSTORE, MPIBUF, BSTAT,        &
+!/MPI                          GSTORE, GSTORE2, SSTORE,              &
+!/MPI                          MPIBUF, BSTAT,        &
 !/MPI                          BISPL, ISPLOC, IBFLOC, NSPLOC
       USE W3ODATMD, ONLY: NDST, NAPROC, IAPROC
 !/
@@ -1594,6 +1595,7 @@
 !/ Local parameters
 !/
       INTEGER                 :: NXXXX
+      INTEGER :: ITH, IK, ITHROT, ISPR
 !/MPI      INTEGER                 :: IERR_MPI, ISP, IH, ITARG,       &
 !/MPI                                 IERR1, IERR2, IP
 !/S      INTEGER, SAVE           :: IENT = 0
@@ -1648,7 +1650,7 @@
 !/DEBUGINIT      FLUSH(740+IAPROC)
 !
 !/MPI      NRQSG1 = NSPEC - NSPLOC
-!/MPI      ALLOCATE ( WADATS(IMOD)%IRQSG1(MAX(1,NRQSG1),2) )
+!/MPI      ALLOCATE ( WADATS(IMOD)%IRQSG1(MAX(1,NRQSG1),3) )
 !/MPI      IRQSG1 => WADATS(IMOD)%IRQSG1
 !/MPI      IH     = 0
 !/DEBUGINIT      WRITE(740+IAPROC,*) 'W3MPII, step 1'
@@ -1657,11 +1659,20 @@
 !/MPIT      WRITE (NDST,9021)
 !/DEBUGINIT          WRITE(*,*) 'Before VA MPI_SEND/RECV_INIT inits'
 !/MPI      DO ISP=1, NSPEC
+!/MPI
+!/MPI        !For Tripolar grid, we need ghost nodes for the
+!/MPI        !fold that are rotated 180 deg
+!/MPI        ITH       = 1 + MOD(ISP-1,NTH)
+!/MPI        IK        = 1 + (ISP-1)/NTH
+!/MPI        ITHROT    = 1 + MOD(ITH+NTH/2-1,NTH)
+!/MPI        ISPR    = ITHROT+(IK-1)*NTH
 !/MPI        IF ( IAPPRO(ISP) .NE. IAPROC ) THEN
 !/MPI            ITARG  = IAPPRO(ISP) - 1
 !/MPI            IH     = IH + 1
 !/MPI            CALL MPI_SEND_INIT ( VA(ISP,1), 1, WW3_SPEC_VEC,     &
 !/MPI                 ITARG, ISP, MPI_COMM_WAVE, IRQSG1(IH,1), IERR1 )
+!/MPI            CALL MPI_SEND_INIT ( VA(ISPR,1), 1, WW3_SPEC_VEC,     &
+!/MPI                 ITARG, NSPEC+ISPR, MPI_COMM_WAVE, IRQSG1(IH,3), IERR1 )
 !/MPI            CALL MPI_RECV_INIT ( VA(ISP,1), 1, WW3_SPEC_VEC,     &
 !/MPI                 ITARG, ISP, MPI_COMM_WAVE, IRQSG1(IH,2), IERR2 )
 !/MPIT            WRITE (NDST,9022) IH, ISP, ITARG+1,                 &
@@ -1678,19 +1689,22 @@
 !     Also set up buffering of data.
 !
 !/MPI      NRQSG2 = MAX( 1 , NAPROC-1 )
-!/MPI      ALLOCATE ( WADATS(IMOD)%IRQSG2(NRQSG2*NSPLOC,2),           &
+!/MPI      ALLOCATE ( WADATS(IMOD)%IRQSG2(NRQSG2*NSPLOC,3),           &
 !/MPI                 WADATS(IMOD)%GSTORE(NAPROC*NSEALM,MPIBUF),      &
-!/MPI                 WADATS(IMOD)%SSTORE(NAPROC*NSEALM,MPIBUF) )
+!/MPI                 WADATS(IMOD)%GSTORE2(NAPROC*NSEALM,MPIBUF),     &
+!/MPI                 WADATS(IMOD)%SSTORE(NAPROC*NSEALM,MPIBUF))
 !/MPI      NRQSG2 = NAPROC - 1
 !
 !/MPI      IRQSG2 => WADATS(IMOD)%IRQSG2
 !/MPI      GSTORE => WADATS(IMOD)%GSTORE
+!/MPI      GSTORE2 => WADATS(IMOD)%GSTORE2
 !/MPI      SSTORE => WADATS(IMOD)%SSTORE
 !
 !/MPI      IH     = 0
 !/MPI      ISPLOC = 0
 !/MPI      IBFLOC = 0
 !/MPI      WADATS(IMOD)%GSTORE = 0.
+!/MPI      WADATS(IMOD)%GSTORE2 = 0.
 !/MPI      WADATS(IMOD)%SSTORE = 0.
 !
 ! 3.a Loop over local spectral components
@@ -1712,6 +1726,12 @@
 !/MPI                  ITARG  = IP - 1
 !/MPI                  IH     = IH + 1
 !
+!/MPI                  !For Tripolar grid, we need ghost nodes for the
+!/MPI                  !fold that are rotated 180 deg
+!/MPI                  ITH       = 1 + MOD(ISP-1,NTH)
+!/MPI                  IK        = 1 + (ISP-1)/NTH
+!/MPI                  ITHROT    = 1 + MOD(ITH+NTH/2-1,NTH)
+!/MPI                  ISPR    = ITHROT+(IK-1)*NTH
 !/MPI                  CALL MPI_RECV_INIT                             &
 !/MPI                     ( WADATS(IMOD)%GSTORE(IP,IBFLOC), 1,        &
 !/MPI                       WW3_FIELD_VEC, ITARG, ISP, MPI_COMM_WAVE, &
@@ -1720,6 +1740,10 @@
 !/MPI                     ( WADATS(IMOD)%SSTORE(IP,IBFLOC), 1,        &
 !/MPI                       WW3_FIELD_VEC, ITARG, ISP, MPI_COMM_WAVE, &
 !/MPI                       IRQSG2(IH,2), IERR2 )
+!/MPI                  CALL MPI_RECV_INIT                             &
+!/MPI                     ( WADATS(IMOD)%GSTORE2(IP,IBFLOC), 1,        &
+!/MPI                       WW3_FIELD_VEC, ITARG, NSPEC+ISPR, MPI_COMM_WAVE, &
+!/MPI                       IRQSG2(IH,3), IERR2 )
 !/MPIT                  WRITE (NDST,9032) IH, ISP, ITARG+1, IBFLOC,   &
 !/MPIT                         IRQSG2(IH,1), IERR1, IRQSG2(IH,2), IERR2
 !
@@ -1949,15 +1973,15 @@
 !
 !/MPI      NRQGO  = 0
 !/MPI      NRQGO2 = 0
-!/MPI      IT0    = NSPEC
+!/MPI      IT0    = NSPEC*2
 !/MPI      IROOT  = NAPFLD - 1
 !
 !
 !/MPI      IF ((FLOUT(1) .OR. FLOUT(7)).and.(.not. LPDLIB .or.       &
 !/MPI          (GTYPE .ne. UNGTYPE).or. .TRUE.)) THEN
 !
-! NRQMAX is the maximum number of fields, it is the sum of the 
-! sizes of scalar fields (Hs) + 2-component vectors (CUR) + 3-comp ... 
+! NRQMAX is the maximum number of fields, it is the sum of the
+! sizes of scalar fields (Hs) + 2-component vectors (CUR) + 3-comp ...
 !
 !/MPI          NRQMAX = 0 + 12 + 0 + 2+(NOGE(4)-2)*(NOSWLL+1) + 10+4 + &
 !/MPI                   7+6 + 5+5 + 2+2 + 5+0 + NOEXTR
@@ -1970,7 +1994,7 @@
 !/MPI          IF ( FLGRDALL( 6, 8) ) NRQMAX = NRQMAX + 2*NK
 !/MPI          IF ( FLGRDALL( 6,12) ) NRQMAX = NRQMAX + 2*NK
 !
-!/MPI          IF ( NRQMAX .GT. 0 ) THEN 
+!/MPI          IF ( NRQMAX .GT. 0 ) THEN
 !/MPI              ALLOCATE ( OUTPTS(IMOD)%OUT1%IRQGO(NRQMAX) )
 !/MPI              ALLOCATE ( OUTPTS(IMOD)%OUT1%IRQGO2(NRQMAX*NAPROC) )
 !/MPI            END IF
@@ -2129,7 +2153,7 @@
 !/MPIT      WRITE (NDST,9011) IH, ' 2/17', IROOT, IT, IRQGO(IH), IERR
 !/MPI                END IF
 !
-!/MPI              IF ( FLGRDALL( 3, 1) ) THEN 
+!/MPI              IF ( FLGRDALL( 3, 1) ) THEN
 !/MPI                  DO IK=E3DF(2,1),E3DF(3,1)
 !/MPI                    IH     = IH + 1
 !/MPI                    IT     = IT + 1
@@ -2138,8 +2162,8 @@
 !/MPIT      WRITE (NDST,9011) IH, 'EF', IROOT, IT, IRQGO(IH), IERR
 !/MPI                    END DO
 !/MPI                 END IF
-!      
-!/MPI              IF ( FLGRDALL( 3, 2) ) THEN 
+!
+!/MPI              IF ( FLGRDALL( 3, 2) ) THEN
 !/MPI                  DO IK=E3DF(2,2),E3DF(3,2)
 !/MPI                    IH     = IH + 1
 !/MPI                    IT     = IT + 1
@@ -2148,8 +2172,8 @@
 !/MPIT      WRITE (NDST,9011) IH, 'TH1M', IROOT, IT, IRQGO(IH), IERR
 !/MPI                    END DO
 !/MPI                 END IF
-!      
-!/MPI              IF ( FLGRDALL( 3, 3) ) THEN 
+!
+!/MPI              IF ( FLGRDALL( 3, 3) ) THEN
 !/MPI                  DO IK=E3DF(2,3),E3DF(3,3)
 !/MPI                    IH     = IH + 1
 !/MPI                    IT     = IT + 1
@@ -2158,8 +2182,8 @@
 !/MPIT      WRITE (NDST,9011) IH, 'STH1M', IROOT, IT, IRQGO(IH), IERR
 !/MPI                    END DO
 !/MPI                 END IF
-!       
-!/MPI              IF ( FLGRDALL( 3, 4) ) THEN 
+!
+!/MPI              IF ( FLGRDALL( 3, 4) ) THEN
 !/MPI                  DO IK=E3DF(2,4),E3DF(3,4)
 !/MPI                    IH     = IH + 1
 !/MPI                    IT     = IT + 1
@@ -2168,8 +2192,8 @@
 !/MPIT      WRITE (NDST,9011) IH, 'TH2M', IROOT, IT, IRQGO(IH), IERR
 !/MPI                    END DO
 !/MPI                 END IF
-!      
-!/MPI              IF ( FLGRDALL( 3, 5) ) THEN 
+!
+!/MPI              IF ( FLGRDALL( 3, 5) ) THEN
 !/MPI                  DO IK=E3DF(2,5),E3DF(3,5)
 !/MPI                    IH     = IH + 1
 !/MPI                    IT     = IT + 1
@@ -2362,7 +2386,7 @@
 !/MPI      CALL MPI_SEND_INIT (ASF   (IAPROC), 1, WW3_FIELD_VEC,       &
 !/MPI                       IROOT, IT, MPI_COMM_WAVE, IRQGO(IH), IERR )
 !/MPIT      WRITE (NDST,9011) IH, ' 5/01', IROOT, IT, IRQGO(IH), IERR
-!/MPI                END IF 
+!/MPI                END IF
 !
 !/MPI              IF ( FLGRDALL( 5, 2) ) THEN
 !/MPI                  IH     = IH + 1
@@ -2549,8 +2573,8 @@
 !/MPIT      WRITE (NDST,9011) IH, 'US3D ', IROOT, IT, IRQGO(IH), IERR
 !/MPI                    END DO
 !/MPI                END IF
-!      
-!/MPI             IF ( FLGRDALL( 6, 9) ) THEN     
+!
+!/MPI             IF ( FLGRDALL( 6, 9) ) THEN
 !/MPI                      DO K=P2MSF(2),P2MSF(3)
 !/MPI                        IH     = IH + 1
 !/MPI                        IT     = IT + 1
@@ -2589,7 +2613,7 @@
 !/MPI                                IT, MPI_COMM_WAVE, IRQGO(IH), IERR)
 !/MPIT      WRITE (NDST,9011) IH, 'USSP ', IROOT, IT, IRQGO(IH), IERR
 !/MPI                    END DO
-!/MPI                END IF 
+!/MPI                END IF
 !
 !/MPI              IF ( FLGRDALL( 7, 1) ) THEN
 !/MPI                  IH     = IH + 1
@@ -2929,7 +2953,7 @@
 !/MPIT      WRITE (NDST,9011) IH, ' 2/17', IFROM, IT, IRQGO2(IH), IERR
 !/MPI                  END IF
 !
-!/MPI                IF ( FLGRDALL( 3, 1) ) THEN 
+!/MPI                IF ( FLGRDALL( 3, 1) ) THEN
 !/MPI                    DO IK=E3DF(2,1),E3DF(3,1)
 !/MPI                      IH     = IH + 1
 !/MPI                      IT     = IT + 1
@@ -2938,8 +2962,8 @@
 !/MPIT      WRITE (NDST,9011) IH, 'EF', IFROM, IT, IRQGO2(IH), IERR
 !/MPI                      END DO
 !/MPI                    END IF
-!       
-!/MPI                IF ( FLGRDALL( 3, 2) ) THEN 
+!
+!/MPI                IF ( FLGRDALL( 3, 2) ) THEN
 !/MPI                    DO IK=E3DF(2,2),E3DF(3,2)
 !/MPI                      IH     = IH + 1
 !/MPI                      IT     = IT + 1
@@ -2948,8 +2972,8 @@
 !/MPIT      WRITE (NDST,9011) IH, 'TH1M', IFROM, IT, IRQGO2(IH), IERR
 !/MPI                      END DO
 !/MPI                    END IF
-!      
-!/MPI                IF ( FLGRDALL( 3, 3) ) THEN 
+!
+!/MPI                IF ( FLGRDALL( 3, 3) ) THEN
 !/MPI                    DO IK=E3DF(2,3),E3DF(3,3)
 !/MPI                      IH     = IH + 1
 !/MPI                      IT     = IT + 1
@@ -2958,8 +2982,8 @@
 !/MPIT      WRITE (NDST,9011) IH, 'STH1M', IFROM, IT, IRQGO2(IH), IERR
 !/MPI                      END DO
 !/MPI                    END IF
-!       
-!/MPI                IF ( FLGRDALL( 3, 4) ) THEN 
+!
+!/MPI                IF ( FLGRDALL( 3, 4) ) THEN
 !/MPI                    DO IK=E3DF(2,4),E3DF(3,4)
 !/MPI                      IH     = IH + 1
 !/MPI                      IT     = IT + 1
@@ -2968,8 +2992,8 @@
 !/MPIT      WRITE (NDST,9011) IH, 'TH2M', IFROM, IT, IRQGO2(IH), IERR
 !/MPI                      END DO
 !/MPI                    END IF
-!      
-!/MPI               IF ( FLGRDALL( 3, 5) ) THEN 
+!
+!/MPI               IF ( FLGRDALL( 3, 5) ) THEN
 !/MPI                    DO IK=E3DF(2,5),E3DF(3,5)
 !/MPI                      IH     = IH + 1
 !/MPI                      IT     = IT + 1
@@ -3348,7 +3372,7 @@
 !/MPIT      WRITE (NDST,9011) IH, 'US3D ', IFROM, IT, IRQGO2(IH), IERR
 !/MPI                      END DO
 !/MPI                  END IF
-!      
+!
 !/MPI                IF (  FLGRDALL( 6, 9) ) THEN
 !/MPI                      DO K=P2MSF(2),P2MSF(3)
 !/MPI                        IH     = IH + 1
@@ -3388,7 +3412,7 @@
 !/MPI                               MPI_COMM_WAVE, IRQGO2(IH), IERR )
 !/MPIT      WRITE (NDST,9011) IH, 'USSP ', IFROM, IT, IRQGO2(IH), IERR
 !/MPI                      END DO
-!/MPI                  END IF  
+!/MPI                  END IF
 !
 !/MPI                IF ( FLGRDALL( 7, 1) ) THEN
 !/MPI                    IH     = IH + 1
@@ -3833,7 +3857,7 @@
 !/MPI              ALLOCATE ( OUTPTS(IMOD)%OUT3%IRQTR(2*NAPROC) )
 !/MPI              IRQTR  => OUTPTS(IMOD)%OUT3%IRQTR
 !/MPI              DO I0=1, NAPROC
-!/MPI                IFROM  = I0 - 1 
+!/MPI                IFROM  = I0 - 1
 !/MPI                IF ( I0 .NE. IAPROC ) THEN
 !/MPI                    IH     = IH + 1
 !/MPI                    IT     = IT0 + 1
@@ -3849,11 +3873,11 @@
 !/MPI                END DO
 !/MPI            END IF
 !
-!/MPI          NRQTR  = IH 
+!/MPI          NRQTR  = IH
 !/MPI          IT0    = IT0 + 2
 !
 !/MPIT          WRITE (NDST,9042)
-!/MPIT          WRITE (NDST,9043) NRQTR 
+!/MPIT          WRITE (NDST,9043) NRQTR
 !
 !/MPI        END IF
 !
@@ -4094,9 +4118,9 @@
 !
 !/MPI          DO I=1, NOPTS
 !/MPI            DO K=1,4
-!/MPI              IX(K)=IPTINT(1,K,I)  
+!/MPI              IX(K)=IPTINT(1,K,I)
 !/MPI              IY(K)=IPTINT(2,K,I)
-!/MPI              END DO 
+!/MPI              END DO
 !
 !/MPI            DO J=1, 4
 !
