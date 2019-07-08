@@ -206,7 +206,7 @@
   fi
 
   # SHEL PREP GSPL
-  if [ -n "`grep OASIS $switch_file`" ] || [ -n "`grep PDLIB $switch_file`" ]
+  if [ -n "`grep OASIS $switch_file`" ] || [ -n "`grep PDLIB $switch_file`" ] || [ -n "`grep TRPL $switch_file`" ]
   then
     cdf_programs="$cdf_programs ww3_gspl"
     cdf_programs="$cdf_programs ww3_prep"

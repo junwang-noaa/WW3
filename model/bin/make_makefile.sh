@@ -898,7 +898,7 @@
                data="$memcode w3gdatmd w3adatmd w3idatmd w3odatmd w3wdatmd wmmdatmd"
                prop=
              source="$pdlibcode $pdlibyow $db $bt $setupcode w3triamd $stx $nlx $btx  $is $uostmd"
-                 IO="w3iogrmd $oasismd $agcmmd $ogcmmd $igcmmd"
+                 IO="w3iogrmd $oasismd $agcmmd $ogcmmd $igcmmd $trp"
                 aux="constants w3servmd w3timemd $tidecode w3arrymd w3dispmd w3gsrumd w3parall" ;;
      ww3_prnc) IDstring='NetCDF field preprocessor'
                core='w3fldsmd'
