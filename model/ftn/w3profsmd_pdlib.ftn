@@ -110,6 +110,7 @@
       INTEGER, ALLOCATABLE  :: IS0_pdlib(:)
       INTEGER               :: FreqShiftMethod = 2
       LOGICAL               :: FSGEOADVECT
+!/DEBUGSRC        INTEGER  :: TESTNODE = 1
 !
 !/ ------------------------------------------------------------------- /
 !
@@ -166,7 +167,6 @@
 !
       USE W3GDATMD, ONLY: IOBPD, GTYPE, UNGTYPE
       USE W3GDATMD, ONLY: NSPEC, NTH, NSEAL
-      USE W3PARALL, ONLY: Z_status_rev
       USE W3WDATMD, ONLY: VA
       USE YOWNODEPOOL, ONLY: iplg
 !/
@@ -182,22 +182,19 @@
 !/
 !/ ------------------------------------------------------------------- /
 !/
-!/S      CALL STRACE (IENT, 'VA_SETUP_IOBPD')
 !
       INTEGER JSEA, IP, IP_glob, ITH, ISP
+!/S      CALL STRACE (IENT, 'VA_SETUP_IOBPD')
       IF (GTYPE .eq. UNGTYPE) THEN
         DO JSEA=1,NSEAL
-          IP=Z_status_rev(JSEA)
-          IP_glob=iplg(IP)
+          IP      = JSEA
+          IP_glob = iplg(IP)
           DO ISP=1,NSPEC
             ITH    = 1 + MOD(ISP-1,NTH)
-            VA(ISP,JSEA)=VA(ISP,JSEA)*IOBPD(ITH,IP_glob)
+            VA(ISP,JSEA) = VA(ISP,JSEA)*IOBPD(ITH,IP_glob)
           END DO
         END DO
       END IF
-!/
-!/ End of JACOBI_INIT ------------------------------------------------ /
-!/
       END SUBROUTINE
 !/ ------------------------------------------------------------------- /
       SUBROUTINE PDLIB_STYLE_INIT(IMOD)
@@ -261,11 +258,12 @@
       USE yowDatapool, ONLY: istatus
       USE yowpdlibMain, ONLY: initFromGridDim
       USE YOWNODEPOOL, ONLY: npa, iplg
-      USE W3PARALL, ONLY : PDLIB_NSEAL, PDLIB_NSEALM, Z_status, Z_status_rev, iplg_sea
+      USE W3PARALL, ONLY : PDLIB_NSEAL, PDLIB_NSEALM
       USE W3PARALL, ONLY : JX_TO_JSEA, ISEA_TO_JSEA
       USE yowfunction, ONLY : ComputeListNP_ListNPA_ListIPLG, pdlib_abort
 !/
       IMPLICIT NONE
+      INCLUDE "mpif.h"
 !/
 !/ ------------------------------------------------------------------- /
 !/ Parameter list
@@ -277,8 +275,7 @@
 !/
 !/ ------------------------------------------------------------------- /
 !/
-!/S      CALL STRACE (IENT, 'W3XXXX')
-      INCLUDE "mpif.h"
+!!      INCLUDE "mpif.h"
       REAL, ALLOCATABLE   :: XP_IN(:), YP_IN(:), DEP_IN(:)
       INTEGER, ALLOCATABLE   :: INE_IN(:,:)
       INTEGER :: istat
@@ -293,6 +290,7 @@
       INTEGER IK0, ISP0, ITH
       REAL :: eSIG, eFR
       REAL, PARAMETER :: COEF4 = 5.0E-7
+!/S      CALL STRACE (IENT, 'PDLIB_STYLE_INIT')
 !/DEBUGSOLVER     WRITE(740+IAPROC,*) 'PDLIB_STYLE_INIT, IMOD (no print)'
 !/DEBUGSOLVER     WRITE(740+IAPROC,*) 'NAPROC=', NAPROC
 !/DEBUGSOLVER     WRITE(740+IAPROC,*) 'NTPROC=', NTPROC
@@ -338,7 +336,7 @@
 !/DEBUGSOLVER     WRITE(740+IAPROC,*) 'PDLIB_NSEAL=', PDLIB_NSEAL
 !/DEBUGSOLVER     WRITE(740+IAPROC,*) 'npa=', npa
 !/DEBUGSOLVER     FLUSH(740+IAPROC)
-        ALLOCATE(Z_status_rev(PDLIB_NSEAL), JX_TO_JSEA(npa), iplg_sea(PDLIB_NSEAL), ISEA_TO_JSEA(NSEA), stat=istat)
+        ALLOCATE(JX_TO_JSEA(npa), ISEA_TO_JSEA(NSEA), stat=istat)
 !/DEBUGSOLVER     WRITE(740+IAPROC,*) 'ISEA_TO_JSEA ALLOCATEd'
 !/DEBUGSOLVER     FLUSH(740+IAPROC)
         if(istat /= 0) CALL PDLIB_ABORT(3)
@@ -350,17 +348,14 @@
           ISEA = MAPFS(1,IX)
           IF (ISEA .gt. 0) THEN
             JSEA=JSEA+1
-            Z_status_rev(JSEA)=IP
-            JX_TO_JSEA(IP)=JSEA 
-            iplg_sea(JSEA)=ISEA
+            JX_TO_JSEA(IP)=JSEA
             ISEA_TO_JSEA(ISEA)=JSEA
           END IF
         END DO
 !
-!/DEBUGSOLVER     WRITE(740+IAPROC,*) 'After Z_status and friend computation'
+!/DEBUGSOLVER     WRITE(740+IAPROC,*) 'After JX_TO_JSEA, ISEA_TO_JSEA and friend computation'
 !/DEBUGSOLVER     FLUSH(740+IAPROC)
         !
-        ! Computing the iplg_sea
         ! Map a point in (1:PDLIB_NSEAL) to a point in (1:NSEA)
         ! 
         nb=0
@@ -514,10 +509,10 @@
 !/
 !/ ------------------------------------------------------------------- /
 !/
-!/S      CALL STRACE (IENT, 'PDLIB_MAPSTA_INIT')
       INTEGER :: IBND_MAP, ISEA, JSEA, IX, IP, IP_glob
       INTEGER, INTENT(in) :: IMOD
       INTEGER :: Status(NX), istat
+!/S      CALL STRACE (IENT, 'PDLIB_MAPSTA_INIT')
 !/DEBUGINIT      WRITE(*,*) 'Passing by PDLIB_MAPSTA_INIT IAPROC=', IAPROC
       IF (IAPROC .gt. NAPROC) THEN
         RETURN
@@ -621,7 +616,6 @@
                           GTYPE, UNGTYPE, NBND_MAP, INDEX_MAP
       USE YOWNODEPOOL, ONLY: PDLIB_IEN, PDLIB_TRIA
       USE YOWNODEPOOL, ONLY: iplg, npa
-      USE W3PARALL, ONLY : Z_status_rev
       USE W3WDATMD, ONLY: TIME, VA
       USE W3ODATMD, ONLY: TBPI0, TBPIN, FLBPI
       USE W3ADATMD, ONLY: CG, CX, CY, ITIME
@@ -674,17 +668,18 @@
 !
       VLCFLX = 0.
       VLCFLY = 0.
-      AC = 0.
+      AC     = 0.
 
       CALL SETDEPTH_PDLIB
 !
 ! 2.  Calculate velocities ---------------- *
 ! 
-      DO JSEA=1,NSEAL
-        IP=Z_status_rev(JSEA)
-        IP_glob=iplg(IP)
-        ISEA=MAPFS(1,IP_glob)
-        AC(IP) = VA(ISP,JSEA) / CG(IK,ISEA) * CLATS(ISEA)
+      DO JSEA = 1, NSEAL
+        IP      = JSEA
+        IP_glob = iplg(IP)
+        ISEA    = MAPFS(1,IP_glob)
+        !write(*,*) 'IP TEST', JSEA, ISEA, IP, IP_glob
+        AC(IP)  = VA(ISP,JSEA) / CG(IK,ISEA) * CLATS(ISEA)
         VLCFLX(IP) = CCOS * CG(IK,ISEA) / CLATS(ISEA)
         VLCFLY(IP) = CSIN * CG(IK,ISEA)
 !/MGP        VLCFLX(IP) = VLCFLX(IP) - CCURX*VGX/CLATS(ISEA)
@@ -697,13 +692,13 @@
 !/DEBUGSOLVER     FLUSH(740+IAPROC)
       IF ( FLCUR ) THEN
         DO JSEA=1, NSEAL
-          IP=Z_status_rev(JSEA)
-          IP_glob=iplg(IP)
-          ISEA=MAPFS(1,IP_glob)
+          IP      = JSEA
+          IP_glob = iplg(IP)
+          ISEA    = MAPFS(1,IP_glob)
 !
 ! Currents are not included on coastal boundaries (COUNTSEACON(IXY) .NE. PDLIB_CCON(IXY))
 !
-          IF (IOBP(IP_glob) .EQ. 1) THEN
+          IF (IOBP(IP_glob) .GT. 0) THEN
             VLCFLX(IP) = VLCFLX(IP) + CCURX*CX(ISEA)/CLATS(ISEA)
             VLCFLY(IP) = VLCFLY(IP) + CCURY*CY(ISEA)
           END IF
@@ -766,8 +761,8 @@
 !/C90/!DIR$ IVDEP
 !
       DO JSEA=1, NSEAL
-        IP=Z_status_rev(JSEA)
-        IP_glob=iplg(IP)
+        IP      = JSEA
+        IP_glob = iplg(IP)
         ISEA=MAPFS(1,IP_glob)
         VA(ISP,JSEA) = MAX ( 0. , CG(IK,ISEA)/CLATS(ISEA)*AC(IP) )
       END DO
@@ -828,12 +823,13 @@
       USE W3GDATMD, ONLY : NK, NTH, NX, &
                             IEN, CLATS, MAPSF, IOBPD, IOBP, IOBDP, IOBPA
       USE W3WDATMD, ONLY: TIME
-      USE W3ADATMD, ONLY: CG, ITER, DW , CFLXYMAX
+      USE W3ADATMD, ONLY: CG, ITER, DW , CFLXYMAX, NSEALM
       USE W3ODATMD, ONLY: NDSE, NDST, FLBPI, NBI, TBPIN, ISBPI, BBPI0, BBPIN
       USE W3TIMEMD, ONLY: DSEC21
-      USE W3GDATMD, ONLY: NSEAL, DMIN
       USE W3ADATMD, ONLY: MPI_COMM_WCMP
-      USE YOWNODEPOOL,    ONLY: PDLIB_SI, PDLIB_IEN, PDLIB_TRIA, ipgl, iplg, npa
+      USE W3GDATMD, ONLY: NSEAL, DMIN, NSEA
+!/REF1      USE W3GDATMD, ONLY: REFPARS
+      USE YOWNODEPOOL,    ONLY: PDLIB_SI, PDLIB_IEN, PDLIB_TRIA, ipgl, iplg, npa, np
       use yowElementpool, ONLY: ne, INE
       use yowDatapool, ONLY: rtype
       use yowExchangeModule, ONLY : PDLIB_exchange1DREAL
@@ -859,7 +855,6 @@
                                        ! the max. Global Time step
 !/S      INTEGER, SAVE           :: IENT = 0
 !/REF1       INTEGER(KIND=1)    :: IOBPDR(NX)
-!/S      CALL STRACE (IENT, 'W3XYPFSN')
       INTEGER :: IP, IE, POS, IT, I1, I2, I3, I, J, ITH, IK
       INTEGER :: IBI, NI(3)
       INTEGER :: JX
@@ -885,6 +880,7 @@
       REAL  :: eSumAC, sumAC, sumBPI0, sumBPIN, sumCG, sumCLATS
       LOGICAL :: testWrite
       REAL  :: FIN(1), FOUT(1)
+!/S      CALL STRACE (IENT, 'W3XYPFSN')
 !/DEBUGSOLVER     WRITE(740+IAPROC,*) 'PDLIB_W3XYPFSN2, step 1'
 !/DEBUGSOLVER     FLUSH(740+IAPROC)
 !/DEBUGSOLVER     CALL GET_SCAL_INTEGRAL_COH_R4(AC, eSumAC)
@@ -899,6 +895,13 @@
       ITH    = 1 + MOD(ISP-1,NTH)
       IK     = 1 + (ISP-1)/NTH
       DTMAX  = DBLE(10.E10)
+
+!      DO IP = 1, npa
+!        IP_glob = iplg(IP)
+!        IF (IOBPD(ITH,IP_glob) .EQ. 0) THEN
+!          if ( AC(IP) .gt. 0.) write(*,*) 'TEST w3profs_pdlib 0', ip, ith, ik, AC(IP)
+!        endif
+!      END DO
 !
 !/REF1       IOBPDR(:)=(1-IOBP(:))*(1-IOBPD(ITH,:))
 
@@ -951,16 +954,12 @@
         END DO
         DO IP = 1, npa
           IP_glob=iplg(IP)
-          DTMAXEXP = PDLIB_SI(IP)/MAX(DBLE(10.E-10),KKSUM(IP))
+          DTMAXEXP = PDLIB_SI(IP)/MAX(DBLE(10.E-10),KKSUM(IP)*IOBDP(IP))
           DTMAX  = MIN( DTMAX, DTMAXEXP)
           CFLXYMAX(IP) = MAX(CFLXYMAX(IP),DBLE(DT)/DTMAXEXP)
         END DO
         FIN(1)=DTMAX
-!/DEBUGSOLVER     WRITE(740+IAPROC,*) 'Before call to MPI_ALLREDUCE'
-!/DEBUGSOLVER     FLUSH(740+IAPROC)
         CALL MPI_ALLREDUCE(FIN,FOUT,1,rtype,MPI_MIN,MPI_COMM_WCMP,ierr)
-!/DEBUGSOLVER     WRITE(740+IAPROC,*) 'After call to MPI_ALLREDUCE'
-!/DEBUGSOLVER     FLUSH(740+IAPROC)
         DTMAX_GL=FOUT(1)
         CFLXY = DBLE(DT)/DTMAX_GL
         REST  = ABS(MOD(CFLXY,1.0d0))
@@ -971,14 +970,11 @@
         ELSE
           ITER(IK,ITH) = ABS(NINT(CFLXY))
         END IF
-        !write(*,*) ITER(IK,ITH), CFLXY, DTMAX_GL, DTMAX, KKSUM, PDLIB_SI
-        !write(*,*) maxval(KKSUM), minval(kksum), maxval(PDLIB_SI), minval(pdlib_si)
       END IF ! LCALC
 !/DEBUGSOLVER     WRITE(740+IAPROC,*) 'PDLIB_W3XYPFSN2, step 4'
 !/DEBUGSOLVER     FLUSH(740+IAPROC)
       DO IP = 1, npa
         DTSI(IP) = DBLE(DT)/DBLE(ITER(IK,ITH))/PDLIB_SI(IP) ! Some precalculations for the time integration.
-        !WRITE(*,'(2I10,3F15.4)') IK, ITH, DBLE(ITER(IK,ITH)), DBLE(ITER(IK,ITH))/DBLE(DT), DBLE(DT)
       END DO
 !/DEBUGSOLVER     WRITE(740+IAPROC,*) 'PDLIB_W3XYPFSN2, step 4.1'
 !/DEBUGSOLVER     FLUSH(740+IAPROC)
@@ -1015,23 +1011,14 @@
 !
         DO IP = 1, npa
           IP_glob=iplg(IP)
-          !U(IP) = MAX(ZERO,U(IP)-DTSI(IP)*ST(IP)*(1-IOBPA(IP_glob)))*DBLE(IOBPD(ITH,IP_glob))*IOBDP(IP_glob)
-          U(IP) = MAX(0.d0,U(IP)-DTSI(IP)*ST(IP))*DBLE(IOBPD(ITH,IP_glob))!*IOBDP(IP_glob))! + AC(IP)*(1-IOBPD(ITH,IP))  ! restores reflected boundary values
-!/REF1               IF (REFPARS(3).LT.0.5.AND.IOBPD(ITH,IP_glob).EQ.0.AND.IOBPA(IP_glob).EQ.0) U(IP_glob) = AC(IP_glob) ! restores reflected boundary values 
+          U(IP) = MAX(ZERO,U(IP)-DTSI(IP)*ST(IP)*(1-IOBPA(IP_glob)))*DBLE(IOBPD(ITH,IP_glob))*IOBDP(IP_glob)
+!/REF1    IF (REFPARS(3).LT.0.5.AND.IOBPD(ITH,IP_glob).EQ.0.AND.IOBPA(IP_glob).EQ.0) U(IP) = AC(IP) ! restores reflected boundary values 
          END DO
 !/DEBUGSOLVER     IF (testWrite) THEN
 !/DEBUGSOLVER       CALL SCAL_INTEGRAL_PRINT_R8(U, "U in loop")
 !/DEBUGSOLVER     END IF
-!/REF1 !
-!/REF1 ! Setting shoreline boundary back to initial value (AC)
-!/REF1 !
-!/REF1      DO IP=1,npa
-!/REF1        IP_glob=iplg(IP)
-!/REF1        IF (IOBPDR(IP_glob) .eq. 1) THEN
-!/REF1          U(IP)=DBLE(AC(IP))
-!/REF1        END IF
-!/REF1     END DO
         AC = REAL(U)
+
 !/DEBUGSOLVER     IF (testWrite) THEN
 !/DEBUGSOLVER       CALL SCAL_INTEGRAL_PRINT_R4(AC, "AC before synchronization")
 !/DEBUGSOLVER     END IF
@@ -1058,7 +1045,7 @@
 !/DEBUGSOLVER     sumBPIN=0
 !/DEBUGSOLVER     sumCG=0
 !/DEBUGSOLVER     sumCLATS=0
-          DO IBI=1, NBI
+          DO IBI = 1, NBI
             IP_glob = MAPSF(ISBPI(IBI),1)
             JX=IPGL_npa(IP_glob)
             IF (JX .gt. 0) THEN
@@ -1072,6 +1059,7 @@
             END IF
           END DO
         END IF
+
 !/DEBUGSOLVER     WRITE(740+IAPROC,*) 'NBI=', NBI
 !/DEBUGSOLVER     WRITE(740+IAPROC,*) 'RD1=', RD1, ' RD2=', RD2
 !/DEBUGSOLVER     WRITE(740+IAPROC,*) 'ISP=', ISP, 'sumAC=', sumAC
@@ -1081,15 +1069,13 @@
 !/DEBUGSOLVER     WRITE(740+IAPROC,*) 'ISP=', ISP, 'sumCLATS=', sumCLATS
 !/DEBUGSOLVER     FLUSH(740+IAPROC)
         CALL PDLIB_exchange1DREAL(AC)
+
 !/DEBUGSOLVER     IF (testWrite) THEN
 !/DEBUGSOLVER       CALL SCAL_INTEGRAL_PRINT_R4(AC, "AC after FLBPI")
 !/DEBUGSOLVER     END IF
       END DO
 !/DEBUGSOLVER     WRITE(740+IAPROC,*) 'PDLIB_W3XYPFSN2, step 6'
 !/DEBUGSOLVER     FLUSH(740+IAPROC)
-!/
-!/ End of JACOBI_INIT ------------------------------------------------ /
-!/
       END SUBROUTINE
 !/ ------------------------------------------------------------------- /
       SUBROUTINE PDLIB_W3XYPFSPSI2 ( ISP, C, LCALC, RD10, RD20, DT, AC)
@@ -1140,12 +1126,13 @@
 !/S      USE W3SERVMD, ONLY: STRACE
 !
       USE W3GDATMD, ONLY : NK, NTH, NX, &
-                            IEN, CLATS, MAPSF, IOBPD, IOBP, NNZ, IOBDP
+                            IEN, CLATS, MAPSF, IOBPD, IOBP, IOBPA, NNZ, IOBDP
       USE W3WDATMD, ONLY: TIME     
       USE W3ADATMD, ONLY: CG, ITER, CFLXYMAX
       USE W3ODATMD, ONLY: NDSE, NDST, FLBPI, NBI, ISBPI, BBPI0, BBPIN
       USE W3TIMEMD, ONLY: DSEC21
-      USE W3GDATMD, ONLY: NSEAL, IOBPA
+      USE W3GDATMD, ONLY: NSEAL, DMIN
+!/REF1      USE W3GDATMD, ONLY: REFPARS
       USE W3ADATMD, ONLY: MPI_COMM_WCMP
       use yowElementpool, ONLY: ne, INE
       use YOWNODEPOOL,    ONLY: PDLIB_IEN, PDLIB_TRIA, PDLIB_SI, iplg, npa
@@ -1174,7 +1161,6 @@
                                         ! the max. Global Time step
 !/REF1       INTEGER(KIND=1)    :: IOBPDR(NX)
 !/S      INTEGER, SAVE           :: IENT = 0
-!/S      CALL STRACE (IENT, 'W3XYPFSN')
       INTEGER :: IP, IE, POS, IT, I1, I2, I3, I, J, ITH, IK    
       INTEGER :: IBI, NI(3), JX
       INTEGER :: ISPROC, IP_glob, JSEA, ierr
@@ -1192,6 +1178,7 @@
       REAL  :: KELEM(3,NE), FLALL(3,NE)
       REAL  :: KKSUM(npa), ST(npa)
       REAL  :: NM(NE) 
+!/S      CALL STRACE (IENT, 'W3XYPFSN')
       ITH    = 1 + MOD(ISP-1,NTH)
       IK     = 1 + (ISP-1)/NTH
       DTMAX = DBLE(10.E10)
@@ -1231,7 +1218,7 @@
           KKSUM(NI) = KKSUM(NI) + KELEM(:,IE)
         END DO
         DO IP = 1, npa
-          DTMAXEXP = PDLIB_SI(IP)/MAX(DBLE(10.E-10),KKSUM(IP))
+          DTMAXEXP = PDLIB_SI(IP)/MAX(DBLE(10.E-10),KKSUM(IP)*IOBDP(IP))
           DTMAX  = MIN( DTMAX, DTMAXEXP)
           CFLXYMAX(IP) = MAX(CFLXYMAX(IP),DBLE(DT)/DTMAXEXP)
         END DO ! IP
@@ -1276,16 +1263,8 @@
         DO IP = 1, npa
           IP_glob=iplg(IP)
           U(IP) = MAX(ZERO,U(IP)-DTSI(IP)*ST(IP)*(1-IOBPA(IP_glob)))*DBLE(IOBPD(ITH,IP_glob))*IOBDP(IP_glob)
+!/REF1    IF (REFPARS(3).LT.0.5.AND.IOBPD(ITH,IP_glob).EQ.0.AND.IOBPA(IP_glob).EQ.0) U(IP) = AC(IP) ! restores reflected boundary values
         END DO
-!/REF1 !
-!/REF1 ! Setting shoreline boundary back to initial value (AC)
-!/REF1 !
-!/REF1      DO IP=1,npa
-!/REF1        IP_glob=iplg(IP)
-!/REF1        IF (IOBPDR(IP_glob) .eq. 1) THEN
-!/REF1          U(IP)=DBLE(AC(IP))
-!/REF1        END IF
-!/REF1     END DO
         AC = REAL(U)
 !
 ! 5 Update boundaries ... this should be implemented differently ... it is better to omit any if clause in this loop ...
@@ -1317,9 +1296,6 @@
         END IF
         CALL PDLIB_exchange1DREAL(AC)
       END DO ! IT
-!/
-!/ End of JACOBI_INIT ------------------------------------------------ /
-!/
       END SUBROUTINE
 !/ ------------------------------------------------------------------- /
       SUBROUTINE HACK_CHECK(string)
@@ -1385,11 +1361,11 @@
 !/
 !/ ------------------------------------------------------------------- /
 !/
-!/S      CALL STRACE (IENT, 'W3XXXX')
       CHARACTER(*), INTENT(in) :: string
       INTEGER ITH_F, IK
       INTEGER ITH, ISP, JSEA
       REAL eVal, eErr
+!/S      CALL STRACE (IENT, 'HACK_CHECK')
       ITH_F=4
       WRITE(740+IAPROC,*) 'HACK_CHECK, begin'
       DO ITH=1,NTH
@@ -1416,9 +1392,6 @@
         END DO
       END DO
       WRITE(740+IAPROC,*) 'HACK_CHECK, end'
-!/
-!/ End of JACOBI_INIT ------------------------------------------------ /
-!/
       END SUBROUTINE
 !/ ------------------------------------------------------------------- /
       SUBROUTINE GET_SCAL_INTEGRAL_COH_R4(V, eSum)
@@ -1481,7 +1454,6 @@
 !/
 !/ ------------------------------------------------------------------- /
 !/
-!/S      CALL STRACE (IENT, 'W3XXXX')
       REAL, INTENT(in) :: V(NSEAL)
       CHARACTER (len = *), PARAMETER :: string = "Test a view"
       REAL, INTENT(out) :: eSum
@@ -1489,11 +1461,9 @@
       LOGICAL :: PrintFullValue = .FALSE.
       LOGICAL :: PrintBasicData = .FALSE.
       !
+!/S      CALL STRACE (IENT, 'GET_SCAL_INTEGRAL_COH_R4')
       V8 = DBLE(V)
       CALL SCAL_INTEGRAL_PRINT_GENERAL(eSum, V8, string, PrintFullValue, PrintBasicData)
-!/
-!/ End of JACOBI_INIT ------------------------------------------------ /
-!/
       END SUBROUTINE
 !/ ------------------------------------------------------------------- /
       SUBROUTINE SCAL_INTEGRAL_PRINT_R8(V, string)
@@ -1556,7 +1526,6 @@
 !/
 !/ ------------------------------------------------------------------- /
 !/
-!/S      CALL STRACE (IENT, 'W3XXXX')
       REAL, INTENT(in) :: V(NSEAL)
       CHARACTER(*), INTENT(in) :: string
       REAL :: V8(NSEAL)
@@ -1564,11 +1533,9 @@
       LOGICAL :: PrintBasicData = .TRUE.
       REAL :: eSum
       !
+!/S      CALL STRACE (IENT, 'SCAL_INTEGRAL_PRINT_R8')
       V8 = DBLE(V)
       CALL SCAL_INTEGRAL_PRINT_GENERAL(eSum, V8, string, PrintFullValue, PrintBasicData)
-!/
-!/ End of JACOBI_INIT ------------------------------------------------ /
-!/
       END SUBROUTINE
 !/ ------------------------------------------------------------------- /
       SUBROUTINE SCAL_INTEGRAL_PRINT_R4(V, string)
@@ -1631,17 +1598,14 @@
 !/
 !/ ------------------------------------------------------------------- /
 !/
-!/S      CALL STRACE (IENT, 'W3XXXX')
       REAL, INTENT(in) :: V(NSEAL)
       CHARACTER(*), INTENT(in) :: string
       LOGICAL :: PrintFullValue = .FALSE.
       LOGICAL :: PrintBasicData = .TRUE.
       REAL :: eSum
       !
+!/S      CALL STRACE (IENT, 'SCAL_INTEGRAL_PRINT_R4')
       CALL SCAL_INTEGRAL_PRINT_GENERAL(eSum, V, string, PrintFullValue, PrintBasicData)
-!/
-!/ End of JACOBI_INIT ------------------------------------------------ /
-!/
       END SUBROUTINE
 !/ ------------------------------------------------------------------- /
       SUBROUTINE SCAL_INTEGRAL_PRINT_GENERAL(eSum, V, string, PrintFullValue, PrintBasicData)
@@ -1696,11 +1660,11 @@
       USE W3GDATMD, ONLY : GTYPE, UNGTYPE
       USE W3ODATMD, ONLY : IAPROC, NAPROC, NTPROC
       use yowDatapool, ONLY: rtype, istatus
-      USE W3PARALL, ONLY : Z_status_rev
       USE YOWNODEPOOL, ONLY: npa, iplg
       USE W3PARALL, ONLY: INIT_GET_ISEA
 !/
       IMPLICIT NONE
+      INCLUDE "mpif.h"
 !/
 !/ ------------------------------------------------------------------- /
 !/ Parameter list
@@ -1712,8 +1676,7 @@
 !/
 !/ ------------------------------------------------------------------- /
 !/
-!/S      CALL STRACE (IENT, 'W3XXXX')
-      INCLUDE "mpif.h"
+!!      INCLUDE "mpif.h"
       !
       REAL, INTENT(out) :: eSum
       REAL, INTENT(in) :: V(NSEAL)
@@ -1726,6 +1689,7 @@
       INTEGER JSEA, ISEA, iProc, I, IX, ierr, ISP, IP, IP_glob
       INTEGER nbIncorr
       INTEGER ITH, IK
+!/S      CALL STRACE (IENT, 'SCAL_INTEGRAL_PRINT_GENERAL')
       WRITE(740+IAPROC,*) 'IAPROC=', IAPROC
       WRITE(740+IAPROC,*) 'NAPROC=', NAPROC
       WRITE(740+IAPROC,*) 'NTPROC=', NTPROC
@@ -1744,8 +1708,8 @@
 !      WRITE(740+IAPROC,*) 'PrintFullValue=', PrintFullValue
 !      FLUSH(740+IAPROC)
       DO JSEA=1,NSEAL
-        IP=Z_status_rev(JSEA)
-        IP_glob=iplg(IP)
+        IP      = JSEA
+        IP_glob = iplg(IP)
         ISEA=MAPFS(1,IP_glob)
         Vcoll(IP_glob)=V(JSEA)
         Status(IP_glob)=1
@@ -1816,9 +1780,6 @@
           FLUSH(740+IAPROC)
         END IF
       END IF
-!/
-!/ End of JACOBI_INIT ------------------------------------------------ /
-!/
       END SUBROUTINE
 !/ ------------------------------------------------------------------- /
       SUBROUTINE ALL_VAOLD_INTEGRAL_PRINT(string)
@@ -1886,9 +1847,6 @@
         END DO
       END DO
       CALL ALL_FIELD_INTEGRAL_PRINT_GENERAL(FIELD, string, PrintHs, PrintHsNode, ScalMeth)
-!/
-!/ End of JACOBI_INIT ------------------------------------------------ /
-!/
       END SUBROUTINE
 !/ ------------------------------------------------------------------- /
       SUBROUTINE ALL_VA_INTEGRAL_PRINT(IMOD, string)
@@ -1982,12 +1940,9 @@
       WRITE(740+IAPROC,*) 'After call to ALL_FIELD_INTEGRAL_PRINT_GENERAL'
       FLUSH(740+IAPROC)
 !      IF (NSEAL >= 40) THEN
-!        WRITE(740+IAPROC,*) 'min/max/sum(VA(:,39))=', minval(VA(:,39)), maxval(VA(:,39)), sum(VA(:,39))
+!        WRITE(740+IAPROC,*) 'min/max/sum(VA(:,TESTNODE))=', minval(VA(:,TESTNODE)), maxval(VA(:,TESTNODE)), sum(VA(:,TESTNODE))
 !        FLUSH(740+IAPROC)
 !      END IF
-!/
-!/ End of JACOBI_INIT ------------------------------------------------ /
-!/
       END SUBROUTINE
 !/ ------------------------------------------------------------------- /
       SUBROUTINE ALL_FIELD_INTEGRAL_PRINT(FIELD, string)
@@ -2049,10 +2004,6 @@
       LOGICAL :: PrintHsNode = .FALSE.
       INTEGER :: ScalMeth = 1
       CALL ALL_FIELD_INTEGRAL_PRINT_GENERAL(FIELD, string, PrintHs, PrintHsNode, ScalMeth)
-!      IF (NSEAL >= 40) THEN
-!        WRITE(740+IAPROC,*) 'min/max/sum(VA(:,39))=', minval(VA(:,39)), maxval(VA(:,39)), sum(VA(:,39))
-!        FLUSH(740+IAPROC)
-!      END IF
 !/
 !/ End of JACOBI_FINALIZE -------------------------------------------- /
 !/
@@ -2116,7 +2067,6 @@
       USE W3ODATMD, ONLY : IAPROC, NAPROC, NTPROC
       USE CONSTANTS, ONLY: TPIINV
       use yowDatapool, ONLY: rtype, istatus
-      USE W3PARALL, ONLY : Z_status_rev
       USE YOWNODEPOOL, ONLY: npa, iplg
       USE W3PARALL, ONLY: INIT_GET_ISEA
       IMPLICIT NONE
@@ -2169,10 +2119,10 @@
       DO JSEA=1,NSEAL
 !        WRITE(740+IAPROC,*) 'JSEA=', JSEA
 !        FLUSH(740+IAPROC)
-        IP=Z_status_rev(JSEA)
+        IP      = JSEA
 !        WRITE(740+IAPROC,*) 'IP=', IP
 !        FLUSH(740+IAPROC)
-        IP_glob=iplg(IP)
+        IP_glob = iplg(IP)
 !        WRITE(740+IAPROC,*) 'IP_glob=', IP_glob
 !        FLUSH(740+IAPROC)
         ISEA=MAPFS(1,IP_glob)
@@ -2757,9 +2707,6 @@
 !/DEBUGSOLVER         WRITE(ifile,*) 'I=', I, ' var=', Vcoll(I)
 !/DEBUGSOLVER       END DO
       END IF
-!/
-!/ End of JACOBI_INIT ------------------------------------------------ /
-!/
       END SUBROUTINE
 !/ ------------------------------------------------------------------- /
       SUBROUTINE DOMAIN_INTEGRAL(V, eScal)
@@ -2897,6 +2844,7 @@
       USE W3ODATMD, ONLY: NDSE, NDST, FLBPI, NBI, ISBPI, BBPI0, BBPIN
       USE W3TIMEMD, ONLY: DSEC21
       USE W3GDATMD, ONLY: NSEAL, IOBPA
+!/REF1    USE W3GDATMD, ONLY: REFPARS
       USE W3ADATMD, ONLY: MPI_COMM_WCMP
       use yowElementpool, ONLY: ne, INE
       use YOWNODEPOOL,    ONLY: PDLIB_SI, PDLIB_IEN, PDLIB_TRIA
@@ -2986,7 +2934,7 @@
           KKSUM(NI) = KKSUM(NI) + KELEM(:,IE)
         END DO ! IE
         DO IP = 1, npa
-          DTMAXEXP = PDLIB_SI(IP)/MAX(DBLE(10.E-10),KKSUM(IP))
+          DTMAXEXP = PDLIB_SI(IP)/MAX(DBLE(10.E-10),KKSUM(IP)*IOBDP(IP))
           DTMAX  = MIN( DTMAX, DTMAXEXP)
           CFLXYMAX(IP) = MAX(CFLXYMAX(IP),DBLE(DT)/DTMAXEXP)
         END DO
@@ -3076,16 +3024,8 @@
         DO IP = 1,npa
           IP_glob=iplg(IP)
           U(IP) = MAX(ZERO,U(IP)-DTSI(IP)*ST(IP)*(1-IOBPA(IP_glob)))*DBLE(IOBPD(ITH,IP_glob))*IOBDP(IP_glob)
+!/REF1    IF (REFPARS(3).LT.0.5.AND.IOBPD(ITH,IP_glob).EQ.0.AND.IOBPA(IP_glob).EQ.0) U(IP) = AC(IP) ! restores reflected boundary values
         END DO
-!/REF1 !
-!/REF1 ! Setting shoreline boundary back to initial value (AC)
-!/REF1 !
-!/REF1      DO IP=1,npa
-!/REF1        IP_glob=iplg(IP)
-!/REF1        IF (IOBPDR(IP_glob) .eq. 1) THEN
-!/REF1          U(IP)=DBLE(AC(IP))
-!/REF1        END IF
-!/REF1     END DO
         AC = REAL(U)
 !
 ! 5 Update open boundaries ... this should be implemented differently ... it is better to omit any if clause in this loop ...
@@ -4452,9 +4392,6 @@
           B_JAC_LOCAL(ISP) = B_JAC_LOCAL(ISP) + TRIA03 * VAOLD(ISP,IP) * IOBDP(IP_glob) * IOBPD(ITH,IP_glob)
         END DO
       END DO
-!/
-!/ End of JACOBI_INIT ------------------------------------------------ /
-!/
       END SUBROUTINE
 !/ ------------------------------------------------------------------- /
       SUBROUTINE calcARRAY_JACOBI5(IE,DTG,FACX,FACY,VGX,VGY)
@@ -4650,9 +4587,6 @@
         !ASPAR_OFF_DIAG(:,IP1) = ASPAR_OFF_DIAG(:,IP1)              - TMP3(:,IPP1) * DELTAL(:,IPP1) * VA(:,IP1)
         !ASPAR_OFF_DIAG(:,IP2) = ASPAR_OFF_DIAG(:,IP2)              - TMP3(:,IPP2) * DELTAL(:,IPP2) * VA(:,IP2)
       ENDDO
-!/
-!/ End of JACOBI_INIT ------------------------------------------------ /
-!/
       END SUBROUTINE      
 !/ ------------------------------------------------------------------- /
       SUBROUTINE calcARRAY_JACOBI_SPECTRAL(DTG,ASPAR_DIAG_LOCAL)
@@ -4822,9 +4756,6 @@
         END IF
       END DO
 !!/DEBUGSOLVER     CALL PrintTotalOffContrib("Offdiag after the refraction")
-!/
-!/ End of JACOBI_INIT ------------------------------------------------ /
-!/
       END SUBROUTINE
 !/ ------------------------------------------------------------------- /
       SUBROUTINE CALCARRAY_JACOBI_SOURCE(DTG,ASPAR_DIAG_LOCAL)
@@ -4880,7 +4811,7 @@
       USE W3WDATMD, ONLY: UST, USTDIR
       USE W3GDATMD, ONLY: NK, NTH, NSPEC, MAPFS, optionCall, DMIN
       USE W3GDATMD, ONLY: IOBP, MAPSTA, FACP, SIG, IOBPD, IOBPA, IOBDP
-      USE W3PARALL, ONLY: Z_status_rev, IMEM
+      USE W3PARALL, ONLY: IMEM
       USE W3GDATMD, ONLY: NSEAL, CLATS
 !/DB1      USE W3SDB1MD
       USE W3WDATMD, ONLY: VA, VSTOT, VDTOT, SHAVETOT
@@ -4900,7 +4831,7 @@
 
       DO JSEA = 1, NP
 
-        IP      = Z_status_rev(JSEA)
+        IP      = JSEA
         IP_glob = iplg(IP)
         ISEA    = MAPFS(1,IP_glob)
 
@@ -4959,9 +4890,6 @@
 !!/DEBUGSOLVER     CALL PrintTotalOffContrib("Offdiag after the source terms") !AR: Need to rewrite for IMEM == 2
 !!/DEBUGSOLVER     WRITE(740+IAPROC,*) 'Before frequency shifting business'
 !!/DEBUGSOLVER     FLUSH(740+IAPROC)
-!/
-!/ End of JACOBI_INIT ------------------------------------------------ /
-!/
       END SUBROUTINE
 !/ ------------------------------------------------------------------- /
       SUBROUTINE calcARRAY_JACOBI_SOURCE_LOCAL(DTG,ASPAR_DIAG_SOURCE, B_JAC_SOURCE)
@@ -5017,7 +4945,6 @@
       USE W3WDATMD, ONLY: UST, USTDIR
       USE W3GDATMD, ONLY: NK, NTH, NSPEC, MAPFS, optionCall, DMIN
       USE W3GDATMD, ONLY: IOBP, MAPSTA, FACP, SIG, IOBPD, IOBPA, IOBDP
-      USE W3PARALL, ONLY: Z_status_rev
       USE W3GDATMD, ONLY: NSEAL, CLATS
       USE W3WDATMD, ONLY: VA, VSTOT, VDTOT, SHAVETOT
 !/DB1      USE W3SDB1MD 
@@ -5036,8 +4963,8 @@
       REAL TheFactor
 
       DO JSEA=1,NSEAL
-        IP=Z_status_rev(JSEA)
-        IP_glob=iplg(IP)
+        IP      = JSEA
+        IP_glob = iplg(IP)
         ISEA=MAPFS(1,IP_glob)
         IF (IOBP(IP_glob).eq.1.and.MAPSTA(1,IP_glob).eq.1.and.IOBDP(IP_glob).eq.1.and.IOBPA(IP_glob).eq.0) THEN
           DO IK=1, NK
@@ -5088,9 +5015,6 @@
 !!/DEBUGSOLVER     CALL PrintTotalOffContrib("Offdiag after the source terms")
 !!/DEBUGSOLVER     WRITE(740+IAPROC,*) 'Before frequency shifting business'
 !!/DEBUGSOLVER     FLUSH(740+IAPROC)
-!/
-!/ End of JACOBI_INIT ------------------------------------------------ /
-!/
       END SUBROUTINE
 !/ ------------------------------------------------------------------- /
       SUBROUTINE ADD_SOURCE_TERMS_NONLINEAR(DTG)
@@ -5145,7 +5069,6 @@
       USE W3GDATMD, ONLY: NK, NTH, NSPEC, MAPFS, optionCall, DMIN
       USE W3GDATMD, ONLY: IOBP, MAPSTA, IOBDP, IOBPA
 !/BT4  USE W3GDATMD, ONLY: SED_D50, SED_PSIC
-      USE W3PARALL, ONLY: Z_status_rev
       USE W3GDATMD, ONLY: NSEAL, CLATS
       USE W3WDATMD, ONLY: VA, VSTOT, VDTOT, SHAVETOT
 !/DB1      USE W3SDB1MD
@@ -5172,7 +5095,6 @@
 !/
 !/ ------------------------------------------------------------------- /
 !/
-!/S      CALL STRACE (IENT, 'W3XXXX')
       REAL, INTENT(in) :: DTG
       INTEGER IP, IP_glob, ISEA, IX, IY, JSEA
       REAL :: SPEC_VA(NSPEC)
@@ -5187,10 +5109,10 @@
 !/BT1     REAL   ::    VSBT(NSPEC), VDBT(NSPEC)
 !/BT4     REAL   ::    VSBT(NSPEC), VDBT(NSPEC)
 !/BS1     REAL   ::    VSBS(NSPEC), VDBS(NSPEC)
-
+!/S      CALL STRACE (IENT, 'ADD_SOURCE_TERMS_NONLINEAR')
       DO JSEA=1,NSEAL
-        IP=Z_status_rev(JSEA)
-        IP_glob=iplg(IP)
+        IP      = JSEA
+        IP_glob = iplg(IP)
         ISEA=MAPFS(1,IP_glob)
         eSI=PDLIB_SI(IP)
         SIDT   = eSI * DTG
@@ -5253,9 +5175,6 @@
           ENDDO
         ENDDO
       ENDDO
-!/
-!/ End of JACOBI_INIT ------------------------------------------------ /
-!/
       END SUBROUTINE
 !/ ------------------------------------------------------------------- /
       SUBROUTINE APPLY_BOUNDARY_CONDITION_VA
@@ -5326,12 +5245,11 @@
 !/
 !/ ------------------------------------------------------------------- /
 !/
-!/S      CALL STRACE (IENT, 'W3XXXX')
       REAL    :: RD1, RD2, RD10, RD20
       REAL    :: eVA, eAC
       INTEGER :: IK, ITH, ISEA, JSEA
       INTEGER :: IBI, ISP
-
+!/S      CALL STRACE (IENT, 'APPLY_BOUNDARY_CONDITION_VA')
       IF (GTYPE .eq. UNGTYPE) THEN
         IF ( FLBPI ) THEN
           RD10    = DSEC21 ( TBPI0, TIME )
@@ -5367,9 +5285,6 @@
           END DO
         END IF
       END IF
-!/
-!/ End of JACOBI_INIT ------------------------------------------------ /
-!/
       END SUBROUTINE
 !/ ------------------------------------------------------------------- /
       SUBROUTINE APPLY_BOUNDARY_CONDITION
@@ -5441,13 +5356,13 @@
 !/
 !/ ------------------------------------------------------------------- /
 !/
-!/S      CALL STRACE (IENT, 'W3XXXX')
 !/DEBUGSOLVER      REAL*8 :: sumAC(NSPEC)
 !/DEBUGSOLVER      REAL :: sumBPI0(NSPEC), sumBPIN(NSPEC), sumCG, sumCLATS
 !/DEBUGIOBC      REAL :: ETOT, HSIG_bound, eVA, eAC, FACTOR
       REAL    :: RD1, RD2, RD10, RD20
       INTEGER :: IK, ITH, ISEA
       INTEGER :: IBI, IP_glob, ISP, JX
+!/S      CALL STRACE (IENT, 'APPLY_BOUNDARY_CONDITION')
       IF ( FLBPI ) THEN
         RD10    = DSEC21 ( TBPI0, TIME )
         RD20    = DSEC21 ( TBPI0, TBPIN )
@@ -5518,9 +5433,6 @@
 !/DEBUGSOLVER     FLUSH(740+IAPROC)
 !/DEBUGSOLVERCOH      CALL CHECK_ARRAY_INTEGRAL_NX_R8(VA, "VA(npa) after boundary", npa)
       END IF
-!/
-!/ End of JACOBI_INIT ------------------------------------------------ /
-!/
       END SUBROUTINE
 !/ ------------------------------------------------------------------- /
       SUBROUTINE ACTION_LIMITER_LOCAL(IP,ACLOC,ACOLD, DTG)
@@ -5586,7 +5498,6 @@
 !/
 !/ ------------------------------------------------------------------- /
 !/
-!/S      CALL STRACE (IENT, 'W3XXXX')
       INTEGER, INTENT(in) :: IP
       REAL, INTENT(in) :: ACOLD(NSPEC)
       REAL, INTENT(inout) :: ACLOC(NSPEC)
@@ -5602,7 +5513,7 @@
       INTEGER IP_glob, ISEA
       INTEGER :: IK, ITH, ISP
       LOGICAL :: LLIMITER_WWM 
-!
+!/S      CALL STRACE (IENT, 'ACTION_LIMITER_LOCAL')!
       IP_glob=iplg(IP)
       ISEA=MAPFS(1,IP_glob)
       eSPSIG=SIG(NK)
@@ -5642,10 +5553,6 @@
           END DO
         END DO
       ENDIF
-!
-!/
-!/ End of JACOBI_INIT ------------------------------------------------ /
-!/
       END SUBROUTINE
 !/ ------------------------------------------------------------------- /
       SUBROUTINE PDLIB_JACOBI_GAUSS_SEIDEL_BLOCK(FACX, FACY, DTG, VGX, VGY)
@@ -5723,7 +5630,7 @@
       USE W3WDATMD, ONLY: VA, VAOLD, VSTOT, VDTOT
       USE W3ADATMD, ONLY: CG, CX, CY
       USE W3ODATMD, ONLY: TBPIN, FLBPI, IAPROC
-      USE W3PARALL, ONLY : Z_status_rev, IMEM 
+      USE W3PARALL, ONLY : IMEM 
       USE W3PARALL, ONLY : INIT_GET_JSEA_ISPROC, ZERO, THR8
       USE W3PARALL, ONLY : ListISPprevDir, ListISPnextDir
       USE W3PARALL, ONLY : JX_TO_JSEA
@@ -5814,8 +5721,8 @@
 ! 
 !/DEBUGSRC        WRITE(740+IAPROC,*) 'NSEAL =', NSEAL, 'NP    =', NP, 'NPA   =', NPA
       DO JSEA=1,NSEAL
-        IP=Z_status_rev(JSEA)
-        IP_glob=iplg(IP)
+        IP      = JSEA
+        IP_glob = iplg(IP)
         ISEA=MAPFS(1,IP_glob)
 !!/DEBUGSRC        WRITE(740+IAPROC,*) 'IP      =', IP, 'IP_glob =', IP_glob, 'ISEA    =', ISEA
         DO ISP=1,NSPEC
@@ -6278,8 +6185,8 @@
 !/DEBUGSOLVER     FLUSH(740+IAPROC)
 
        DO JSEA=1, NSEAL
-        IP=Z_status_rev(JSEA)
-        IP_glob=iplg(IP)
+        IP      = JSEA
+        IP_glob = iplg(IP)
         ISEA=MAPFS(1,IP_glob)
 !
 !/DEBUGSRC        IntDiff=0
@@ -6309,7 +6216,7 @@
             VA(ISP,JSEA) = eVA 
           END DO
 !/DEBUGSRC        WRITE(740+IAPROC,*) 'ISEA=', ISEA, ' IntDiff=', IntDiff, ' DTG=', DTG
-!/DEBUGSRC        IF (ISEA .eq. 39) THEN
+!/DEBUGSRC        IF (ISEA .eq. TESTNODE) THEN
 !/DEBUGSRC          DO ISP=1,NSPEC
 !/DEBUGSRC            WRITE(740+IAPROC,*) 'ISP=', ISP, 'VA/VAsolve=', VA(ISP,JSEA), VAsolve(ISP)
 !/DEBUGSRC          END DO
@@ -6336,9 +6243,6 @@
 
 !/DEBUGSOLVER     WRITE(740+IAPROC,*) 'PDLIB_JACOBI_GAUSS_SEIDEL_BLOCK, end'
 !/DEBUGSOLVER     FLUSH(740+IAPROC)
-!/
-!/ End of JACOBI_INIT ------------------------------------------------ /
-!/
       END SUBROUTINE
 !/ ------------------------------------------------------------------- /
       SUBROUTINE PDLIB_EXPLICIT_BLOCK(FACX, FACY, DTG, VGX, VGY)
@@ -6415,7 +6319,6 @@
       USE W3WDATMD, ONLY: VA, VSTOT, VDTOT
       USE W3ADATMD, ONLY: CG, CX, CY, MPI_COMM_WCMP
       USE W3ODATMD, ONLY: TBPIN, FLBPI, IAPROC
-      USE W3PARALL, ONLY : Z_status_rev
       USE W3PARALL, ONLY : INIT_GET_JSEA_ISPROC, ZERO, THR8
       USE W3PARALL, ONLY : ListISPprevDir, ListISPnextDir
       USE W3PARALL, ONLY : JX_TO_JSEA
@@ -6482,7 +6385,7 @@
 !/DEBUGSRC        WRITE(740+IAPROC,*) 'NP    =', NP
 !/DEBUGSRC        WRITE(740+IAPROC,*) 'NPA   =', NPA
       DO JSEA=1,NSEAL
-        IP=Z_status_rev(JSEA)
+        IP = JSEA
         IP_glob=iplg(IP)
         ISEA=MAPFS(1,IP_glob)
 !!/DEBUGSRC        WRITE(740+IAPROC,*) 'IP      =', IP
@@ -6609,7 +6512,7 @@
 !/DEBUGSOLVER     FLUSH(740+IAPROC)
 
        DO JSEA=1, NSEAL
-        IP=Z_status_rev(JSEA)
+        IP=JSEA
         IP_glob=iplg(IP)
         ISEA=MAPFS(1,IP_glob)
 !
@@ -6641,7 +6544,7 @@
           END DO
 
 !/DEBUGSRC        WRITE(740+IAPROC,*) 'ISEA=', ISEA, ' IntDiff=', IntDiff, ' DTG=', DTG
-!/DEBUGSRC        IF (ISEA .eq. 39) THEN
+!/DEBUGSRC        IF (ISEA .eq. TESTNODE) THEN
 !/DEBUGSRC          DO ISP=1,NSPEC
 !/DEBUGSRC            WRITE(740+IAPROC,*) 'ISP=', ISP, 'VA/VAsolve=', VA(ISP,JSEA), VAsolve(ISP)
 !/DEBUGSRC          END DO
@@ -6664,9 +6567,6 @@
 
 !/DEBUGSOLVER     WRITE(740+IAPROC,*) 'PDLIB_JACOBI_GAUSS_SEIDEL_BLOCK, end'
 !/DEBUGSOLVER     FLUSH(740+IAPROC)
-!/
-!/ End of JACOBI_INIT ------------------------------------------------ /
-!/
       END SUBROUTINE
 !/ ------------------------------------------------------------------- /
       SUBROUTINE BLOCK_SOLVER_INIT
@@ -6728,12 +6628,11 @@
       USE W3PARALL, ONLY : ListISPprevFreq, ListISPnextFreq
       USE W3GDATMD, ONLY: NSPEC, NTH, NK
       USE W3GDATMD, ONLY: FSTOTALIMP
-
+      USE W3ODATMD, ONLY: IAPROC
 !/
       IMPLICIT NONE
 !
 !/ ------------------------------------------------------------------- /
-!/S      USE W3SERVMD, ONLY: STRACE
 !/
       INTEGER ISP, ITH, IK, ISPprevFreq, ISPnextFreq
       INTEGER NewISP, JTH, istat
@@ -6837,7 +6736,7 @@
       USE CONSTANTS, ONLY : LPDLIB
       USE W3GDATMD, ONLY: MAPSF, NSEAL, DMIN, IOBDP, MAPSTA, IOBP, MAPFS, NX
       USE W3ADATMD, ONLY: DW
-      USE W3PARALL, ONLY: INIT_GET_ISEA, Z_status_rev
+      USE W3PARALL, ONLY: INIT_GET_ISEA
       USE YOWNODEPOOL, ONLY: iplg, np
 !/
       IMPLICIT NONE
@@ -6852,14 +6751,13 @@
 !/
 !/ ------------------------------------------------------------------- /
 !/
-!/S      CALL STRACE (IENT, 'W3XXXX')
 !
       INTEGER :: JSEA, ISEA, IX, IP, IP_glob
       REAL*8, PARAMETER :: DTHR = 10E-6
-
+!/S      CALL STRACE (IENT, 'SETDEPTH_PDLIB')
       IOBDP = 1
       DO JSEA=1,NSEAL
-        IP=Z_status_rev(JSEA)
+        IP=JSEA
         IP_glob=iplg(IP)
         ISEA=MAPFS(1,IP_glob)
         IF (DW(ISEA) .LT. DMIN + DTHR) IOBDP(IP_glob) = 0
@@ -6930,8 +6828,8 @@
 !/
 !/ ------------------------------------------------------------------- /
 !/
-!/S      CALL STRACE (IENT, 'W3XXXX')
 !
+!/S      CALL STRACE (IENT, 'BLOCK_SOLVER_FINALIZE')
       IF (B_JGS_USE_JACOBI) THEN
         CALL JACOBI_FINALIZE
       END IF
@@ -6991,6 +6889,7 @@
       USE yowfunction, ONLY: pdlib_abort
       USE W3GDATMD, ONLY: NTH, NK, NSEAL
       USE W3PARALL, ONLY: IMEM
+!/DEBUGINIT    USE W3ODATMD, ONLY : IAPROC
 !/
       IMPLICIT NONE
 !/
@@ -7004,7 +6903,6 @@
 !/
 !/ ------------------------------------------------------------------- /
 !/
-!/DEBUGINIT    USE W3ODATMD, ONLY : IAPROC
       INTEGER istat
 !/DEBUGINIT    WRITE(740+IAPROC,*) 'JACOBI_INIT, step 1'
 !/DEBUGINIT    FLUSH(740+IAPROC)
@@ -7117,7 +7015,7 @@
 !/
 !/ ------------------------------------------------------------------- /
 !/
-!/S      CALL STRACE (IENT, 'W3XXXX')
+!/S      CALL STRACE (IENT, 'JACOBI_FINALIZE')
       DEALLOCATE(ASPAR_JAC, B_JAC)
 !/
 !/ End of JACOBI_FINALIZE -------------------------------------------- /

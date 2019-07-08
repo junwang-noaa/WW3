@@ -36,7 +36,7 @@ $
 $ -------------------------------------------------------------------- $
 $ If all point output is gathered in a unified point output file
 $ ( UNIPTS = .TRUE. ), then the output spectral grid needs to be 
-$ defined. Ths information is taken from a wave model grid, and only
+$ defined. This information is taken from a wave model grid, and only
 $ the spectral definitions from this grid are relevant. Define the
 $ name of this grid here
 $
@@ -64,7 +64,11 @@ $     9)   Rank number of grid (internally sorted and reassigned).
 $    10)   Group number (internally reassigned so that different
 $          ranks result in different group numbers.
 $   11-12) Define fraction of communicator (processes) used for this
-$          grid.
+$          grid. '0.00 1.00' is appropriate in many cases. Partial 
+$          fractions, i.e. settings other than '0.00 1.00', are 
+$          intended for equal rank grids, to improve scaling. The 
+$          commented example provided here (partial fractions with
+$          non-equal rank) is not generally recommended.
 $    13)   Flag identifying dumping of boundary data used by this
 $          grid. If true, the file nest.MODID is generated.
 $
@@ -116,7 +120,7 @@ $ file for a full documentation of field output options. Namelist type
 $ selection is used here (for alternative F/T flags, see ww3_shel.inp).
 $
   N
-  DPT CUR WND HS TM10 FP DP PHS PTP PDIR
+  DPT CUR WND HS T0M1 FP DP PHS PTP PDIR
 $
 $----------------------------------------------------------------
 $

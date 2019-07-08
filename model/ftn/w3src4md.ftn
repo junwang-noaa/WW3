@@ -572,8 +572,10 @@
             IF (ZLOG.LT.0.) THEN
               ! The source term Sp is beta * omega * X**2
               ! as given by Janssen 1991 eq. 19
-              ! for a faster performance EXP(X)*X**4 should be tabulated   
+              ! Note that this is slightly diffent from ECWAM code CY45R2 where ZLOG is replaced by ??
               DSTAB(ISTAB,IS) = CONST*EXP(ZLOG)*ZLOG**4*UCN*UCN*COSWIND**SSINTHP 
+
+              ! Below is an example with breaking probability feeding back to the input...
               !DSTAB(ISTAB,IS) = CONST*EXP(ZLOG)*ZLOG**4  &
               !                  *UCN*UCN*COSWIND**SSINTHP *(1+BRLAMBDA(IS)*20*SSINBR) 
               LLWS(IS)=.TRUE.
@@ -1780,8 +1782,6 @@
               MSSSUM  (IK:NK,3) = MSSSUM (IK:NK,3) +MSSPC2
               MSSSUM  (IK:NK,4) = MSSSUM (IK:NK,4) +MSSPS2
               MSSSUM  (IK:NK,5) = MSSSUM (IK:NK,5) +MSSPCS
-! WRITE(997,*) IK,NTHSUM,MSSSUM2(IK,19),MSSSUM2(IK,55), MSSSUM  (IK,1)
-
 !
 ! Direction of long wave mss summed up to IK       
 !
@@ -1791,8 +1791,8 @@
 !
 ! mss along perpendicular direction        
 !
-              MSSSUM  (IK,2)  = MSSSUM(IK,4)*COS(MSSD)**2   &
-                       -2*MSSSUM(IK,5)*SIN(MSSD)*COS(MSSD)+MSSSUM(IK,3)*SIN(MSSD)**2 
+              MSSSUM  (IK,2)  = MAX(0.,MSSSUM(IK,4)*COS(MSSD)**2   &
+                       -2*MSSSUM(IK,5)*SIN(MSSD)*COS(MSSD)+MSSSUM(IK,3)*SIN(MSSD)**2)
 
               END IF ! SSDSC(8).GT.0) THEN
 
@@ -1807,7 +1807,7 @@
 ! Here we assume that the saturation is modulated as (1 + 2*SSDSC(8) *  sqrt(mss_theta) )
 ! where mss_theta is the mss in direction ITH. 
 ! 
-! Note: SSDSC(8) is 2 times the MTF: close to 4 for very small ka but can be 20 or larger for ak~0.1
+! Note: SSDSC(8) is 2 times the MTF: close to 4x2=8 for very small ka but can be 20 or larger for ak~0.1
 !
                 IF (SSDSC(8).GT.0) THEN 
 !
@@ -1815,7 +1815,6 @@
                         +MSSSUM(IKC,2)*ES2(1+ABS(ITH-IMSSMAX (IKC)))
 !
                 FACSTRAIN=1+SSDSC(8)*SQRT(MSSTH)+SSDSC(11)*SQRT(MSSSUM2(IKC,ITH))
-!WRITE(998,*) IK,ITH,IKC, IMSSMAX (IKC), SSDSC(8)*SQRT(MSSTH),SSDSC(11)*SQRT(MSSSUM2(IKC,ITH)),FACSTRAIN
                 FACSAT=SIG(IK)*K(IK)**3*DTH*FACSTRAIN
                 END IF
 

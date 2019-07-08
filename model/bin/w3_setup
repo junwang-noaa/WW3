@@ -32,10 +32,10 @@ Usage: $myname source_dir Options
 Required:
   source_dir : path to model dir of WW3 source
 Options:
-  -c cmplr         : setup comp & link files for specified cmplr
+  -c cmplr         : setup comp & link files for specified cmplr (see manual section 5.6)
+  -s swtch         : setup switch file for specified swtch (see manual section 5.8)
   -h               : print usage and exit
   -q               : do not prompt for changes to existing WW3 environment
-  -s swtch         : setup switch file for specfied swtch
   -e               : edit switch file
   -t tdir          : set path for scratch directory to tdir
 
@@ -165,11 +165,11 @@ then
 
   set `grep WWATCH3_F90 $ww3_env` ; shift
   comp_fc="$*"
-  echo "      FORTRAN compiler (aux only) : $comp_fc"
+  echo "      auxiliary FORTRAN compiler  : $comp_fc"
 
   set `grep WWATCH3_CC $ww3_env` ; shift
   comp_cc="$*"
-  echo "      C compiler (aux only)       : $comp_cc"
+  echo "      auxiliary C compiler        : $comp_cc"
 
   echo "      Source directory            : $path_s"
 
@@ -213,8 +213,8 @@ else
     echo ' '
     echo "   Default set up :"
     echo "      Printer (listings)       : $prntr"
-    echo "      FORTRAN comp. (aux only) : $comp_fc"
-    echo "      C Compiler (aux only)    : $comp_cc"
+    echo "      Auxiliary FORTRAN comp.  : $comp_fc"
+    echo "      Auxiliary C compiler     : $comp_cc"
     echo "      Scratch directory        : $temp_dir"
     echo "      Save sources             : $source"
     echo "      Save listings            : $list"
@@ -259,14 +259,14 @@ then
       prntr="$instr"
     fi
 
-    echo -n "      FORTRAN compiler for aux. [$comp_fc] : "
+    echo -n "      Auxiliary FORTRAN compiler [$comp_fc] : "
     instr="$NULL" ; read instr
     if [ -n "$instr" ]
     then
       comp_fc="$instr"
     fi
 
-    echo -n "      C compiler for aux. [$comp_cc] : "
+    echo -n "      Auxiliary C compiler [$comp_cc] : "
     instr="$NULL" ; read instr
     if [ -n "$instr" ]
     then
@@ -324,8 +324,8 @@ then
     echo ' '
     echo "   Modified set up :"
     echo "      Printer (listings)       : $prntr"
-    echo "      FORTRAN comp. (aux only) : $comp_fc"
-    echo "      C Compiler (aux only)    : $comp_cc"
+    echo "      Auxiliary FORTRAN comp.  : $comp_fc"
+    echo "      Auxiliary C compiler     : $comp_cc"
     echo "      Scratch directory        : $temp_dir"
     echo "      Save sources             : $source"
     echo "      Save listings            : $list"
@@ -409,16 +409,14 @@ then
     cp -f $path_b/comp.$cmplr $path_b/comp
     echo "      copy $path_b/comp.$cmplr => $path_b/comp"
   elif [ "$cmplr" == "mpt" ] || [ "$cmplr" == "mpt_debug" ]                         || \
-       [ "$cmplr" == "zeus_mpt" ] || [ "$cmplr" == "zeus_mpt_debug" ]               || \
        [ "$cmplr" == "datarmor_mpt" ] || [ "$cmplr" == "datarmor_mpt_debug" ]       || \
        [ "$cmplr" == "intel" ] || [ "$cmplr" == "intel_debug" ]                     || \
-       [ "$cmplr" == "zeus_intel" ] || [ "$cmplr" == "zeus_intel_debug" ]           || \
        [ "$cmplr" == "datarmor_intel" ] || [ "$cmplr" == "datarmor_intel_debug" ]   || \
        [ "$cmplr" == "gnu" ] || [ "$cmplr" == "gnu_debug" ]                         || \
-       [ "$cmplr" == "zeus_gnu" ] || [ "$cmplr" == "zeus_gnu_debug" ]               || \
+       [ "$cmplr" == "theia" ] || [ "$cmplr" == "wcoss_cray" ]                      || \
+       [ "$cmplr" == "wcoss_phase2" ] || [ "$cmplr" == "wcoss_dell_p3" ]            || \
        [ "$cmplr" == "datarmor_gnu" ] || [ "$cmplr" == "datarmor_gnu_debug" ]       || \
        [ "$cmplr" == "pgi" ] || [ "$cmplr" == "pgi_debug" ]                         || \
-       [ "$cmplr" == "zeus_pgi" ] || [ "$cmplr" == "zeus_pgi_debug" ]               || \
        [ "$cmplr" == "datarmor_pgi" ] || [ "$cmplr" == "datarmor_pgi_debug" ] ; then
      source $path_b/cmplr.env
      sed -e "s/<optc>/$optc/" -e "s/<comp_seq>/$comp_seq/" -e "s/<comp_mpi>/$comp_mpi/" $path_b/comp.tmpl > $path_b/comp
@@ -433,16 +431,14 @@ then
     cp -f $path_b/link.$cmplr $path_b/link
     echo "      copy $path_b/link.$cmplr => $path_b/link"
   elif [ "$cmplr" == "mpt" ] || [ "$cmplr" == "mpt_debug" ]                         || \
-       [ "$cmplr" == "zeus_mpt" ] || [ "$cmplr" == "zeus_mpt_debug" ]               || \
        [ "$cmplr" == "datarmor_mpt" ] || [ "$cmplr" == "datarmor_mpt_debug" ]       || \
        [ "$cmplr" == "intel" ] || [ "$cmplr" == "intel_debug" ]                     || \
-       [ "$cmplr" == "zeus_intel" ] || [ "$cmplr" == "zeus_intel_debug" ]           || \
        [ "$cmplr" == "datarmor_intel" ] || [ "$cmplr" == "datarmor_intel_debug" ]   || \
        [ "$cmplr" == "gnu" ] || [ "$cmplr" == "gnu_debug" ]                         || \
-       [ "$cmplr" == "zeus_gnu" ] || [ "$cmplr" == "zeus_gnu_debug" ]               || \
+       [ "$cmplr" == "theia" ] || [ "$cmplr" == "wcoss_cray" ]                      || \
+       [ "$cmplr" == "wcoss_phase2" ] || [ "$cmplr" == "wcoss_dell_p3" ]            || \
        [ "$cmplr" == "datarmor_gnu" ] || [ "$cmplr" == "datarmor_gnu_debug" ]       || \
        [ "$cmplr" == "pgi" ] || [ "$cmplr" == "pgi_debug" ]                         || \
-       [ "$cmplr" == "zeus_pgi" ] || [ "$cmplr" == "zeus_pgi_debug" ]               || \
        [ "$cmplr" == "datarmor_pgi" ] || [ "$cmplr" == "datarmor_pgi_debug" ] ; then
      source $path_b/cmplr.env
      sed -e "s/<optl>/$optl/" -e "s/<comp_seq>/$comp_seq/" -e "s/<comp_mpi>/$comp_mpi/" $path_b/link.tmpl > $path_b/link
