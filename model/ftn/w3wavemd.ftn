@@ -446,7 +446,7 @@
 ! FIELD_180FLIP -> spectral bin at 180 degrees but same wavenumber
 !               -> Needed to propagate across tripolar seam.
       REAL, ALLOCATABLE       :: FIELD(:)
-!/TRPL      REAL, ALLOCATABLE       :: FIELD_180FLIP(:)
+      REAL, ALLOCATABLE       :: FIELD_180FLIP(:)
       REAL                    :: TMP1(4), TMP2(3), TMP3(2), TMP4(2)
 !/IC3 REAL, ALLOCATABLE       :: WN_I(:)
 !/REFRX REAL, ALLOCATABLE       :: CIK(:)

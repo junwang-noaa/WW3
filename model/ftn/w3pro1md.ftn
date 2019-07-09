@@ -428,7 +428,7 @@
       REAL                    :: CXTOT2D(NY,NX)
       REAL                    :: CYTOT2D(NY,NX)
       REAL                    :: FLD2D(NY+1,NX+1)
-!/TRPL      REAL                    :: FLD2D_180(NY+1,NX+1)
+      REAL                    :: FLD2D_180(NY+1,NX+1)
       REAL                    :: VCX2D(NY,NX+1)
       REAL                    :: VCY2D(NY+1,NX)
       REAL                    :: VFLX2D(1:NY,0:NX)
