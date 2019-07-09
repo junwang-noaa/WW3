@@ -170,6 +170,13 @@
     cdf_programs="$cdf_programs ww3_prtide"
   fi
 
+  # NCEP GRIB
+  export ncep_grib_compile="no"
+  if [ -n "`grep NCEP $switch_file`" ]
+  then
+    export ncep_grib_compile="yes"
+  fi
+
   # MULTI MULTI_ESMF SBS1
   if [ -n "`grep SCRIPNC $switch_file`" ] || [ -n "`grep OASIS $switch_file`" ]  || [ -n "`grep PDLIB $switch_file`" ]
   then
@@ -206,7 +213,7 @@
   fi
 
   # SHEL PREP GSPL
-  if [ -n "`grep OASIS $switch_file`" ] || [ -n "`grep PDLIB $switch_file`" ]
+  if [ -n "`grep OASIS $switch_file`" ] || [ -n "`grep PDLIB $switch_file`" ] || [ -n "`grep TRPL $switch_file`" ]
   then
     cdf_programs="$cdf_programs ww3_gspl"
     cdf_programs="$cdf_programs ww3_prep"
@@ -614,9 +621,11 @@ EOF
       export oasis_mod
 
       pdlib_mod=no
+      esmfpdlib='' 
       if [ -n "`grep PDLIB $switch_file`" ]
       then
         export pdlib_mod='yes'
+        esmfpdlib="$METIS_PATH/lib/libparmetis.a $METIS_PATH/lib/libmetis.a"
       fi
       export pdlib_mod
 
@@ -714,7 +723,7 @@ EOF
         echo "# component module objects"                            >> $mkfile
         echo "ESMF_DEP_CMPL_OBJS := $obj_dir/lib$prog.a(wmesmfmd.o)" >> $mkfile
         echo "# component object/archive list"                       >> $mkfile
-        echo "ESMF_DEP_LINK_OBJS := $obj_dir/lib$prog.a $METIS_PATH/lib/libparmetis.a $METIS_PATH/lib/libmetis.a"  >> $mkfile
+        echo "ESMF_DEP_LINK_OBJS := $obj_dir/lib$prog.a $esmfpdlib"  >> $mkfile
       fi
 
     fi

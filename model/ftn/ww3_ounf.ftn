@@ -7,7 +7,7 @@
 !/                  |           F. Ardhuin              |
 !/                  |           M. Accensi              |
 !/                  |                        FORTRAN 90 |
-!/                  | Last update :         12-Sep-2018 |
+!/                  | Last update :         28-Mar-2019 |
 !/                  +-----------------------------------+
 !/
 !/    17-Mar-2010 : Creation                            ( version 3.14_SHOM )
@@ -31,6 +31,7 @@
 !/    26-Jul-2018 : Changed reading of TABIPART         ( version 6.05 )
 !/    12-Sep-2018 : Added extra partitioned fields      ( version 6.06 )
 !/    25-Sep-2018 : Add WBT parameter                   ( version 6.06 )
+!/    28-Mar-2019 : Bugfix to NBIPART check.            ( version 6.07 )
 !/
 !/    Copyright 2009-2013 National Weather Service (NWS),
 !/       National Oceanic and Atmospheric Administration.  All rights
@@ -156,10 +157,9 @@
                                  IOUT, S3, IRET, HASNC4,               &
                                  NBIPART, CNTIPART, NCVARTYPE, IPART,  &
                                  RTDNX, RTDNY
-      INTEGER                 :: TOUT(2), TDUM(2),                     &
-                                 NCIDS(NOGRP,NGRPP,6), STOPDATE(8)
+      INTEGER                 :: TOUT(2), TDUM(2), STOPDATE(8)
 !
-      INTEGER, ALLOCATABLE    :: TABIPART(:)
+      INTEGER, ALLOCATABLE    :: TABIPART(:), NCIDS(:,:,:)
 !
 !/S      INTEGER, SAVE           :: IENT = 0
 !
@@ -381,7 +381,8 @@
 
       ! Alternative processing of TABIPART to capture requests 
       ! greater than NOSWLL (C.Bunney):
-      ALLOCATE(TABIPART(NOSWLL))
+      ALLOCATE(TABIPART(NOSWLL + 1))
+      ALLOCATE(NCIDS(NOGRP,NGRPP,NOSWLL + 1))
       NBIPART=0
       DO I=1,30
         IF(STRINGIPART(I:I) .EQ. ' ') CYCLE
@@ -391,6 +392,9 @@
            CYCLE
         ENDIF
         NBIPART = NBIPART + 1
+        IF(NBIPART .GT. NOSWLL + 1) THEN
+           GOTO 803
+        ENDIF
         TABIPART(NBIPART) = IPART
       ENDDO
 !
@@ -572,6 +576,10 @@
       WRITE (NDSE,1002) IERR
       CALL EXTCDE ( 12 )
 !
+  803 CONTINUE
+      WRITE (NDSE,1003) NBIPART, NOSWLL
+      CALL EXTCDE (13)
+!
   888 CONTINUE
       WRITE (NDSO,999)
 !
@@ -635,6 +643,10 @@
                '     ERROR IN READING FROM INPUT FILE'/               &
                '     IOSTAT =',I5/)
 !
+ 1003 FORMAT (/' *** WAVEWATCH III WERROR IN W3EXNC : '/              &
+               '     OUT OF RANGE REQUEST FOR NBIPART =',I2, /        &
+               '     MAX SWELL PARTITIONS (NOSW) =',I2 /)
+!
  1010 FORMAT (/' *** WAVEWATCH III ERROR IN W3OUNF : '/               &
                '     ILLEGAL TYPE, NCTYPE =',I4/)
  1012 FORMAT (/' *** WAVEWATCH III ERROR IN W3OUNF : '/               &
@@ -642,7 +654,7 @@
 !
  1500 FORMAT (/' *** WAVEWATCH III WARNING IN W3EXNC : '/             &
                '     IGNORING REQUEST FOR IPART =',I2, /              &
-               '     MAX SWELL PARITIONS (NOSWLL) =',I2 /)
+               '     MAX SWELL PARTITIONS (NOSW) =',I2 /)
 !
 !/
 !/ Internal subroutine W3EXNC ---------------------------------------- /
@@ -788,8 +800,8 @@
 !
       CHARACTER*80            :: VARNM(8),VARNL(8)
       CHARACTER*120           :: VARNS(8),VARNG(8), VARND(8), STR2
-      CHARACTER*256           :: VARNC(8), PARTCOM
-      CHARACTER*20            :: UNITVAR(3),FORMAT1
+      CHARACTER*512           :: VARNC(8), PARTCOM
+      CHARACTER*30            :: UNITVAR(3),FORMAT1
       CHARACTER*30            :: STRSTARTDATE
       CHARACTER               :: FNAMENC*50,                           &
                                  ENAME*10,FORMF*11, UNITS*24, UNITS2*24
@@ -862,17 +874,21 @@
 
 ! 1.2 Sets the date as ISO8601 convention 
       ! S3 defines the number of characters in the date for the filename
-      ! S3=4-> YYYY, S3=6 -> YYYYMM, S3=10 -> YYYYMMDDHH
+      ! S3=0 -> field, S3=4-> YYYY, S3=6 -> YYYYMM, S3=10 -> YYYYMMDDHH
       ! Setups min and max date format
-      IF (S3.LT.4) S3=4 
+      IF (S3.GT.0 .AND. S3.LT.4) S3=4 
       IF (S3.GT.10) S3=10 
 !
       ! Defines the format of FILETIME
       S5=S3-8
       S4=S3
       OLDTIMEID=TIMEID
+      ! if S3=>nodate then filetime='field'
+      IF (S3.EQ.0) THEN
+        S4=5
+        TIMEID="field"
       ! if S3=>YYYYMMDDHH then filetime='YYYYMMDDTHHZ'
-      IF (S3.EQ.10) THEN 
+      ELSE IF (S3.EQ.10) THEN 
         S4=S4+2 ! add chars for ISO8601 : day T hours Z
         WRITE(FORMAT1,'(A,I1,A,I1,A)') '(I8.8,A1,I',S5,'.',S5,',A1)'
         WRITE (TIMEID,FORMAT1) TIME(1), 'T', &
@@ -910,7 +926,7 @@
         WRITE(PARTCOM, '("Wave components defined using ",F5.3,'   //  &
                   '"Hz spectral frequency cutoff")') PTFCUT
       ELSE
-        WRITE(PARTCOM, '("PTM_",I1,"_Uknknown")') PTMETH
+        WRITE(PARTCOM, '("PTM_",I1,"_Unknown")') PTMETH
       ENDIF
 
 !/SMC!
@@ -1138,7 +1154,7 @@
               IF( SMCGRD ) THEN
 !/SMC                 CALL W3S2XY_SMC(ICE, X1)
               ELSE
-                CALL W3S2XY ( NSEA, NSEA, NX+1, NY, ICE   , MAPSF, X1 )
+                CALL W3S2XY ( NSEA, NSEA, NX+1, NY, ICE(1:NSEA), MAPSF, X1 )
               ENDIF
 
               NFIELD=1
@@ -1192,7 +1208,7 @@
 !/IS2              FSC = 0.001
 !/IS2              UNITS = 'm'
 !/IS2              ENAME = '.ic1'
-!/IS2              CALL W3S2XY (NSEA, NSEA, NX+1, NY, ICEH  , MAPSF, X1 )
+!/IS2              CALL W3S2XY (NSEA, NSEA, NX+1, NY, ICEH(1:NSEA), MAPSF, X1 )
 !/IS2              NFIELD=1
 !/IS2              VARNM(1)='ic1'
 !/IS2              VARNL(1)='ice thickness'
@@ -1208,7 +1224,7 @@
 !/IS2              FSC = 0.05
 !/IS2              UNITS = 'm'
 !/IS2              ENAME = '.ic5'
-!/IS2              CALL W3S2XY (NSEA, NSEA, NX+1, NY, ICEF  , MAPSF, X1 )
+!/IS2              CALL W3S2XY (NSEA, NSEA, NX+1, NY, ICEF(1:NSEA), MAPSF, X1 )
 !/IS2              NFIELD=1
 !/IS2              VARNM(1)='ic5'
 !/IS2              VARNL(1)='maximum floe diameter'
@@ -1285,7 +1301,7 @@
             ELSE IF ( IFI .EQ. 2 .AND. IFJ .EQ. 4 ) THEN
               FSC    = 0.01
               UNITS  = 's'
-              ENAME  = '.tm10'
+              ENAME  = '.t0m1'
 
               IF( SMCGRD ) THEN
 !/SMC                CALL W3S2XY_SMC( T0M1, X1 )
@@ -1293,11 +1309,11 @@
                  CALL W3S2XY ( NSEA, NSEA, NX+1, NY, T0M1, MAPSF, X1 )
               ENDIF
               NFIELD=1
-              VARNM(1)='tm10'
-              VARNL(1)='mean period Tm10'
+              VARNM(1)='t0m1'
+              VARNL(1)='mean period T0m1'
               VARNS(1)='sea_surface_wind_wave_mean_period_from_variance' // &
                        '_spectral_density_inverse_frequency_moment'
-              VARNG(1)='mean_period_tm10'
+              VARNG(1)='mean_period_t0m1'
               VARNC(1)=''
               VARND(1)=''
               VMIN = 0 
@@ -1767,7 +1783,7 @@
             ELSE IF ( IFI .EQ. 4 .AND. IFJ .EQ. 1 ) THEN
               FSC    = 0.002
               UNITS  = 'm'
-              WRITE(ENAME,'(A5,I1)') '.phsc',IPART
+              WRITE(ENAME,'(A4,I1)') '.phs',IPART
 
               IF( SMCGRD ) THEN
 !/SMC                 CALL W3S2XY_SMC( PHS(:,IPART), X1 )
@@ -1776,7 +1792,7 @@
               ENDIF
 
               NFIELD=1
-              WRITE(VARNM(1),'(A4,I1)') 'phsc',IPART 
+              WRITE(VARNM(1),'(A3,I1)') 'phs',IPART 
               WRITE(VARNL(1),'(A,I1)') 'wave significant height partition ',IPART 
               WRITE(VARNS(1),'(A,I1)') 'sea_surface_wave_significant_height_partition_',IPART 
               WRITE(VARNG(1),'(A,I1)') 'significant_wave_height_partition_',IPART 
@@ -1788,7 +1804,7 @@
             ELSE IF ( IFI .EQ. 4 .AND. IFJ .EQ. 2 ) THEN
               FSC    = 0.01
               UNITS  = 's'
-              WRITE(ENAME,'(A5,I1)') '.ptpc',IPART
+              WRITE(ENAME,'(A4,I1)') '.ptp',IPART
 
               IF( SMCGRD ) THEN
 !/SMC                 CALL W3S2XY_SMC( PTP(:,IPART), X1 )
@@ -1797,7 +1813,7 @@
               ENDIF
 
               NFIELD=1
-              WRITE(VARNM(1),'(A4,I1)') 'ptpc',IPART 
+              WRITE(VARNM(1),'(A3,I1)') 'ptp',IPART 
               WRITE(VARNL(1),'(A,I1)') 'peak period partition ',IPART 
               WRITE(VARNS(1),'(A,I1)') 'sea_surface_wave_period_at_' // &
                                        'variance_spectral_density_maximum_partition_',IPART
@@ -1810,7 +1826,7 @@
             ELSE IF ( IFI .EQ. 4 .AND. IFJ .EQ. 3 ) THEN
               FSC    = 1.
               UNITS  = 'm'
-              WRITE(ENAME,'(A5,I1)') '.plpc',IPART
+              WRITE(ENAME,'(A4,I1)') '.plp',IPART
               IF( SMCGRD ) THEN
 !/SMC                CALL W3S2XY_SMC( PLP(:,IPART), X1 )
               ELSE
@@ -1818,7 +1834,7 @@
               ENDIF
 
               NFIELD=1
-              WRITE(VARNM(1),'(A4,I1)') 'plpc',IPART 
+              WRITE(VARNM(1),'(A3,I1)') 'plp',IPART 
               WRITE(VARNL(1),'(A,I1)') 'peak wave length partition ',IPART 
               WRITE(VARNS(1),'(A,I1)') 'peak_wave_length_partition_',IPART
               WRITE(VARNG(1),'(A,I1)') 'peak_wave_length_partition_',IPART
@@ -1830,7 +1846,7 @@
             ELSE IF ( IFI .EQ. 4 .AND. IFJ .EQ. 4 ) THEN
               FSC    = 0.1
               UNITS  = 'degree'
-              WRITE(ENAME,'(A6,I1)') '.pdirc',IPART
+              WRITE(ENAME,'(A5,I1)') '.pdir',IPART
 !/RTD                ! Rotate direction back to standard pole
 !/RTD                IF ( FLAGUNR ) CALL W3THRTN(NSEA, PDIR(:,IPART), AnglD, .FALSE.)
               IF( SMCGRD ) THEN
@@ -1844,7 +1860,7 @@
                 CALL W3S2XY ( NSEA, NSEA, NX+1, NY, PDIR(:,IPART), MAPSF, X1 )
               ENDIF
               NFIELD=1
-              WRITE(VARNM(1),'(A5,I1)') 'pdirc',IPART 
+              WRITE(VARNM(1),'(A4,I1)') 'pdir',IPART 
               WRITE(VARNL(1),'(A,I1)') 'wave mean direction partition ',IPART 
               WRITE(VARNS(1),'(A,I1)') 'sea_surface_wave_from_direction_partition_',IPART
               WRITE(VARNG(1),'(A,I1)') 'wave_from_direction_partition_',IPART
@@ -1862,7 +1878,7 @@
             ELSE IF ( IFI .EQ. 4 .AND. IFJ .EQ. 5 ) THEN
               FSC    = 0.1
               UNITS  = 'degree'
-              WRITE(ENAME,'(A6,I1)') '.psprc',IPART
+              WRITE(ENAME,'(A5,I1)') '.pspr',IPART
               
               IF( SMCGRD ) THEN
 !/SMC                CALL W3S2XY_SMC( PSI(:,IPART), X1 )
@@ -1871,7 +1887,7 @@
               ENDIF
 
               NFIELD=1
-              WRITE(VARNM(1),'(A5,I1)') 'psprc',IPART 
+              WRITE(VARNM(1),'(A4,I1)') 'pspr',IPART 
               WRITE(VARNL(1),'(A,I1)') 'directional spread partition ',IPART 
               WRITE(VARNS(1),'(A,I1)') 'sea_surface_wave_directional_spread_partition_',IPART
               WRITE(VARNG(1),'(A,I1)') 'directional_spread_partition_',IPART
@@ -1883,7 +1899,7 @@
             ELSE IF ( IFI .EQ. 4 .AND. IFJ .EQ. 6 ) THEN
               FSC    = 0.001
               UNITS  = '1'
-              WRITE(ENAME,'(A5,I1)') '.pwsc',IPART
+              WRITE(ENAME,'(A4,I1)') '.pws',IPART
 
               IF( SMCGRD ) THEN
 !/SMC                CALL W3S2XY_SMC( PWS(:,IPART), X1 )
@@ -1892,7 +1908,7 @@
               ENDIF
 
               NFIELD=1
-              WRITE(VARNM(1),'(A4,I1)') 'pwsc',IPART
+              WRITE(VARNM(1),'(A3,I1)') 'pws',IPART
               WRITE(VARNL(1),'(A,I1)') 'wind sea fraction in partition ',IPART 
               WRITE(VARNS(1),'(A,I1)') 'wind_sea_fraction_in_partition_',IPART 
               WRITE(VARNG(1),'(A,I1)') 'wind_sea_fraction_in_partition_',IPART
@@ -1904,7 +1920,7 @@
             ELSE IF ( IFI .EQ. 4 .AND. IFJ .EQ. 7 ) THEN
               FSC    = 0.1
               UNITS  = 'degree'
-              WRITE(ENAME,'(A5,I1)') '.pdpc',IPART
+              WRITE(ENAME,'(A4,I1)') '.pdp',IPART
 !/RTD                ! Rotate direction back to standard pole
 !/RTD                IF ( FLAGUNR ) CALL W3THRTN(NSEA, PTHP0(:,IPART), AnglD, .FALSE.)
               IF( SMCGRD ) THEN
@@ -1918,7 +1934,7 @@
                 CALL W3S2XY ( NSEA, NSEA, NX+1, NY, PTHP0(:,IPART), MAPSF, X1 )
               END IF
               NFIELD=1
-              WRITE(VARNM(1),'(A4,I1)') 'pdpc',IPART
+              WRITE(VARNM(1),'(A3,I1)') 'pdp',IPART
               WRITE(VARNL(1),'(A,I1)') &
                  'peak direction partition ',IPART
               WRITE(VARNS(1),'(A,I1)') &
@@ -1939,14 +1955,14 @@
             ELSE IF ( IFI .EQ. 4 .AND. IFJ .EQ. 8 ) THEN
               FSC    = 0.01
               UNITS  = '1'
-              WRITE(ENAME,'(A5,I1)') '.pqpc',IPART
+              WRITE(ENAME,'(A4,I1)') '.pqp',IPART
               IF( SMCGRD ) THEN
 !/SMC                 CALL W3S2XY_SMC( PQP(:,IPART), X1 )
               ELSE
                 CALL W3S2XY ( NSEA, NSEA, NX+1, NY, PQP(:,IPART), MAPSF, X1 )
               ENDIF
               NFIELD=1
-              WRITE(VARNM(1),'(A4,I1)') 'pqpc',IPART
+              WRITE(VARNM(1),'(A3,I1)') 'pqp',IPART
               WRITE(VARNL(1),'(A,I1)') 'peakedness partition ',IPART
               WRITE(VARNS(1),'(A,I1)') &
                   'sea_surface_wave_peakedness_partition_',IPART
@@ -1960,14 +1976,14 @@
             ELSE IF ( IFI .EQ. 4 .AND. IFJ .EQ. 9 ) THEN
               FSC    = 0.01
               UNITS  = '1'
-              WRITE(ENAME,'(A5,I1)') '.ppec',IPART
+              WRITE(ENAME,'(A4,I1)') '.ppe',IPART
               IF( SMCGRD ) THEN
 !/SMC                 CALL W3S2XY_SMC( PPE(:,IPART), X1 )
               ELSE
                 CALL W3S2XY ( NSEA, NSEA, NX+1, NY, PPE(:,IPART), MAPSF, X1 )
               ENDIF
               NFIELD=1
-              WRITE(VARNM(1),'(A4,I1)') 'ppec',IPART
+              WRITE(VARNM(1),'(A3,I1)') 'ppe',IPART
               WRITE(VARNL(1),'(A,I1)') &
                   'peak enhancement factor partition ',IPART
               WRITE(VARNS(1),'(A,I1)') &
@@ -1982,14 +1998,14 @@
             ELSE IF ( IFI .EQ. 4 .AND. IFJ .EQ. 10 ) THEN
               FSC    = 0.0001
               UNITS  = 's-1'
-              WRITE(ENAME,'(A5,I1)') '.pgwc',IPART
+              WRITE(ENAME,'(A4,I1)') '.pgw',IPART
               IF( SMCGRD ) THEN
 !/SMC                 CALL W3S2XY_SMC( PGW(:,IPART), X1 )
               ELSE
                 CALL W3S2XY ( NSEA, NSEA, NX+1, NY, PGW(:,IPART), MAPSF, X1 )
               ENDIF
               NFIELD=1
-              WRITE(VARNM(1),'(A4,I1)') 'pgwc',IPART
+              WRITE(VARNM(1),'(A3,I1)') 'pgw',IPART
               WRITE(VARNL(1),'(A,I1)') &
                   'frequency width partition ',IPART
               WRITE(VARNS(1),'(A,I1)') &
@@ -2005,14 +2021,14 @@
             ELSE IF ( IFI .EQ. 4 .AND. IFJ .EQ. 11 ) THEN
               FSC    = 0.0001
               UNITS  = '1'
-              WRITE(ENAME,'(A5,I1)') '.pswc',IPART
+              WRITE(ENAME,'(A4,I1)') '.psw',IPART
               IF( SMCGRD ) THEN
 !/SMC                 CALL W3S2XY_SMC( PSW(:,IPART), X1 )
               ELSE
                 CALL W3S2XY ( NSEA, NSEA, NX+1, NY, PSW(:,IPART), MAPSF, X1 )
               ENDIF
               NFIELD=1
-              WRITE(VARNM(1),'(A4,I1)') 'pswc',IPART
+              WRITE(VARNM(1),'(A3,I1)') 'psw',IPART
               WRITE(VARNL(1),'(A,I1)') 'spectral width partition ',IPART
               WRITE(VARNS(1),'(A,I1)') &
                   'sea_surface_wave_spectral_width_partition_',IPART
@@ -2089,14 +2105,14 @@
             ELSE IF ( IFI .EQ. 4 .AND. IFJ .EQ. 15 ) THEN
               FSC    = 0.02
               UNITS  = 'm2 s rad-1'
-              WRITE(ENAME,'(A5,I1)') '.pepc',IPART
+              WRITE(ENAME,'(A4,I1)') '.pep',IPART
               IF( SMCGRD ) THEN
 !/SMC                 CALL W3S2XY_SMC( PEP(:,IPART), X1 )
               ELSE
                 CALL W3S2XY ( NSEA, NSEA, NX+1, NY, PEP(:,IPART), MAPSF, X1 )
               ENDIF
               NFIELD=1
-              WRITE(VARNM(1),'(A4,I1)') 'pepc',IPART
+              WRITE(VARNM(1),'(A3,I1)') 'pep',IPART
               WRITE(VARNL(1),'(A,I1)') 'energy at peak frequency partition ',IPART
               WRITE(VARNS(1),'(A,I1)') &
                   'sea_surface_wave_energy_at_variance_spectral_density_maximum_partition_',IPART
@@ -3386,6 +3402,9 @@
             FNAMENC(S1+S2+1:S1+S2+3) = '.nc'
             FNAMENC(S1+S2+4:S1+S2+6) = '   '
 
+!/NCO ! For NCEP application, requires fixed netcdf file name
+!/NCO            FNAMENC='ww3.gridded.nc'
+
             ! If the flag frequency is .TRUE., defines the fourth dimension
             IF (FLFRQ) THEN 
               UNITVAR(:)=UNITS
@@ -4666,9 +4685,7 @@
 !
 ! Error escape locations
 !
-  800 CONTINUE
-      WRITE (NDSE,1000) IERR
-      CALL EXTCDE (2)
+
 !
 ! Formats
 !
@@ -4676,10 +4693,6 @@
   999 FORMAT (/' *** WAVEWATCH III ERROR IN W3EXNC :'/                &
                '     PLEASE UPDATE FIELDS !!! '/                      &
                '     IFI = ',I2, '- IFJ = ',I2/)
-!
- 1000 FORMAT (/' *** WAVEWATCH III ERROR IN W3EXNC : '/               &
-               '     ERROR IN OPENING OUTPUT FILE'/                   &
-               '     IOSTAT =',I5/)
 !               
 !/T 9000 FORMAT (' TEST W3EXNC : FLAGS :',I3,2X,20L2)
 !/T 9001 FORMAT (' TEST W3EXNC : ITPYE :',I4/                         &

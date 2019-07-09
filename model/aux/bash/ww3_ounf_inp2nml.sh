@@ -6,10 +6,18 @@ then
   echo '  [ERROR] need ww3_ounf input filename in argument [ww3_ounf.inp]'
   exit 1
 fi
-inp=$1
-cur_dir=$(dirname $1)
-cd $cur_dir
-cur_dir="../$(basename $cur_dir)"
+
+# link to temporary inp with regtest format
+inp="$( cd "$( dirname "$1" )" && pwd )/$(basename $1)"
+if [ ! -z $(echo $inp | awk -F'ww3_ounf\\..inp\\..' '{print $2}') ] ; then
+ new_inp=$(echo $(echo $inp | awk -F'ww3_ounf\\..inp\\..' '{print $1}')ww3_ounf_$(echo $inp | awk -F'ww3_ounf\\..inp\\..' '{print $2}').inp)
+ ln -sfn $inp $new_inp
+ old_inp=$inp
+ inp=$new_inp
+fi
+
+cd $( dirname $inp)
+cur_dir="../$(basename $(dirname $inp))"
 
 
 version=$(bash --version | awk -F' ' '{print $4}')
@@ -45,6 +53,8 @@ do
   echo "$line" >> $cleaninp
 
 done
+
+
 
 #------------------------------
 # get all values from clean inp file
@@ -154,11 +164,17 @@ cat >> $nmlfile << EOF
 ! -------------------------------------------------------------------- !
 ! Define the output fields to postprocess via FIELD_NML namelist
 !
-! * the full list of field names FIELD%LIST is : 
-!  DPT CUR WND AST WLV ICE IBG D50 IC1 IC5 HS LM T02 T0M1 T01 FP DIR SPR
-!  DP HIG EF TH1M STH1M TH2M STH2M WN PHS PTP PLP PDIR PSPR PWS TWS PNR
-!  UST CHA CGE FAW TAW TWA WCC WCF WCH WCM SXY TWO BHD FOC TUS USS P2S
-!  USF P2L TWI FIC ABR UBR BED FBB TBB MSS MSC DTD FC CFX CFD CFK U1 U2 
+! * the detailed list of field names FIELD%LIST is given in ww3_shel.nml
+!  DPT CUR WND AST WLV ICE IBG D50 IC1 IC5
+!  HS LM T02 T0M1 T01 FP DIR SPR DP HIG
+!  EF TH1M STH1M TH2M STH2M WN
+!  PHS PTP PLP PDIR PSPR PWS PDP PQP PPE PGW PSW PTM10 PT01 PT02 PEP TWS PNR
+!  UST CHA CGE FAW TAW TWA WCC WCF WCH WCM FWS
+!  SXY TWO BHD FOC TUS USS P2S USF P2L TWI FIC
+!  ABR UBR BED FBB TBB
+!  MSS MSC WL02 AXT AYT AXY
+!  DTD FC CFX CFD CFK
+!  U1 U2
 !
 ! * namelist must be terminated with /
 ! * definitions & defaults:
@@ -166,7 +182,7 @@ cat >> $nmlfile << EOF
 !     FIELD%TIMESTRIDE           = '0'                ! Time stride for the output field
 !     FIELD%TIMESTOP             = '29001231 000000'  ! Stop date for the output field
 !     FIELD%TIMECOUNT            = '1000000000'       ! Number of time steps
-!     FIELD%TIMESPLIT            = 6                  ! [4(yearly),6(monthly),8(daily),10(hourly)]
+!     FIELD%TIMESPLIT            = 6                  ! [0(nodate),4(yearly),6(monthly),8(daily),10(hourly)]
 !     FIELD%LIST                 = 'unset'            ! List of output fields
 !     FIELD%PARTITION            = '0 1 2 3'          ! List of wave partitions ['0 1 2 3 4 5']
 !     FIELD%SAMEFILE             = T                  ! All the variables in the same file [T|F]
@@ -211,6 +227,11 @@ if [ "$ixn" != 1000000000 ] && [ "$ixn" != 1000000 ];  then  echo "  FILE%IXN   
 if [ "$iy0" != 1 ];                                    then  echo "  FILE%IY0           = $iy0" >> $nmlfile; fi
 if [ "$iyn" != 1000000000 ] && [ "$iyn" != 1000000 ];  then  echo "  FILE%IYN           = $iyn" >> $nmlfile; fi
 
+
+# smc grid
+if [ $nf -le 1 ]
+then
+
 cat >> $nmlfile << EOF
 /
 
@@ -250,6 +271,8 @@ if [ "$ey0" != -999.9 ];   then  echo "  SMC%EY0         = $ey0" >> $nmlfile; fi
 if [ "$celfac" != 1 ];     then  echo "  SMC%CELFAC      = $celfac" >> $nmlfile; fi
 if [ "$noval" != -999.9 ]; then  echo "  SMC%NOVAL       = $noval" >> $nmlfile; fi
 
+fi
+
 cat >> $nmlfile << EOF
 /
 
@@ -259,8 +282,11 @@ cat >> $nmlfile << EOF
 EOF
 echo "DONE : $( cd "$( dirname "$nmlfile" )" && pwd )/$(basename $nmlfile)"
 rm -f $cleaninp
+if [ ! -z $(echo $old_inp | awk -F'ww3_ounf\\..inp\\..' '{print $2}') ] ; then
+  unlink $new_inp
+  addon="$(echo $(basename $nmlfile) | awk -F'ww3_ounf_' '{print $2}' | awk -F'\\..nml' '{print $1}'  )"
+  new_nmlfile="ww3_ounf.nml.$addon"
+  mv $( cd "$( dirname "$nmlfile" )" && pwd )/$(basename $nmlfile) $( cd "$( dirname "$nmlfile" )" && pwd )/$(basename $new_nmlfile)
+  echo "RENAMED  : $( cd "$( dirname "$nmlfile" )" && pwd )/$(basename $new_nmlfile)"
+fi
 #------------------------------
-
-
-
-

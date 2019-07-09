@@ -1234,7 +1234,7 @@
                     READ (NDSI,'(A)') LINE
                     WRITE (NDSS,'(A)') LINE
                   END IF
-                  IF ( PN .EQ. 'STOPSTRING' ) EXIT
+                  IF ( INDEX(PN,"STOPSTRING").NE.0 ) EXIT
                   NPTS   = NPTS + 1
                   IF ( ILOOP .EQ. 1 ) CYCLE
                   X(NPTS)      = XX
@@ -1297,7 +1297,6 @@
             ELSE IF ( J .EQ. 6 ) THEN
 !             IPRT: IX0, IXN, IXS, IY0, IYN, IYS
               CALL NEXTLN ( COMSTR , NDSI , NDSEN )
-              READ (NDSI,*,END=2001,ERR=2002) IPRT, PRTFRM
 !/DEBUGINIT              write(740+IAPROC,*), 'Before reading IPRT'
 !/DEBUGINIT              write(740+IAPROC,*), 'Before read 2002, case 10'
               READ (NDSI,*) IPRT, PRTFRM
