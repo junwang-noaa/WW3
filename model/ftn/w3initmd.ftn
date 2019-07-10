@@ -1582,6 +1582,7 @@
       USE CONSTANTS, ONLY: LPDLIB
 !/MPI      USE W3GDATMD, ONLY: NSPEC
 !/MPI      USE W3WDATMD, ONLY: VA
+!/TRPL      USE W3WDATMD, ONLY: VAOLD
 !/MPI      USE W3ADATMD, ONLY: MPI_COMM_WAVE, WW3_FIELD_VEC,         &
 !/MPI                          WW3_SPEC_VEC, IAPPRO, WADATS,         &
 !/MPI                          NRQSG1, IRQSG1, NRQSG2, IRQSG2,       &
@@ -1678,9 +1679,9 @@
 !/MPI        IF ( IAPPRO(ISP) .NE. IAPROC ) THEN
 !/MPI            ITARG  = IAPPRO(ISP) - 1
 !/MPI            IH     = IH + 1
-!/MPI            CALL MPI_SEND_INIT ( VA(ISP,1), 1, WW3_SPEC_VEC,     &
+!/MPI            CALL MPI_SEND_INIT ( VAOLD(ISP,1), 1, WW3_SPEC_VEC,     &
 !/MPI                 ITARG, ISP, MPI_COMM_WAVE, IRQSG1(IH,1), IERR1 )
-!/MPI            CALL MPI_SEND_INIT ( VA(ISPR,1), 1, WW3_SPEC_VEC,     &
+!/MPI            CALL MPI_SEND_INIT ( VAOLD(ISPR,1), 1, WW3_SPEC_VEC,     &
 !/MPI                 ITARG, NSPEC+ISPR, MPI_COMM_WAVE, IRQSG1(IH,3), IERR1 )
 !/MPI            CALL MPI_RECV_INIT ( VA(ISP,1), 1, WW3_SPEC_VEC,     &
 !/MPI                 ITARG, ISP, MPI_COMM_WAVE, IRQSG1(IH,2), IERR2 )
