@@ -1604,6 +1604,7 @@
 !/
       INTEGER                 :: NXXXX
       INTEGER :: ITH, IK, ITHROT, ISPR
+      LOGICAL :: GLOC_LOGICAL
 !/MPI      INTEGER                 :: IERR_MPI, ISP, IH, ITARG,       &
 !/MPI                                 IERR1, IERR2, IP
 !/S      INTEGER, SAVE           :: IENT = 0
@@ -1611,6 +1612,9 @@
 !/ ------------------------------------------------------------------- /
 !/
 !/S      CALL STRACE (IENT, 'W3MPII')
+      GLOC_LOGICAL = .FALSE.
+!/GLOC      GLOC_LOGICAL = .TRUE.
+
 !
 ! 1.  Set up derived data types -------------------------------------- /
 !
@@ -1678,17 +1682,15 @@
 !/MPI        IF ( IAPPRO(ISP) .NE. IAPROC ) THEN
 !/MPI            ITARG  = IAPPRO(ISP) - 1
 !/MPI            IH     = IH + 1
-!/GLOC           IF (.TRUE.) THEN
-!/MPI            CALL MPI_SEND_INIT ( VAOLD(ISP,1), 1, WW3_SPEC_VEC,     &
+!/MPI            IF (GLOC_LOGICAL) THEN
+!/MPI              CALL MPI_SEND_INIT ( VAOLD(ISP,1), 1, WW3_SPEC_VEC,     &
+!/MPI                   ITARG, ISP, MPI_COMM_WAVE, IRQSG1(IH,1), IERR1 )
+!/MPI              CALL MPI_SEND_INIT ( VAOLD(ISPR,1), 1, WW3_SPEC_VEC,     &
+!/MPI                   ITARG, NSPEC+ISPR, MPI_COMM_WAVE, IRQSG1(IH,3), IERR1 )
+!/MPI            ELSE
+!/MPI              CALL MPI_SEND_INIT ( VA(ISP,1), 1, WW3_SPEC_VEC,     &
 !/MPI                 ITARG, ISP, MPI_COMM_WAVE, IRQSG1(IH,1), IERR1 )
-!/MPI            CALL MPI_SEND_INIT ( VAOLD(ISPR,1), 1, WW3_SPEC_VEC,     &
-!/MPI                 ITARG, NSPEC+ISPR, MPI_COMM_WAVE, IRQSG1(IH,3), IERR1 )
-!/GLOC           ELSE
-!/MPI            CALL MPI_SEND_INIT ( VA(ISP,1), 1, WW3_SPEC_VEC,     &
-!/MPI                 ITARG, ISP, MPI_COMM_WAVE, IRQSG1(IH,1), IERR1 )
-!/MPI            CALL MPI_SEND_INIT ( VA(ISPR,1), 1, WW3_SPEC_VEC,     &
-!/MPI                 ITARG, NSPEC+ISPR, MPI_COMM_WAVE, IRQSG1(IH,3), IERR1 )
-!/GLOC           ENDIF
+!/MPI            ENDIF
 !/MPI            CALL MPI_RECV_INIT ( VA(ISP,1), 1, WW3_SPEC_VEC,     &
 !/MPI                 ITARG, ISP, MPI_COMM_WAVE, IRQSG1(IH,2), IERR2 )
 !/MPIT            WRITE (NDST,9022) IH, ISP, ITARG+1,                 &
@@ -1756,10 +1758,13 @@
 !/MPI                     ( WADATS(IMOD)%SSTORE(IP,IBFLOC), 1,        &
 !/MPI                       WW3_FIELD_VEC, ITARG, ISP, MPI_COMM_WAVE, &
 !/MPI                       IRQSG2(IH,2), IERR2 )
-!/MPI                  CALL MPI_RECV_INIT                             &
+!/MPI                  IF (GLOC_LOGICAL) THEN
+!/MPI                    CALL MPI_RECV_INIT                             &
 !/MPI                     ( WADATS(IMOD)%GSTORE2(IP,IBFLOC), 1,        &
 !/MPI                       WW3_FIELD_VEC, ITARG, NSPEC+ISPR, MPI_COMM_WAVE, &
 !/MPI                       IRQSG2(IH,3), IERR2 )
+!/MPI                  ENDIF
+!
 !/MPIT                  WRITE (NDST,9032) IH, ISP, ITARG+1, IBFLOC,   &
 !/MPIT                         IRQSG2(IH,1), IERR1, IRQSG2(IH,2), IERR2
 !
