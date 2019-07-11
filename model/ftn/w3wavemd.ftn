@@ -70,7 +70,7 @@
 !/    12-Dec-2012 : Adding SMC grid.  JG_Li             ( version 4.08 )
 !/    26-Dec-2012 : Move FIELD init. to W3GATH.         ( version 4.OF )
 !/    16-Sep-2013 : Add Arctic part for SMC grid.       ( version 4.11 )
-!/    11-Nov-2013 : SMC and rotated grid incorporated in the main 
+!/    11-Nov-2013 : SMC and rotated grid incorporated in the main
 !/                  trunk                               ( version 4.13 )
 !/    14-Nov-2013 : Remove orphaned work arrays.        ( version 4.13 )
 !/    27-Nov-2013 : Fixes for OpenMP versions.          ( version 4.15 )
@@ -83,7 +83,7 @@
 !/
 !/    Copyright 2009-2014 National Weather Service (NWS),
 !/       National Oceanic and Atmospheric Administration.  All rights
-!/       reserved.  WAVEWATCH III is a trademark of the NWS. 
+!/       reserved.  WAVEWATCH III is a trademark of the NWS.
 !/       No unauthorized use without permission.
 !/
 !  1. Purpose :
@@ -175,7 +175,7 @@
 !/
       CONTAINS
 !/ ------------------------------------------------------------------- /
-      SUBROUTINE W3WAVE ( IMOD, TEND, STAMP, NO_OUT & 
+      SUBROUTINE W3WAVE ( IMOD, TEND, STAMP, NO_OUT &
 !/OASIS                  ,ID_LCOMM                 &
                          )
 !/
@@ -229,7 +229,7 @@
 !/                  (W. E. Rogers & T. J. Campbell, NRL)
 !/    31-Mar-2010 : Add reflections                     ( version 3.14.4 )
 !/    29-Oct-2010 : Implement unstructured grids        ( version 3.14.4 )
-!/                  (A. Roland and F. Ardhuin) 
+!/                  (A. Roland and F. Ardhuin)
 !/    06-Mar-2011 : Output of max. CFL (F.Ardhuin)      ( version 3.14.4 )
 !/    05-Apr-2011 : Implement iteration for DTMAX <1s   ( version 3.14.4 )
 !/    02-Jul-2012 : Update for PALM coupling            ( version 4.07 )
@@ -424,7 +424,7 @@
                                  ITLOC, ITLOCH, NTLOC, ISEA, JSEA,    &
                                  IX, IY, ISPEC, J, TOUT(2), TLST(2),  &
                                  REFLED(6), IK, ITH, IS, NKCFL
-!/TRPL      INTEGER                 :: ISPEC_180FLIP, ITH_180FLIP
+!/GLOC      INTEGER                 :: ISPEC_180FLIP, ITH_180FLIP
       INTEGER                 :: ISP, IP_glob
       REAL                    :: ICEDAVE
 !/OASIS     INTEGER                 :: OASISED
@@ -446,7 +446,7 @@
 ! FIELD_180FLIP -> spectral bin at 180 degrees but same wavenumber
 !               -> Needed to propagate across tripolar seam.
       REAL, ALLOCATABLE       :: FIELD(:)
-!/TRPL      REAL, ALLOCATABLE       :: FIELD_180FLIP(:)
+!/GLOC      REAL, ALLOCATABLE       :: FIELD_180FLIP(:)
       REAL                    :: TMP1(4), TMP2(3), TMP3(2), TMP4(2)
 !/IC3 REAL, ALLOCATABLE       :: WN_I(:)
 !/REFRX REAL, ALLOCATABLE       :: CIK(:)
@@ -462,7 +462,7 @@
                                  FLOMP = .FALSE.
 !
 !Li   Logical variable to control regular gird lines in conflict with SMC option.
-!AR   SMC option is in conflict with lofical variables for regular grid ... chicken ... egg ... stuff 
+!AR   SMC option is in conflict with lofical variables for regular grid ... chicken ... egg ... stuff
       LOGICAL                 :: RGLGRD = .TRUE., ARCTIC = .FALSE.
 !!Li
 !/MPI      LOGICAL                 :: FLGMPI(0:6)
@@ -470,7 +470,7 @@
 !/IC3      REAL                    :: USE_CHENG, USE_CGICE, HICE
       LOGICAL                 :: UGDTUPDATE    ! true if time step should be updated for UG schemes
       CHARACTER(LEN=8)        :: STTIME
-      CHARACTER(LEN=17)       :: IDACT 
+      CHARACTER(LEN=17)       :: IDACT
       CHARACTER(LEN=13)       :: OUTID
       CHARACTER(LEN=23)       :: IDTIME
       INTEGER eIOBP
@@ -579,9 +579,9 @@
         END IF
 !
 !!Li  ALLOCATE ( FIELD(1-NY:NY*(NX+2)) )
-      IF( RGLGRD .AND. .NOT. FLOMP ) THEN 
-         ALLOCATE ( FIELD(1-NY:NY*(NX+2)) )     
-!/TRPL         ALLOCATE ( FIELD_180FLIP(1-NY:NY*(NX+2)) )
+      IF( RGLGRD .AND. .NOT. FLOMP ) THEN
+         ALLOCATE ( FIELD(1-NY:NY*(NX+2)) )
+!/GLOC         ALLOCATE ( FIELD_180FLIP(1-NY:NY*(NX+2)) )
       ENDIF
 !
 !/SMC !!Li   Otherwise use sea point only field
@@ -591,9 +591,9 @@
 !
       LOCAL   = IAPROC .LE. NAPROC
       UGDTUPDATE = .FALSE.
-      IF (FLAGLL) THEN 
-        FACX   =  1./(DERA * RADIUS) 
-      ELSE 
+      IF (FLAGLL) THEN
+        FACX   =  1./(DERA * RADIUS)
+      ELSE
         FACX   =  1.
         END IF
 !
@@ -774,7 +774,7 @@
 !/IC3           IF (CALLEDIC3TABLE==0) THEN
 !/IC3             CALL IC3TABLE_CHENG(FIXEDVISC,FIXEDDENS,FIXEDELAS)
 !/IC3             CALLEDIC3TABLE = 1
-!/IC3           ENDIF   
+!/IC3           ENDIF
 !/IC3        ENDIF
 
 ! 2.b Update group velocity and wavenumber from ice parameters ------- /
@@ -796,7 +796,7 @@
 !/IC3            IX     = MAPSF(ISEA,1)
 !/IC3            IY     = MAPSF(ISEA,2)
 
-! 2.b.1 Using Cheng method: requires stationary/uniform rheology. 
+! 2.b.1 Using Cheng method: requires stationary/uniform rheology.
 !       However, ice thickness may be input by either method
 
 !/IC3            IF ( USE_CHENG==1.0 ) THEN
@@ -816,7 +816,7 @@
 !/IC3                    FIXEDDENS, FIXEDELAS, DEPTH)
 !/IC3               END IF ! non-zero ice
 
-!/IC3            ELSE ! not using Cheng method          
+!/IC3            ELSE ! not using Cheng method
 ! 2.b.2 If not using Cheng method: require FLIC1 to FLIC4 (not strictly
 !       necesssary, but makes code simpler)
 
@@ -831,7 +831,7 @@
 !/IC3                  WRITE(NDSE,*)'ICE PARAMETERS NOT AVAILABLE ',   &
 !/IC3                               'FOR CG CALC'
 !/IC3                  CALL EXTCDE(2)
-!/IC3               END IF      
+!/IC3               END IF
 !/IC3            ENDIF ! IF USE_CHENG...
 
 !/IC3            DEALLOCATE(WN_I)
@@ -896,7 +896,7 @@
         DO IT=IT0, NT
 !/TIMINGS         CALL PRINT_MY_TIME("Begin of IT loop")
 !/SETUP     CALL WAVE_SETUP_COMPUTATION
-! copy old values 
+! copy old values
 !/PDLIB     DO IP=1,NSEAL
 !/PDLIB       DO ISPEC=1,NSPEC
 !/PDLIB         VAOLD(ISPEC,IP)=VA(ISPEC,IP)
@@ -949,9 +949,9 @@
 !/DEBUGRUN      ENDIF
 !
           VGX = 0.
-          VGY = 0. 
+          VGY = 0.
           IF(INFLAGS1(8)) THEN
-              DTTST1 = DSEC21 ( TIME, TGN ) 
+              DTTST1 = DSEC21 ( TIME, TGN )
               DTTST2 = DSEC21 ( TG0, TGN )
               FAC    = DTTST1 / MAX ( 1. , DTTST2 )
               VGX    = (FAC*GA0+(1.-FAC)*GAN) *                       &
@@ -994,18 +994,18 @@
 !/MEMCHECK       write(740+IAPROC,*) 'memcheck_____:', 'WW3_WAVE TIME LOOP 3b '
 !/MEMCHECK       call getMallocInfo(mallinfos)
 !/MEMCHECK       call printMallInfo(IAPROC,mallInfos)
-            IF (GTYPE .NE. UNGTYPE) THEN       
+            IF (GTYPE .NE. UNGTYPE) THEN
               IF( RGLGRD ) THEN
               CALL W3DZXY(CX(1:UBOUND(CX,1)),'m/s',DCXDX, DCXDY) !CX GRADIENT
               CALL W3DZXY(CY(1:UBOUND(CY,1)),'m/s',DCYDX, DCYDY) !CY GRADIENT
               ENDIF
-!/SMC !!Li  Use new sub for DCXDX/Y and DCYDX/Y assignment.  
-!/SMC         CALL SMCDCXY 
+!/SMC !!Li  Use new sub for DCXDX/Y and DCYDX/Y assignment.
+!/SMC         CALL SMCDCXY
             ELSE
 !/DEBUGDCXDX       WRITE(740+IAPROC,*) 'Before call to UG_GRADIENT for assigning DCXDX/DCXDY array'
               CALL UG_GRADIENTS(CX, DCXDX, DCXDY)
               CALL UG_GRADIENTS(CY, DCYDX, DCYDY)
-              CALL GET_INTERFACE 
+              CALL GET_INTERFACE
               UGDTUPDATE=.TRUE.
               CFLXYMAX = 0.
             END IF
@@ -1019,7 +1019,7 @@
               CFLXYMAX = 0.
               CX = 0.
               CY = 0.
-              END IF ! FLCUR 
+              END IF ! FLCUR
 !/TIMINGS         CALL PRINT_MY_TIME("After CX/CY assignation")
 !
 !/MEMCHECK       write(740+IAPROC,*) 'memcheck_____:', 'WW3_WAVE TIME LOOP 5'
@@ -1097,7 +1097,7 @@
 !/DEBUGIOBC       WRITE(740+IAPROC,*) 'After call to W3IOBC'
 !/DEBUGIOBC       WRITE(740+IAPROC,*) 'ITEST=', ITEST
 !/DEBUGIOBC       FLUSH(740+IAPROC)
-                  IF ( ITEST .NE. 1 ) CALL W3UBPT 
+                  IF ( ITEST .NE. 1 ) CALL W3UBPT
                 ELSE
                   ITEST  = 0
                 END IF
@@ -1172,7 +1172,7 @@
                 ELSE
                   IDACT(11:11) = 'I'
                 END IF
-  
+
 !
               IF ( IDACT(11:11).NE.' ' ) THEN
                   CALL W3UIC1 ( FLFRST )
@@ -1297,16 +1297,16 @@
 !/DEBUGRUN        WRITE(740+IAPROC,*) 'FLDDIR=', FLDDIR
 !/DEBUGRUN        FLUSH(740+IAPROC)
           IF ( FLDDIR ) THEN
-            IF (GTYPE .NE. UNGTYPE) THEN  
+            IF (GTYPE .NE. UNGTYPE) THEN
 !!Li          CALL W3DZXY(DW(1:NSEA),'m',DDDX,DDDY) !DEPTH (DW) GRADIENT
-              IF( RGLGRD ) CALL W3DZXY(DW(1:UBOUND(DW,1)),'m',DDDX,DDDY) 
-!/SMC !!Li  Use new sub for DDDX and DDDY assignment.  
-!/SMC         CALL SMCDHXY 
+              IF( RGLGRD ) CALL W3DZXY(DW(1:UBOUND(DW,1)),'m',DDDX,DDDY)
+!/SMC !!Li  Use new sub for DDDX and DDDY assignment.
+!/SMC         CALL SMCDHXY
 !/SMCT        WRITE (NDST,*) " * SMCDHXY completed IT DTG =", IT, DTG
 !
             ELSE
               CALL UG_GRADIENTS(DW, DDDX, DDDY)
-              END IF 
+              END IF
               FLDDIR = .FALSE.
           END IF
 
@@ -1373,18 +1373,18 @@
             CALL INIT_GET_ISEA(ISEA, JSEA)
             IX     = MAPSF(ISEA,1)
             IY     = MAPSF(ISEA,2)
-            DELA=1. 
-            DELX=1. 
-            DELY=1. 
-!/REF1                IF (GTYPE.EQ.RLGTYPE) THEN 
+            DELA=1.
+            DELX=1.
+            DELY=1.
+!/REF1                IF (GTYPE.EQ.RLGTYPE) THEN
 !/REF1                  DELX=SX*CLATS(ISEA)/FACX
 !/REF1                  DELY=SY/FACX
 !/REF1                  DELA=DELX*DELY
 !/REF1                END IF
-!/REF1                IF (GTYPE.EQ.CLGTYPE) THEN 
+!/REF1                IF (GTYPE.EQ.CLGTYPE) THEN
 !/REF1! Maybe what follows works also for RLGTYPE ... to be verified
 !/REF1                  DELX=HPFAC(IY,IX)/ FACX
-!/REF1                  DELY=HQFAC(IY,IX)/ FACX 
+!/REF1                  DELY=HQFAC(IY,IX)/ FACX
 !/REF1                  DELA=DELX*DELY
 !/REF1                END IF
 !
@@ -1446,8 +1446,8 @@
               DTDYN (JSEA) = UNDEF
               FCUT  (JSEA) = UNDEF
             END IF
-          END DO ! JSEA 
-        END IF ! PDLIB 
+          END DO ! JSEA
+        END IF ! PDLIB
 !/PDLIB!/DEBUGSRC          WRITE(740+IAPROC,*) 'ITIME=', ITIME, ' IT=', IT
 !/PDLIB!/DEBUGSRC          CALL ALL_VA_INTEGRAL_PRINT(IMOD, "VA after W3SRCE_IMP_PRE")
 !/PDLIB!/DEBUGSRC          CALL ALL_FIELD_INTEGRAL_PRINT(VSTOT, "VSTOT after W3SRCE_IMP_PRE")
@@ -1467,7 +1467,7 @@
 !/T              WRITE (NDST,9022)
               GOTO 400
             END IF
-          IF ( IT.EQ.0 ) THEN 
+          IF ( IT.EQ.0 ) THEN
             DTG = 1.
 !            DTG = 60.
             GOTO 370
@@ -1488,7 +1488,7 @@
 !/DEBUGRUN        WRITE(740+IAPROC,*) 'FLOGRD(9,3) = ', FLOGRD(9,3)
 !/DEBUGRUN        WRITE(740+IAPROC,*) 'UGDTUPDATE=', UGDTUPDATE
 !/DEBUGRUN        FLUSH(740+IAPROC)
-                IF ( FLOGRD(9,3).AND. UGDTUPDATE ) THEN 
+                IF ( FLOGRD(9,3).AND. UGDTUPDATE ) THEN
 !/DEBUGRUN        WRITE(740+IAPROC,*) 'W3WAVE, step 6.8.6'
 !/DEBUGRUN        FLUSH(740+IAPROC)
                   IF (FSTOTALIMP .eqv. .FALSE.) THEN
@@ -1507,7 +1507,7 @@
 !/PR3                                         MAPFS,  CFLXYMAX(JSEA), VGX, VGY )
 !/PDLIB                      ENDIF
 !/PR3                        END IF
-!/PR3                      ELSE 
+!/PR3                      ELSE
 !/PR3                        CALL W3CFLXY ( ISEA, DTG, MAPSTA, MAPFS,      &
 !/PR3                                       CFLXYMAX(JSEA), VGX, VGY )
 !/PR3                      END IF
@@ -1539,7 +1539,7 @@
 !/DEBUGRUN      ENDIF
 
 !
-!/T       IF (GTYPE .EQ. UNGTYPE) THEN 
+!/T       IF (GTYPE .EQ. UNGTYPE) THEN
 !/T         IF ( FLOGRD(9,3) ) THEN
 !/T           DTCFL1(:)=1.
 !/T           DO JSEA=1,NSEAL
@@ -1550,12 +1550,12 @@
 !/T           IF ( IAPROC .EQ. NAPERR ) WRITE(NDSE,*) 'Nodes requesting smallest timesteps:'
 !/T           IF ( IAPROC .EQ. NAPERR ) WRITE(NDSE,'(A,10I10)')   'Nodes      ',NINT(INDSORT(1:10))
 !/T           IF ( IAPROC .EQ. NAPERR ) WRITE(NDSE,'(A,10F10.2)') 'time steps ',DTCFL1(1:10)
-!/T           DO JSEA = 1, MIN(NSEAL,200) 
+!/T           DO JSEA = 1, MIN(NSEAL,200)
 !/T             ISEA   = NINT(INDSORT(JSEA))            ! will not work with MPI
 !/T             IX     = MAPSF(ISEA,1)
 !/T             IF (JSEA.EQ.1) &
 !/T               WRITE(995,*) '       IP  dtmax_exp(ip)        x-coord        y-coord        z-coord'
-!/T             WRITE(995,'(I10,F10.2,3F10.4)') IX,  DTCFL1(JSEA), XYB(IX,1), XYB(IX,2), XYB(IX,3)  
+!/T             WRITE(995,'(I10,F10.2,3F10.4)') IX,  DTCFL1(JSEA), XYB(IX,1), XYB(IX,2), XYB(IX,3)
 !/T           END DO ! JSEA
 !/T           CLOSE(995)
 !/T         END IF
@@ -1606,45 +1606,55 @@
                   ENDIF
 
                   IF ( MAPSTA(IY,IX) .EQ. 1 ) THEN
-                           DEPTH  = MAX ( DMIN , DW(ISEA) )
-                           IF (LPDLIB) THEN
-                             IXrel = JSEA
-                           ELSE
-                             IXrel = IX
-                           END IF
-                           if (Alphatp(iy,ixrel)<1)&
-!/PR1                      CALL W3KTP1 ( ISEA, FACTH, FACK, CTHG0S(ISEA), &
+                     DEPTH  = MAX ( DMIN , DW(ISEA) )
+                     IF (LPDLIB) THEN
+                        IXrel = JSEA
+                     ELSE
+                        IXrel = IX
+                     END IF
+!/GLOC                     if (.FALSE.) THEN
+!/PR1                        CALL W3KTP1 ( ISEA, FACTH, FACK, CTHG0S(ISEA), &
 !/PR1                           CG(:,ISEA), WN(:,ISEA), DEPTH,            &
 !/PR1                           DDDX(IY,IXrel), DDDY(IY,IXrel), CX(ISEA),       &
 !/PR1                           CY(ISEA), DCXDX(IY,IXrel), DCXDY(IY,IXrel),     &
 !/PR1                           DCYDX(IY,IXrel), DCYDY(IY,IXrel),               &
 !/PR1                           DCDX(:,IY,IXrel), DCDY(:,IY,IXrel),             &
-!/PR1                           DADP(IY,IXrel), DADQ(IY,IXrel),                 &
-!/PR1                           DPDXtp(IY,IXrel), DPDYtp(IY,IXrel),                 &
-!/PR1                           DQDXtp(IY,IXrel), DQDYtp(IY,IXrel),AlphaTP(IY,IXrel),&
 !/PR1                           VA(:,JSEA))
-!/PR2                      CALL W3KTP2 ( ISEA, FACTH, FACK, CTHG0S(ISEA), &
+!/PR2                        CALL W3KTP2 ( ISEA, FACTH, FACK, CTHG0S(ISEA), &
 !/PR2                           CG(:,ISEA), WN(:,ISEA), DEPTH,            &
 !/PR2                           DDDX(IY,IXrel), DDDY(IY,IXrel), CX(ISEA),       &
 !/PR2                           CY(ISEA), DCXDX(IY,IXrel), DCXDY(IY,IXrel),     &
 !/PR2                           DCYDX(IY,IXrel), DCYDY(IY,IXrel),               &
 !/PR2                           DCDX(:,IY,IXrel), DCDY(:,IY,IXrel), VA(:,JSEA))
-!/PR3                      CALL W3KTP3 ( ISEA, FACTH, FACK, CTHG0S(ISEA), &
+!/PR3                        CALL W3KTP3 ( ISEA, FACTH, FACK, CTHG0S(ISEA), &
 !/PR3                           CG(:,ISEA), WN(:,ISEA), DEPTH,            &
 !/PR3                           DDDX(IY,IXrel), DDDY(IY,IXrel), CX(ISEA),       &
 !/PR3                           CY(ISEA), DCXDX(IY,IXrel), DCXDY(IY,IXrel),     &
 !/PR3                           DCYDX(IY,IXrel), DCYDY(IY,IXrel),               &
 !/PR3                           DCDX(:,IY,IXrel), DCDY(:,IY,IXrel), VA(:,JSEA), &
-!/PR3                           CFLTHMAX(JSEA), CFLKMAX(JSEA) )  
-!/PRX                      CALL W3KTPX
+!/PR3                           CFLTHMAX(JSEA), CFLKMAX(JSEA) )
+!/PRX                        CALL W3KTPX
+!/GLOC                     ELSE
+!/PR1                        CALL W3KTP1 ( ISEA, FACTH, FACK, CTHG0S(ISEA), &
+!/PR1                           CG(:,ISEA), WN(:,ISEA), DEPTH,            &
+!/PR1                           DDDX(IY,IXrel), DDDY(IY,IXrel), CX(ISEA),       &
+!/PR1                           CY(ISEA), DCXDX(IY,IXrel), DCXDY(IY,IXrel),     &
+!/PR1                           DCYDX(IY,IXrel), DCYDY(IY,IXrel),               &
+!/PR1                           DCDX(:,IY,IXrel), DCDY(:,IY,IXrel),             &
+!/PR1                           VA(:,JSEA),                                     &
+!/PR1                           DADP_GLOC(IY,IXrel), DADQ_GLOC(IY,IXrel),       &
+!/PR1                           DPDX_GLOC(IY,IXrel), DPDY_GLOC(IY,IXrel),       &
+!/PR1                           DQDX_GLOC(IY,IXrel), DQDY_GLOC(IY,IXrel),       &
+!/PR1                           Alpha_GLOC(IY,IXrel))
+!/GLOC                     ENDIF
 !
 !/SMC  !!Li    Refraction and GCT in theta direction is done by rotation.
 !/SMC                      CALL W3KRTN ( ISEA, FACTH, FACK, CTHG0S(ISEA), &
 !/SMC                           CG(:,ISEA), WN(:,ISEA), DEPTH,            &
 !/SMC                           DHDX(ISEA), DHDY(ISEA), DHLMT(:,ISEA),    &
 !/SMC                           CX(ISEA), CY(ISEA), DCXDX(IY,IX),         &
-!/SMC                           DCXDY(IY,IX), DCYDX(IY,IX), DCYDY(IY,IX), & 
-!/SMC                           DCDX(:,IY,IX), DCDY(:,IY,IX), VA(:,JSEA) )  
+!/SMC                           DCXDY(IY,IX), DCYDX(IY,IX), DCYDY(IY,IX), &
+!/SMC                           DCDX(:,IY,IX), DCDY(:,IY,IX), VA(:,JSEA) )
 !
                     END IF
                   END DO
@@ -1690,8 +1700,8 @@
 !
         IF (GTYPE .EQ. UNGTYPE) THEN
           IF (FLAGLL) THEN
-            FACX   =  1./(DERA * RADIUS) 
-          ELSE 
+            FACX   =  1./(DERA * RADIUS)
+          ELSE
             FACX   =  1.
           END IF
         END IF
@@ -1716,7 +1726,7 @@
 !/DEBUGRUN        WRITE(740+IAPROC,*) 'W3WAVE, step 6.12.4A'
 !/DEBUGRUN        WRITE(*,*), 'W3WAVE, step 6.12.4A'
 !/DEBUGRUN        FLUSH(740+IAPROC)
-!/PDLIB       ELSE IF(FSTOTALEXP .and. (IT .ne. 0)) THEN 
+!/PDLIB       ELSE IF(FSTOTALEXP .and. (IT .ne. 0)) THEN
 !/DEBUGRUN        WRITE(740+IAPROC,*) 'W3WAVE, step 6.12.3B'
 !/DEBUGRUN        WRITE(*,*), 'W3WAVE, step 6.12.3B'
 !/DEBUGRUN        FLUSH(740+IAPROC)
@@ -1730,11 +1740,11 @@
 !/DEBUGRUN        WRITE(740+IAPROC,*) 'W3WAVE, step 6.13'
 !/DEBUGRUN        FLUSH(740+IAPROC)
 !
-!/TRPL     DO IP=1,NSEAL
-!/TRPL       DO ISPEC=1,NSPEC
-!/TRPL         VAOLD(ISPEC,IP)=VA(ISPEC,IP)
-!/TRPL       END DO
-!/TRPL     END DO
+!/GLOC     DO IP=1,NSEAL
+!/GLOC       DO ISPEC=1,NSPEC
+!/GLOC         VAOLD(ISPEC,IP)=VA(ISPEC,IP)
+!/GLOC       END DO
+!/GLOC     END DO
 !/MPI       IF ( NRQSG1 .GT. 0 ) THEN
 !/MPI         CALL MPI_STARTALL (NRQSG1, IRQSG1(1,1), IERR_MPI)
 !/MPI         CALL MPI_STARTALL (NRQSG1, IRQSG1(1,2), IERR_MPI)
@@ -1747,39 +1757,39 @@
 !/DEBUGRUN        FLUSH(740+IAPROC)
 
             IF ( FLOMP ) ALLOCATE ( FIELD(1-NY:NY*(NX+2)) )
-!/TRPL            IF ( FLOMP ) ALLOCATE ( FIELD_180FLIP(1-NY:NY*(NX+2)) )
+!/GLOC            IF ( FLOMP ) ALLOCATE ( FIELD_180FLIP(1-NY:NY*(NX+2)) )
 !
 !/OMPX/!$OMP DO SCHEDULE (DYNAMIC,1)
 !
             DO ISPEC=1, NSPEC
               IF ( IAPPRO(ISPEC) .EQ. IAPROC ) THEN
                 IF (.NOT.LPDLIB .AND. RGLGRD) THEN
-!/TRPL                   IF (.NOT. ICLOSE.EQ.ICLOSE_TRPL) THEN
+!/GLOC                IF (.FALSE.) THEN
                       CALL W3GATH ( ISPEC, FIELD )
-!/TRPL                   ELSE
-!/TRPL                      ITH = 1 + MOD(ISPEC-1,NTH)
-!/TRPL                      IK = 1 + (ISPEC-1)/NTH
-!/TRPL                      ITH_180FLIP = 1 + MOD(ITH+NTH/2-1,NTH) 
-!/TRPL                      ISPEC_180FLIP  = ITH_180FLIP+(IK-1)*NTH 
-!/TRPL                      CALL W3GATH ( ISPEC,FIELD,ISPEC_180FLIP, FIELD_180FLIP )
-!/TRPL                   ENDIF
+!/GLOC                   ELSE
+!/GLOC                      ITH = 1 + MOD(ISPEC-1,NTH)
+!/GLOC                      IK = 1 + (ISPEC-1)/NTH
+!/GLOC                      ITH_180FLIP = 1 + MOD(ITH+NTH/2-1,NTH)
+!/GLOC                      ISPEC_180FLIP  = ITH_180FLIP+(IK-1)*NTH
+!/GLOC                      CALL W3GATH ( ISPEC,FIELD,ISPEC_180FLIP, FIELD_180FLIP )
+!/GLOC                   ENDIF
                 ENDIF
 !/SMC !!Li   Otherwise use SMC sub to gether field
 !/SMC                CALL W3GATHSMC ( ISPEC, FIELD )
 !
                 IF (GTYPE .NE. UNGTYPE) THEN
-                  IF (ICLOSE.EQ.ICLOSE_TRPL) THEN
+!/GLOC                  IF (.TRUE.) THEN
 !/PR1               CALL W3XYP1 ( ISPEC, DTG, MAPSTA, FIELD, VGX, VGY, FIELD_180FLIP )
 !/PR2               WRITE(*,*)'TP progogation not supported for pr2'
 !/PR2               STOP
 !/PR3               WRITE(*,*)'TP progogation not supported for pr3'
 !/PR3               STOP
-                  ELSE
+!/GLOC                  ELSE
 !/PR1               CALL W3XYP1 ( ISPEC, DTG, MAPSTA, FIELD, VGX, VGY )
 !/PR2               CALL W3XYP2 ( ISPEC, DTG, MAPSTA, MAPFS, FIELD, VGX, VGY )
 !/PR3               CALL W3XYP3 ( ISPEC, DTG, MAPSTA, MAPFS, FIELD, VGX, VGY )
 !/PRX               CALL W3XYPX
-                  ENDIF
+!/GLOC                  ENDIF
 !/SMC   !!Li   Propagation on SMC grid uses UNO2 scheme.
 !/SMC             CALL W3PSMC ( ISPEC, DTG, FIELD )
 !
@@ -1834,19 +1844,19 @@
 !/ARC           IF( IK .LE. (NBAC-NBGL) ) THEN
 !/ARC                   IY = ICLBAC(IK)
 !/ARC           ELSE
-!/ARC                   IY = NGLO + IK 
-!/ARC           ENDIF 
+!/ARC                   IY = NGLO + IK
+!/ARC           ENDIF
 !/ARC
-!/ARC  !Li    Work out root PE (ISPEC) and JSEA numbers for IY 
+!/ARC  !Li    Work out root PE (ISPEC) and JSEA numbers for IY
 !
           IF( ARCTIC ) THEN
-!/DIST            ISPEC = MOD( IY-1, NAPROC ) 
+!/DIST            ISPEC = MOD( IY-1, NAPROC )
 !/DIST             JSEA = 1 + (IY - ISPEC - 1)/NAPROC
-!/SHRD            ISPEC = 0 
-!/SHRD             JSEA = IY 
+!/SHRD            ISPEC = 0
+!/SHRD             JSEA = IY
           ENDIF
 !
-!/ARC !!Li   Assign boundary cell spectra. 
+!/ARC !!Li   Assign boundary cell spectra.
 !/ARC              IF( IAPROC .EQ. ISPEC+1 ) THEN
 !/ARC                   SPCBAC(:,IK)=VA(:,JSEA)
 !/ARC              ENDIF
@@ -1864,29 +1874,29 @@
 !/ARC           ALLOCATE ( BACSPEC(NSPEC) )
 !/ARC        DO IK = 1, NBAC
 !/ARC           IF( IK .LE. (NBAC-NBGL) ) THEN
-!/ARC                   IX = NGLO + IK 
+!/ARC                   IX = NGLO + IK
 !/ARC                   BACANGL = ANGARC(IK)
 !/ARC           ELSE
 !/ARC                   IX = ICLBAC(IK)
 !/ARC                   BACANGL = - ANGARC(IK)
-!/ARC           ENDIF 
+!/ARC           ENDIF
 !/ARC
-!/ARC  !Li    Work out boundary PE (ISPEC) and JSEA numbers for IX 
+!/ARC  !Li    Work out boundary PE (ISPEC) and JSEA numbers for IX
 
           IF( ARCTIC ) THEN
-!/DIST            ISPEC = MOD( IX-1, NAPROC ) 
+!/DIST            ISPEC = MOD( IX-1, NAPROC )
 !/DIST             JSEA = 1 + (IX - ISPEC - 1)/NAPROC
-!/SHRD            ISPEC = 0 
-!/SHRD             JSEA = IX 
+!/SHRD            ISPEC = 0
+!/SHRD             JSEA = IX
           ENDIF
 !
 !/ARC              IF( IAPROC .EQ. ISPEC+1 ) THEN
 !/ARC                   BACSPEC = SPCBAC(:,IK)
-!/ARC                  
+!/ARC
 !/ARC                   CALL w3acturn( NTH, NK, BACANGL, BACSPEC )
 !/ARC
-!/ARC                   VA(:,JSEA) = BACSPEC 
-!/ARC  !Li              WRITE(NDSE,*) "IAPROC, IX, JSEAx, IK=", IAPROC, IX, JSEA, IK 
+!/ARC                   VA(:,JSEA) = BACSPEC
+!/ARC  !Li              WRITE(NDSE,*) "IAPROC, IX, JSEAx, IK=", IAPROC, IX, JSEA, IK
 !/ARC              ENDIF
 !/ARC
 !/ARC  !!Li   Boundary cell loop IK ends.
@@ -1923,48 +1933,59 @@
 !/DEBUGRUN                  IF (JSEA == DEBUG_NODE) WRITE(*,*) 'W3WAVE TEST', SUM(VA(:,JSEA))
                   DEPTH  = MAX ( DMIN , DW(ISEA) )
 
-                  IF ( GTYPE .EQ. UNGTYPE ) THEN 
+                  IF ( GTYPE .EQ. UNGTYPE ) THEN
                     IF (IOBP(ISEA) .NE. 1) CYCLE
                   ENDIF
 
                   IF ( MAPSTA(IY,IX) .EQ. 1 ) THEN
-                           IF (LPDLIB) THEN
-                             IXrel = JSEA
-                           ELSE
-                             IXrel = IX
-                           END IF
-!/PR1                      CALL W3KTP1 ( ISEA, FACTH, FACK, CTHG0S(ISEA),       &
-!/PR1                           CG(:,ISEA), WN(:,ISEA), DEPTH,                  &
+                     IF (LPDLIB) THEN
+                        IXrel = JSEA
+                     ELSE
+                        IXrel = IX
+                     END IF
+!/GLOC                     if (.FALSE.) THEN
+!/PR1                        CALL W3KTP1 ( ISEA, FACTH, FACK, CTHG0S(ISEA), &
+!/PR1                           CG(:,ISEA), WN(:,ISEA), DEPTH,            &
 !/PR1                           DDDX(IY,IXrel), DDDY(IY,IXrel), CX(ISEA),       &
 !/PR1                           CY(ISEA), DCXDX(IY,IXrel), DCXDY(IY,IXrel),     &
 !/PR1                           DCYDX(IY,IXrel), DCYDY(IY,IXrel),               &
 !/PR1                           DCDX(:,IY,IXrel), DCDY(:,IY,IXrel),             &
-!/PR1                           DADP(IY,IXrel), DADQ(IY,IXrel),                 &
-!/PR1                           DPDXtp(IY,IXrel), DPDYtp(IY,IXrel),                 &
-!/PR1                           DQDXtp(IY,IXrel), DQDYtp(IY,IXrel),AlphaTP(IY,IXrel), &
 !/PR1                           VA(:,JSEA))
-!/PR2                      CALL W3KTP2 ( ISEA, FACTH, FACK, CTHG0S(ISEA),       &
-!/PR2                           CG(:,ISEA), WN(:,ISEA), DEPTH,                  &
+!/PR2                        CALL W3KTP2 ( ISEA, FACTH, FACK, CTHG0S(ISEA), &
+!/PR2                           CG(:,ISEA), WN(:,ISEA), DEPTH,            &
 !/PR2                           DDDX(IY,IXrel), DDDY(IY,IXrel), CX(ISEA),       &
 !/PR2                           CY(ISEA), DCXDX(IY,IXrel), DCXDY(IY,IXrel),     &
 !/PR2                           DCYDX(IY,IXrel), DCYDY(IY,IXrel),               &
 !/PR2                           DCDX(:,IY,IXrel), DCDY(:,IY,IXrel), VA(:,JSEA))
-!/PR3                      CALL W3KTP3 ( ISEA, FACTH, FACK, CTHG0S(ISEA),       &
-!/PR3                           CG(:,ISEA), WN(:,ISEA), DEPTH,                  &
+!/PR3                        CALL W3KTP3 ( ISEA, FACTH, FACK, CTHG0S(ISEA), &
+!/PR3                           CG(:,ISEA), WN(:,ISEA), DEPTH,            &
 !/PR3                           DDDX(IY,IXrel), DDDY(IY,IXrel), CX(ISEA),       &
 !/PR3                           CY(ISEA), DCXDX(IY,IXrel), DCXDY(IY,IXrel),     &
 !/PR3                           DCYDX(IY,IXrel), DCYDY(IY,IXrel),               &
 !/PR3                           DCDX(:,IY,IXrel), DCDY(:,IY,IXrel), VA(:,JSEA), &
 !/PR3                           CFLTHMAX(JSEA), CFLKMAX(JSEA) )
-!/PRX                      CALL W3KTPX
+!/PRX                        CALL W3KTPX
+!/GLOC                     ELSE
+!/PR1                        CALL W3KTP1 ( ISEA, FACTH, FACK, CTHG0S(ISEA), &
+!/PR1                           CG(:,ISEA), WN(:,ISEA), DEPTH,            &
+!/PR1                           DDDX(IY,IXrel), DDDY(IY,IXrel), CX(ISEA),       &
+!/PR1                           CY(ISEA), DCXDX(IY,IXrel), DCXDY(IY,IXrel),     &
+!/PR1                           DCYDX(IY,IXrel), DCYDY(IY,IXrel),               &
+!/PR1                           DCDX(:,IY,IXrel), DCDY(:,IY,IXrel),             &
+!/PR1                           VA(:,JSEA),                                     &
+!/PR1                           DADP_GLOC(IY,IXrel), DADQ_GLOC(IY,IXrel),       &
+!/PR1                           DPDX_GLOC(IY,IXrel), DPDY_GLOC(IY,IXrel),       &
+!/PR1                           DQDX_GLOC(IY,IXrel), DQDY_GLOC(IY,IXrel),       &
+!/PR1                           Alpha_GLOC(IY,IXrel))
+!/GLOC                     ENDIF
 !
 !/SMC  !!Li    Refraction and GCT in theta direction is done by rotation.
 !/SMC                      CALL W3KRTN ( ISEA, FACTH, FACK, CTHG0S(ISEA), &
 !/SMC                           CG(:,ISEA), WN(:,ISEA), DEPTH,            &
 !/SMC                           DHDX(ISEA), DHDY(ISEA), DHLMT(:,ISEA),    &
 !/SMC                           CX(ISEA), CY(ISEA), DCXDX(IY,IX),         &
-!/SMC                           DCXDY(IY,IX), DCYDX(IY,IX), DCYDY(IY,IX), & 
-!/SMC                           DCDX(:,IY,IX), DCDY(:,IY,IX), VA(:,JSEA) )  
+!/SMC                           DCXDY(IY,IX), DCYDX(IY,IX), DCYDY(IY,IX), &
+!/SMC                           DCDX(:,IY,IX), DCDY(:,IY,IX), VA(:,JSEA) )
 !
                     END IF
                   END DO
@@ -1981,7 +2002,7 @@
 !/DEBUGRUN        WRITE(740+IAPROC,*) 'W3WAVE, step 6.17'
 !/DEBUGRUN        WRITE(740+IAPROC,*) 'FSSOURCE=', FSSOURCE
 !/DEBUGRUN        FLUSH(740+IAPROC)
-! 
+!
 ! 3.6 End propapgation  = = = = = = = = = = = = = = = = = = = = = = = =
 
 ! 3.7 Calculate and integrate source terms.
@@ -2012,18 +2033,18 @@
                 CALL INIT_GET_ISEA(ISEA, JSEA)
                 IX     = MAPSF(ISEA,1)
                 IY     = MAPSF(ISEA,2)
-                DELA=1. 
-                DELX=1. 
-                DELY=1. 
-!/REF1                IF (GTYPE.EQ.RLGTYPE) THEN 
+                DELA=1.
+                DELX=1.
+                DELY=1.
+!/REF1                IF (GTYPE.EQ.RLGTYPE) THEN
 !/REF1                  DELX=SX*CLATS(ISEA)/FACX
 !/REF1                  DELY=SY/FACX
 !/REF1                  DELA=DELX*DELY
 !/REF1                END IF
-!/REF1                IF (GTYPE.EQ.CLGTYPE) THEN 
+!/REF1                IF (GTYPE.EQ.CLGTYPE) THEN
 !/REF1! Maybe what follows works also for RLGTYPE ... to be verified
 !/REF1                  DELX=HPFAC(IY,IX)/ FACX
-!/REF1                  DELY=HQFAC(IY,IX)/ FACX 
+!/REF1                  DELY=HQFAC(IY,IX)/ FACX
 !/REF1                  DELA=DELX*DELY
 !/REF1                END IF
 !
@@ -2508,7 +2529,7 @@
 ! This barrier is from older code versions. It has been removed in 3.11
 ! to optimize IO2/3 settings. May be needed on some systems still
 !
-!!/MPI            IF (FLDRY) CALL MPI_BARRIER (MPI_COMM_WAVE,IERR_MPI) 
+!!/MPI            IF (FLDRY) CALL MPI_BARRIER (MPI_COMM_WAVE,IERR_MPI)
 !
           END IF
 !/TIMINGS         CALL PRINT_MY_TIME("Before update log file")
@@ -2546,7 +2567,7 @@
                 WRITE (NDSO,900) ITIME, IPASS, IDTIME(1:19),          &
                                  IDACT, OUTID
                 IDLAST = TIME(1)
-              ELSE 
+              ELSE
                 WRITE (NDSO,901) ITIME, IPASS, IDTIME(12:19),         &
                                  IDACT, OUTID
               END IF
@@ -3028,7 +3049,7 @@
       IMPLICIT NONE
 !
 !/MPI      INCLUDE "mpif.h"
-!/ 
+!/
 !/ ------------------------------------------------------------------- /
 !/ Parameter list
 !/
@@ -3277,7 +3298,7 @@
           END IF
         END DO
 !/SMC !!Li   For SMC grid, local sea points are equally NSEA/NAPROC
-!/SMC !!Li   so the NLOC is overwirte by a constant.  
+!/SMC !!Li   so the NLOC is overwirte by a constant.
 !/SMC        NLOC = NSEA/NAPROC
 !
 !/T        WRITE (NDST,9000) IPROC, NLOC

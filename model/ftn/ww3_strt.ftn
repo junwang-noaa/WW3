@@ -469,37 +469,34 @@
                Y      = YGRD(IY,IX)
             ENDIF
 
-            if (iclose.eq.iclose_trpl) then
-               ITHM   = 1 + NINT ( (THM-alphaTP(IY,IX)*DERA) / DTH )
-               DO ITH=1, NTH
-                  IF (FLONE) THEN
-                     IF ( ITH .EQ. ITHM ) THEN
-                        DD(ITH) = 1.
-                     ELSE
-                        DD(ITH) = 0.
-                     END IF
-                  ELSE
-                     DD(ITH) = MAX ( COS(TH(ITH)-(THM-alphaTP(IY,IX)*DERA)) , 0. )**NCOS
-                  END IF
-               END DO
-               ETOT   = 0.
-               E2=0.
-               DO IK=1, NK
-                  E1I    = 0.
-                  DO ITH=1, NTH
-                     E2(ITH,IK) = E1(IK) * DD(ITH)
-                     E1I        = E1I + E2(ITH,IK)
-                  END DO
-                  ETOT   = ETOT + E1I * DSIP(IK)
-               END DO
-               ETOT   = ETOT * DTH
-               FACTOR = HMAX**2 / ( 16. * ETOT )
-               E2     = FACTOR * E2
-               DO IK=1, NK
-                  E21(1+(IK-1)*NTH:IK*NTH) = E2(:,IK)
-               END DO
-            endif
-
+!/GLOC               ITHM   = 1 + NINT ( (THM-ALPHA_GLOC(IY,IX)*DERA) / DTH )
+!/GLOC               DO ITH=1, NTH
+!/GLOC                  IF (FLONE) THEN
+!/GLOC                     IF ( ITH .EQ. ITHM ) THEN
+!/GLOC                        DD(ITH) = 1.
+!/GLOC                     ELSE
+!/GLOC                        DD(ITH) = 0.
+!/GLOC                     END IF
+!/GLOC                  ELSE
+!/GLOC                     DD(ITH) = MAX ( COS(TH(ITH)-(THM-ALPHA_GLOC(IY,IX)*DERA)) , 0. )**NCOS
+!/GLOC                  END IF
+!/GLOC               END DO
+!/GLOC               ETOT   = 0.
+!/GLOC               E2=0.
+!/GLOC               DO IK=1, NK
+!/GLOC                  E1I    = 0.
+!/GLOC                  DO ITH=1, NTH
+!/GLOC                     E2(ITH,IK) = E1(IK) * DD(ITH)
+!/GLOC                     E1I        = E1I + E2(ITH,IK)
+!/GLOC                  END DO
+!/GLOC                  ETOT   = ETOT + E1I * DSIP(IK)
+!/GLOC               END DO
+!/GLOC               ETOT   = ETOT * DTH
+!/GLOC               FACTOR = HMAX**2 / ( 16. * ETOT )
+!/GLOC               E2     = FACTOR * E2
+!/GLOC               DO IK=1, NK
+!/GLOC                  E21(1+(IK-1)*NTH:IK*NTH) = E2(:,IK)
+!/GLOC               END DO
 
             IF(NOSIX)THEN
                RDSQR  =(W3DIST(FLAGLL,X,Y,XM,YM)/SIY)**2

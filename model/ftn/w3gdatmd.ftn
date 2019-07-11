@@ -655,11 +655,11 @@
         REAL   , POINTER :: DPDX(:,:), DPDY(:,:) ! DP/DX & DP/DY DEFINED ON IX,IY
         REAL   , POINTER :: DQDX(:,:), DQDY(:,:) ! DQ/DX & DQ/DY DEFINED ON IX,IY
         REAL   , POINTER :: GSQRT(:,:) ! SQRT(G) DEFINED ON IX,IY
-        REAL   , POINTER :: DPDXtp(:,:), DPDYtp(:,:) ! DP/DX & DP/DY DEFINED ON IX,IY
-        REAL   , POINTER :: DQDXtp(:,:), DQDYtp(:,:) ! DQ/DX & DQ/DY DEFINED ON IX,IY
-        REAL   , POINTER :: DADP(:,:), DADQ(:,:) ! Da/DP & Da/DQ DEFINED ON IX,IY
-        REAL   , POINTER :: AlphaTP(:,:)
-        REAL   , POINTER :: GSQRTtp(:,:) ! SQRT(G) DEFINED ON IX,IY
+        REAL   , POINTER :: DPDX_GLOC(:,:), DPDY_GLOC(:,:) ! DP/DX & DP/DY DEFINED ON IX,IY
+        REAL   , POINTER :: DQDX_GLOC(:,:), DQDY_GLOC(:,:) ! DQ/DX & DQ/DY DEFINED ON IX,IY
+        REAL   , POINTER :: DADP_GLOC(:,:), DADQ_GLOC(:,:) ! Da/DP & Da/DQ DEFINED ON IX,IY
+        REAL   , POINTER :: ALPHA_GLOC(:,:)
+        REAL   , POINTER :: GSQRT_GLOC(:,:) ! SQRT(G) DEFINED ON IX,IY
         REAL   , POINTER :: HPFAC(:,:) ! H_P = SQRT(G_PP) DEFINED ON IX,IY
         REAL   , POINTER :: HQFAC(:,:) ! H_Q = SQRT(G_QQ) DEFINED ON IX,IY
 
@@ -1022,11 +1022,11 @@
       REAL   , POINTER :: DPDX(:,:), DPDY(:,:) ! DP/DX & DP/DY DEFINED ON IX,IY
       REAL   , POINTER :: DQDX(:,:), DQDY(:,:) ! DQ/DX & DQ/DY DEFINED ON IX,IY
       REAL   , POINTER :: GSQRT(:,:) ! SQRT(G) DEFINED ON IX,IY
-      REAL   , POINTER :: DPDXtp(:,:), DPDYtp(:,:) ! DP/DX & DP/DY DEFINED ON IX,IY
-      REAL   , POINTER :: DQDXtp(:,:), DQDYtp(:,:) ! DQ/DX & DQ/DY DEFINED ON IX,IY
-      REAL   , POINTER :: DADP(:,:), DADQ(:,:) ! Da/DP & Da/DQ DEFINED ON IX,IY
-      REAL   , POINTER :: AlphaTP(:,:)
-      REAL   , POINTER :: GSQRTtp(:,:) ! SQRT(G) DEFINED ON IX,IY
+      REAL   , POINTER :: DPDX_GLOC(:,:), DPDY_GLOC(:,:) ! DP/DX & DP/DY DEFINED ON IX,IY
+      REAL   , POINTER :: DQDX_GLOC(:,:), DQDY_GLOC(:,:) ! DQ/DX & DQ/DY DEFINED ON IX,IY
+      REAL   , POINTER :: DADP_GLOC(:,:), DADQ_GLOC(:,:) ! Da/DP & Da/DQ DEFINED ON IX,IY
+      REAL   , POINTER :: ALPHA_GLOC(:,:)
+      REAL   , POINTER :: GSQRT_GLOC(:,:) ! SQRT(G) DEFINED ON IX,IY
       REAL   , POINTER :: HPFAC(:,:) ! H_P = SQRT(G_PP) DEFINED ON IX,IY
       REAL   , POINTER :: HQFAC(:,:) ! H_Q = SQRT(G_QQ) DEFINED ON IX,IY
 !/BT4        REAL, POINTER         :: SED_D50(:), SED_PSIC(:)
@@ -1483,14 +1483,14 @@
                  GRIDS(IMOD)%DQDX(MY,MX),    &
                  GRIDS(IMOD)%DQDY(MY,MX),    &
                  GRIDS(IMOD)%GSQRT(MY,MX),   &
-                 GRIDS(IMOD)%DPDXtp(MY,MX),    &
-                 GRIDS(IMOD)%DPDYtp(MY,MX),    &
-                 GRIDS(IMOD)%DQDXtp(MY,MX),    &
-                 GRIDS(IMOD)%DQDYtp(MY,MX),    &
-                 GRIDS(IMOD)%DADP(MY,MX),    &
-                 GRIDS(IMOD)%DADQ(MY,MX),    &
-                 GRIDS(IMOD)%AlphaTP(MY,MX),    &
-                 GRIDS(IMOD)%GSQRTtp(MY,MX),   &
+                 GRIDS(IMOD)%DPDX_GLOC(MY,MX),&
+                 GRIDS(IMOD)%DPDY_GLOC(MY,MX),&
+                 GRIDS(IMOD)%DQDX_GLOC(MY,MX),&
+                 GRIDS(IMOD)%DQDY_GLOC(MY,MX),&
+                 GRIDS(IMOD)%DADP_GLOC(MY,MX),    &
+                 GRIDS(IMOD)%DADQ_GLOC(MY,MX),    &
+                 GRIDS(IMOD)%ALPHA_GLOC(MY,MX),&
+                 GRIDS(IMOD)%GSQRT_GLOC(MY,MX),&
                  GRIDS(IMOD)%HPFAC(MY,MX),   &
                  GRIDS(IMOD)%HQFAC(MY,MX),   &
                  STAT=ISTAT                  )
@@ -2082,14 +2082,14 @@
           DQDX   => GRIDS(IMOD)%DQDX
           DQDY   => GRIDS(IMOD)%DQDY
           GSQRT  => GRIDS(IMOD)%GSQRT
-          DPDXtp   => GRIDS(IMOD)%DPDXtp
-          DPDYtp   => GRIDS(IMOD)%DPDYtp
-          DQDXtp   => GRIDS(IMOD)%DQDXtp
-          DQDYtp   => GRIDS(IMOD)%DQDYtp
-          DADP     => GRIDS(IMOD)%DADP
-          DADQ     => GRIDS(IMOD)%DADQ
-          AlphaTP    => GRIDS(IMOD)%AlphaTP
-          GSQRTtp  => GRIDS(IMOD)%GSQRTtp
+          DPDX_GLOC  => GRIDS(IMOD)%DPDX_GLOC
+          DPDY_GLOC  => GRIDS(IMOD)%DPDY_GLOC
+          DQDX_GLOC  => GRIDS(IMOD)%DQDX_GLOC
+          DQDY_GLOC  => GRIDS(IMOD)%DQDY_GLOC
+          DADP_GLOC  => GRIDS(IMOD)%DADP_GLOC
+          DADQ_GLOC  => GRIDS(IMOD)%DADQ_GLOC
+          ALPHA_GLOC => GRIDS(IMOD)%ALPHA_GLOC
+          GSQRT_GLOC => GRIDS(IMOD)%GSQRT_GLOC
           HPFAC  => GRIDS(IMOD)%HPFAC
           HQFAC  => GRIDS(IMOD)%HQFAC
 !
@@ -2498,7 +2498,7 @@
 !
 !/ ------------------------------------------------------------------- /
       USE W3SERVMD, ONLY: EXTCDE
-!/TRPL      USE W3TRIPMD, ONLY: ReadTriPolFile
+!/GLOC      USE W3TRIPMD, ONLY: ReadTriPolFile
 !/S      USE W3SERVMD, ONLY: STRACE
 !
       IMPLICIT NONE
@@ -2601,7 +2601,6 @@
                        DXDP=DXDP, DYDP=DYDP, DXDQ=DXDQ, DYDQ=DYDQ,     &
                        DPDX=DPDX, DPDY=DPDY, DQDX=DQDX, DQDY=DQDY,     &
                        HPFC=HPFAC, HQFC=HQFAC, GSQR=GSQRT,             &
-                       DADP=DADP, DADQ=DADQ, &
 #if defined(TEST_W3GDATMD) || defined(TEST_W3GDATMD_W3GNTX)
                        COSA=COSA,                                      &
 #endif
@@ -2617,7 +2616,6 @@
                        DXDP=DXDP, DYDP=DYDP, DXDQ=DXDQ, DYDQ=DYDQ,     &
                        DPDX=DPDX, DPDY=DPDY, DQDX=DQDX, DQDY=DQDY,     &
                        HPFC=HPFAC, HQFC=HQFAC, GSQR=GSQRT,             &
-                       DADP=DADP, DADQ=DADQ, &
 #if defined(TEST_W3GDATMD) || defined(TEST_W3GDATMD_W3GNTX)
                        COSA=COSA,                                      &
 #endif
@@ -2627,10 +2625,11 @@
               WRITE (NDSE,1004) GTYPE
               CALL EXTCDE (4)
             END IF
-!/TRPL            call ReadTriPolFile(XGRD,YGRD,LBI,UBI,LBO,UBO, &
-!/TRPL                                MASK=MASK, DPDX=DPDXtp, &
-!/TRPL                                DPDY=DPDYtp, DQDX=DQDXtp, DQDY=DQDYtp, &
-!/TRPL                                GSQR=GSQRTtp, Alpha=AlphaTP)
+!/GLOC            call ReadTriPolFile(XGRD,YGRD,LBI,UBI,LBO,UBO, &
+!/GLOC                                MASK=MASK, DPDX=DPDX_GLOC, &
+!/GLOC                                DPDY=DPDY_GLOC, DQDX=DQDX_GLOC, DQDY=DQDY_GLOC, &
+!/GLOC                                GSQR=GSQRT_GLOC, DADP=DADP_GLOC, DADQ=DADQ_GLOC, &
+!/GLOC                                ALPHA=ALPHA_GLOC)
             
         END SELECT
 !

@@ -121,10 +121,8 @@
 !/SETUP  REAL, POINTER :: ZETA_SETUP(:), FX_zs(:), FY_zs(:)
 !/SETUP  REAL, POINTER :: SXX_zs(:), SXY_zs(:), SYY_zs(:)
 !/PDLIB  REAL, POINTER     :: VSTOT(:,:), VDTOT(:,:)
-!/PDLIB  REAL, POINTER     :: VAOLD(:,:)
-!/TRPL  REAL, POINTER     :: VAOLD(:,:)
+        REAL, POINTER     :: VAOLD(:,:)
 !/PDLIB  LOGICAL, POINTER  :: SHAVETOT(:)
-!!/PDLIB     REAL, POINTER     :: VAOLD(:,:)
         LOGICAL               :: DINIT, FL_ALL
       END TYPE WDATA
 !
@@ -144,8 +142,7 @@
 !/SETUP        REAL, POINTER :: ZETA_SETUP(:), FX_zs(:), FY_zs(:)
 !/SETUP        REAL, POINTER :: SXX_zs(:), SXY_zs(:), SYY_zs(:)
 !/PDLIB      REAL, POINTER           :: VSTOT(:,:), VDTOT(:,:)
-!/PDLIB      REAL, POINTER           :: VAOLD(:,:)
-!/TRPL       REAL, POINTER           :: VAOLD(:,:)
+      REAL, POINTER           :: VAOLD(:,:)
 !/PDLIB      LOGICAL, POINTER        :: SHAVETOT(:)
 !!/PDLIB      REAL, POINTER           :: VAOLD(:,:)
       LOGICAL, POINTER        :: DINIT, FL_ALL
@@ -437,7 +434,7 @@
 !/DEBUGINIT    WRITE(740+IAPROC,*) 'W3DIMW, step 8.6, stat=', istat
 !/DEBUGINIT    FLUSH(740+IAPROC)
 !/PDLIB          ALLOCATE ( WDATAS(IMOD)%VAOLD(NSPEC,NSEAL), stat=istat )
-!/TRPL          ALLOCATE ( WDATAS(IMOD)%VAOLD(NSPEC,NSEAL), stat=istat )
+!/GLOC          ALLOCATE ( WDATAS(IMOD)%VAOLD(NSPEC,NSEAL), stat=istat )
 !/DEBUGINIT    WRITE(740+IAPROC,*) 'W3DIMW, step 8.7, stat=', istat
 !/DEBUGINIT    FLUSH(740+IAPROC)
 !/PDLIB          DO ISEA=1,NSEAL
@@ -653,7 +650,7 @@
 !/PDLIB            VSTOT     => WDATAS(IMOD)%VSTOT
 !/PDLIB            VDTOT     => WDATAS(IMOD)%VDTOT
 !/PDLIB            VAOLD     => WDATAS(IMOD)%VAOLD
-!/TRPL            VAOLD     => WDATAS(IMOD)%VAOLD
+!/GLOC            VAOLD     => WDATAS(IMOD)%VAOLD
           END IF
           WLV    => WDATAS(IMOD)%WLV
           ICE    => WDATAS(IMOD)%ICE
