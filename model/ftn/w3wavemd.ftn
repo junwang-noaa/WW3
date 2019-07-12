@@ -475,6 +475,7 @@
       CHARACTER(LEN=23)       :: IDTIME
       INTEGER eIOBP
       INTEGER ITH_F
+      LOGICAL                 :: GLOC_LOGICAL
 !/PDLIB     REAL ::             VS_SPEC(NSPEC)
 !/PDLIB     REAL ::             VD_SPEC(NSPEC)
 
@@ -496,6 +497,8 @@
 !
 !/ARC !!Li  Switch on lines related to Arctic part on SMC grid.
 !/ARC        ARCTIC = .TRUE.
+      GLOC_LOGICAL = .FALSE.
+!/GLOC       GLOC_LOGICAL = .TRUE.
 !
 ! 0.a Set pointers to data structure
 !
@@ -1748,7 +1751,9 @@
 !/MPI       IF ( NRQSG1 .GT. 0 ) THEN
 !/MPI         CALL MPI_STARTALL (NRQSG1, IRQSG1(1,1), IERR_MPI)
 !/MPI         CALL MPI_STARTALL (NRQSG1, IRQSG1(1,2), IERR_MPI)
-!/MPI         CALL MPI_STARTALL (NRQSG1, IRQSG1(1,3), IERR_MPI)
+!/MPI         IF (GLOC_LOGICAL) THEN
+!/MPI           CALL MPI_STARTALL (NRQSG1, IRQSG1(1,3), IERR_MPI)
+!/MPI         ENDIF
 !/MPI       END IF
 !
 !/OMPX/!$OMP PARALLEL PRIVATE (ISPEC,FIELD)
@@ -1778,18 +1783,18 @@
 !/SMC                CALL W3GATHSMC ( ISPEC, FIELD )
 !
                 IF (GTYPE .NE. UNGTYPE) THEN
-!/GLOC                  IF (.TRUE.) THEN
+                  IF (GLOC_LOGICAL) THEN
 !/PR1               CALL W3XYP1 ( ISPEC, DTG, MAPSTA, FIELD, VGX, VGY, FIELD_180FLIP )
 !/PR2               WRITE(*,*)'TP progogation not supported for pr2'
 !/PR2               STOP
 !/PR3               WRITE(*,*)'TP progogation not supported for pr3'
 !/PR3               STOP
-!/GLOC                  ELSE
+                  ELSE 
 !/PR1               CALL W3XYP1 ( ISPEC, DTG, MAPSTA, FIELD, VGX, VGY )
 !/PR2               CALL W3XYP2 ( ISPEC, DTG, MAPSTA, MAPFS, FIELD, VGX, VGY )
 !/PR3               CALL W3XYP3 ( ISPEC, DTG, MAPSTA, MAPFS, FIELD, VGX, VGY )
 !/PRX               CALL W3XYPX
-!/GLOC                  ENDIF
+                  ENDIF
 !/SMC   !!Li   Propagation on SMC grid uses UNO2 scheme.
 !/SMC             CALL W3PSMC ( ISPEC, DTG, FIELD )
 !
@@ -1818,8 +1823,10 @@
 !/MPI                           IERR_MPI)
 !/MPI         CALL MPI_WAITALL (NRQSG1, IRQSG1(1,2), STATCO, &
 !/MPI                           IERR_MPI)
-!/MPI         CALL MPI_WAITALL (NRQSG1, IRQSG1(1,3), STATCO, &
+!/MPI         IF (GLOC_LOGICAL) THEN
+!/MPI           CALL MPI_WAITALL (NRQSG1, IRQSG1(1,3), STATCO, &
 !/MPI                           IERR_MPI)
+!/MPI         ENDIF
 !/MPI         DEALLOCATE ( STATCO )
 !/MPI         END IF
 
@@ -2767,7 +2774,8 @@
 !/
       USE W3GDATMD, ONLY: NSPEC, NX, NY, NSEA, NSEAL, MAPSF, DMIN
       USE W3PARALL, ONLY: INIT_GET_ISEA
-      USE W3WDATMD, ONLY: A => VAOLD
+      USE W3WDATMD, ONLY: A => VA
+      USE W3WDATMD, ONLY: AOLD => VAOLD
 !/MPI      USE W3ADATMD, ONLY: MPIBUF, BSTAT, IBFLOC, ISPLOC, BISPL, &
 !/MPI                          NSPLOC, NRQSG2, IRQSG2, GSTORE,GSTORE2
 !/MPI      USE W3ODATMD, ONLY: NDST, IAPROC, NAPROC, NOTYPE
@@ -2794,12 +2802,15 @@
 !/S      INTEGER, SAVE           :: IENT
 !/MPIT      CHARACTER(LEN=15)       :: STR(MPIBUF), STRT
       logical  :: FIELD2_PRESENT
+      logical  :: GLOC_LOGICAL
 !/
 !/ ------------------------------------------------------------------- /
 !/
 !/S      CALL STRACE (IENT, 'W3GATH')
 !
       FIELD  = 0.
+      GLOC_LOGICAL = .FALSE.
+!/GLOC     GLOC_LOGICAL = .TRUE.
       FIELD2_PRESENT = present(ISPEC2)
       IF (FIELD2_PRESENT)  FIELD2 = 0.
 
@@ -2808,10 +2819,17 @@
 !
 !/SHRD      DO ISEA=1, NSEA
 !/SHRD        IXY        = MAPSF(ISEA,3)
-!/SHRD        FIELD(IXY) = A(ISPEC,ISEA)
-!/SHRD        IF (FIELD2_PRESENT) THEN
-!/SHRD          FIELD2(IXY) = A(ISPEC2,ISEA)
-!/SHRD        ENDIF
+!/GLOC        IF (.FALSE.) THEN
+!/SHRD          FIELD(IXY) = A(ISPEC,ISEA)
+!/SHRD          IF (FIELD2_PRESENT) THEN
+!/SHRD            FIELD2(IXY) = A(ISPEC2,ISEA)
+!/SHRD          ENDIF
+!/GLOC        ELSE
+!/SHRD          FIELD(IXY) = AOLD(ISPEC,ISEA)
+!/SHRD          IF (FIELD2_PRESENT) THEN
+!/SHRD            FIELD2(IXY) = AOLD(ISPEC2,ISEA)
+!/SHRD          ENDIF
+!/GLOC        ENDIF
 !/SHRD      ENDDO
 !
 !/SHRD      RETURN
@@ -2861,10 +2879,17 @@
 !
 !/MPI      DO JSEA=1, NSEAL
 !/MPI        CALL INIT_GET_ISEA(ISEA, JSEA)
+       IF (.not.GLOC_LOGICAL) THEN
 !/MPI        GSTORE(ISEA,IBFLOC) = A(ISPEC,JSEA)
 !/MPI        IF (FIELD2_PRESENT) THEN
 !/MPI          GSTORE2(ISEA,IBFLOC) = A(ISPEC2,JSEA)
 !/MPI        ENDIF
+       ELSE
+!/MPI        GSTORE(ISEA,IBFLOC) = AOLD(ISPEC,JSEA)
+!/MPI        IF (FIELD2_PRESENT) THEN
+!/MPI          GSTORE2(ISEA,IBFLOC) = AOLD(ISPEC2,JSEA)
+!/MPI        ENDIF
+       ENDIF
 !/MPI      ENDDO
 !
 ! 2.d Wait for remote spectral densities

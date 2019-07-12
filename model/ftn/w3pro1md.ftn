@@ -550,7 +550,8 @@
             DO ISEA=1, NSEA
               IX     = MAPSF(ISEA,1)
               IY     = MAPSF(ISEA,2)
-
+              TO_SPHERICAL     = CLATS(ISEA)
+!/GLOC              TO_SPHERICAL     = 1.0          
               CXTOT2D(IY,IX) = CXTOT2D(IY,IX) + CX(ISEA)/TO_SPHERICAL
               CYTOT2D(IY,IX) = CYTOT2D(IY,IX) + CY(ISEA)
 
@@ -688,7 +689,7 @@
               VCB       = FACVY(IXY) * ( VCY2D(IY,IX) - VCY2D(IY+1,IX) )
 !/GLOC              ELSE
 !/GLOC!BGR this special case isn't needed with grid-local closure.
-              VCB       = FACVY(IXY) * ( VCY2D(IY,IX) + VCY2D(IY+1,IX) )
+!/GLOC              VCB       = FACVY(IXY) * ( VCY2D(IY,IX) + VCY2D(IY+1,IX) )
 !/GLOC              ENDIF
               VFLY2D(IY,IX) = MAX ( VCB , 0. ) * FLD2D(IY,IX)          &
                             + MIN ( VCB , 0. ) * FLD2D(IY+1,IX)
@@ -752,7 +753,8 @@
 !/T3              WRITE (NDST,9042) ISEA, MAPSTA(IXY), AOLD,FLD2D(IY,IX)
 !
           END IF !  IF (MAPSTA(IXY).EQ.1) THEN
-
+          TO_SPHERICAL     = CLATS(ISEA)
+!/GLOC          TO_SPHERICAL     = 1.0          
           FLD2D(IY,IX) = CG(IK,ISEA) / TO_SPHERICAL * FLD2D(IY,IX)
 
         END DO !  DO ISEA=1, NSEA
