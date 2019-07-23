@@ -1615,7 +1615,19 @@
                      ELSE
                         IXrel = IX
                      END IF
-!/GLOC                     if (.FALSE.) THEN
+                     IF (GLOC_LOGICAL) THEN
+!/PR1                        CALL W3KTP1 ( ISEA, FACTH, FACK, CTHG0S(ISEA), &
+!/PR1                           CG(:,ISEA), WN(:,ISEA), DEPTH,            &
+!/PR1                           DDDX(IY,IXrel), DDDY(IY,IXrel), CX(ISEA),       &
+!/PR1                           CY(ISEA), DCXDX(IY,IXrel), DCXDY(IY,IXrel),     &
+!/PR1                           DCYDX(IY,IXrel), DCYDY(IY,IXrel),               &
+!/PR1                           DCDX(:,IY,IXrel), DCDY(:,IY,IXrel),             &
+!/PR1                           VA(:,JSEA),                                     &
+!/PR1                           DADP(IY,IXrel), DADQ(IY,IXrel),       &
+!/PR1                           DPDX(IY,IXrel), DPDY(IY,IXrel),       &
+!/PR1                           DQDX(IY,IXrel), DQDY(IY,IXrel),       &
+!/PR1                           Alpha(IY,IXrel))
+                     ELSE
 !/PR1                        CALL W3KTP1 ( ISEA, FACTH, FACK, CTHG0S(ISEA), &
 !/PR1                           CG(:,ISEA), WN(:,ISEA), DEPTH,            &
 !/PR1                           DDDX(IY,IXrel), DDDY(IY,IXrel), CX(ISEA),       &
@@ -1637,20 +1649,8 @@
 !/PR3                           DCDX(:,IY,IXrel), DCDY(:,IY,IXrel), VA(:,JSEA), &
 !/PR3                           CFLTHMAX(JSEA), CFLKMAX(JSEA) )
 !/PRX                        CALL W3KTPX
-!/GLOC                     ELSE
-!/PR1                        CALL W3KTP1 ( ISEA, FACTH, FACK, CTHG0S(ISEA), &
-!/PR1                           CG(:,ISEA), WN(:,ISEA), DEPTH,            &
-!/PR1                           DDDX(IY,IXrel), DDDY(IY,IXrel), CX(ISEA),       &
-!/PR1                           CY(ISEA), DCXDX(IY,IXrel), DCXDY(IY,IXrel),     &
-!/PR1                           DCYDX(IY,IXrel), DCYDY(IY,IXrel),               &
-!/PR1                           DCDX(:,IY,IXrel), DCDY(:,IY,IXrel),             &
-!/PR1                           VA(:,JSEA),                                     &
-!/PR1                           DADP_GLOC(IY,IXrel), DADQ_GLOC(IY,IXrel),       &
-!/PR1                           DPDX_GLOC(IY,IXrel), DPDY_GLOC(IY,IXrel),       &
-!/PR1                           DQDX_GLOC(IY,IXrel), DQDY_GLOC(IY,IXrel),       &
-!/PR1                           Alpha_GLOC(IY,IXrel))
-!/GLOC                     ENDIF
-!
+                     ENDIF
+
 !/SMC  !!Li    Refraction and GCT in theta direction is done by rotation.
 !/SMC                      CALL W3KRTN ( ISEA, FACTH, FACK, CTHG0S(ISEA), &
 !/SMC                           CG(:,ISEA), WN(:,ISEA), DEPTH,            &
@@ -1950,7 +1950,19 @@
                      ELSE
                         IXrel = IX
                      END IF
-!/GLOC                     if (.FALSE.) THEN
+                     IF (GLOC_LOGICAL) THEN
+!/PR1                        CALL W3KTP1 ( ISEA, FACTH, FACK, CTHG0S(ISEA), &
+!/PR1                           CG(:,ISEA), WN(:,ISEA), DEPTH,            &
+!/PR1                           DDDX(IY,IXrel), DDDY(IY,IXrel), CX(ISEA),       &
+!/PR1                           CY(ISEA), DCXDX(IY,IXrel), DCXDY(IY,IXrel),     &
+!/PR1                           DCYDX(IY,IXrel), DCYDY(IY,IXrel),               &
+!/PR1                           DCDX(:,IY,IXrel), DCDY(:,IY,IXrel),             &
+!/PR1                           VA(:,JSEA),                                     &
+!/PR1                           DADP(IY,IXrel), DADQ(IY,IXrel),       &
+!/PR1                           DPDX(IY,IXrel), DPDY(IY,IXrel),       &
+!/PR1                           DQDX(IY,IXrel), DQDY(IY,IXrel),       &
+!/PR1                           Alpha(IY,IXrel))
+                     ELSE
 !/PR1                        CALL W3KTP1 ( ISEA, FACTH, FACK, CTHG0S(ISEA), &
 !/PR1                           CG(:,ISEA), WN(:,ISEA), DEPTH,            &
 !/PR1                           DDDX(IY,IXrel), DDDY(IY,IXrel), CX(ISEA),       &
@@ -1972,19 +1984,7 @@
 !/PR3                           DCDX(:,IY,IXrel), DCDY(:,IY,IXrel), VA(:,JSEA), &
 !/PR3                           CFLTHMAX(JSEA), CFLKMAX(JSEA) )
 !/PRX                        CALL W3KTPX
-!/GLOC                     ELSE
-!/PR1                        CALL W3KTP1 ( ISEA, FACTH, FACK, CTHG0S(ISEA), &
-!/PR1                           CG(:,ISEA), WN(:,ISEA), DEPTH,            &
-!/PR1                           DDDX(IY,IXrel), DDDY(IY,IXrel), CX(ISEA),       &
-!/PR1                           CY(ISEA), DCXDX(IY,IXrel), DCXDY(IY,IXrel),     &
-!/PR1                           DCYDX(IY,IXrel), DCYDY(IY,IXrel),               &
-!/PR1                           DCDX(:,IY,IXrel), DCDY(:,IY,IXrel),             &
-!/PR1                           VA(:,JSEA),                                     &
-!/PR1                           DADP_GLOC(IY,IXrel), DADQ_GLOC(IY,IXrel),       &
-!/PR1                           DPDX_GLOC(IY,IXrel), DPDY_GLOC(IY,IXrel),       &
-!/PR1                           DQDX_GLOC(IY,IXrel), DQDY_GLOC(IY,IXrel),       &
-!/PR1                           Alpha_GLOC(IY,IXrel))
-!/GLOC                     ENDIF
+                     ENDIF
 !
 !/SMC  !!Li    Refraction and GCT in theta direction is done by rotation.
 !/SMC                      CALL W3KRTN ( ISEA, FACTH, FACK, CTHG0S(ISEA), &

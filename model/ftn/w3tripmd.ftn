@@ -23,7 +23,7 @@ subroutine ReadTriPolFile(X, Y, LBI, UBI, LBO, UBO, &
                           APPC, AQQC, APQC, DXDP, DYDP, DXDQ, DYDQ, &
                           DPDX, DPDY, DQDX, DQDY, COSA, COSC, SINC, &
                           ANGL, SINA, COST, SINT, &
-                          DADP, DADQ, DADX, DADY, Alpha)
+                          DADP, DADQ, DADX, DADY, GANGL)
 
 INTEGER, INTENT(IN)   :: LBI(2), UBI(2)
 INTEGER, INTENT(IN)   :: LBO(2), UBO(2)
@@ -58,17 +58,16 @@ REAL, INTENT(OUT), OPTIONAL :: DADQ(LBO(1):UBO(1),LBO(2):UBO(2))
 REAL, INTENT(OUT), OPTIONAL :: DADP(LBO(1):UBO(1),LBO(2):UBO(2))
 REAL, INTENT(OUT), OPTIONAL :: DADX(LBO(1):UBO(1),LBO(2):UBO(2))
 REAL, INTENT(OUT), OPTIONAL :: DADY(LBO(1):UBO(1),LBO(2):UBO(2))
-REAL, INTENT(OUT), OPTIONAL :: Alpha(LBO(1):UBO(1),LBO(2):UBO(2))
+REAL, INTENT(OUT), OPTIONAL :: GANGL(LBO(1):UBO(1),LBO(2):UBO(2))
 
 
-INTEGER :: NQ
 REAL :: GPPCL, GQQCL, GPQCL
 REAL :: GSQRL, HPFCL, HQFCL
 REAL :: APPCL, AQQCL, APQCL
 REAL :: DXDPL, DYDPL, DXDQL, DYDQL
 REAL :: DPDXL, DPDYL, DQDXL, DQDYL
 REAL :: COSAL, SINAL, COSTP, SINTP, COSCL, SINCL, ANGLL
-REAL :: DADPL, DADQL, DADXL, DADYL, AlphaL
+REAL :: DADPL, DADQL, DADXL, DADYL, GANGLL
 
 character(len=14) :: NC_filename
 character(len=14) ::  Var, Var1, Var2, Var3, Var4, Var5, Var6
@@ -101,15 +100,12 @@ if (first) then
    first=.false.
 endif
 
-!BGR This is hard-coded for testing.
-NQ=300
-
 DO I2 = LBO(2), UBO(2)
    DO I1 = LBO(1), UBO(1)
       P=I2;Q=I1
       if (.true.) then!(.not. MASK(Q,P)) then
          P_ = (P-1) *2 + 1
-         Q_ = NQ + (Q-1) *2 + 1
+         Q_ = (Q-1) *2 + 1
          !         
          !             1       2
          !   5     x---x---x---x---x
@@ -135,9 +131,9 @@ DO I2 = LBO(2), UBO(2)
                      ( GridInfo%var3(p_,q_) + GridInfo%var3(p_+1,q_) )
          !  DY/DQ is DY(p+1,q) + DY(p+1,q+1)
          DYDQL = GridInfo%var4(p_+1,q_) + GridInfo%var4(p_+1,q_+1)
-         !  Da/DQ is alpha(p_+1,q_+2) - alpha(p_+1,q_)
+         !  Da/DQ is GANGL(p_+1,q_+2) - GANGL(p_+1,q_)
          DaDQL = GridInfo%var5(p_+1,q_+2) - GridInfo%var5(p_+1,q_)
-         !  Da/DP is alpha(p_+2,q_+1) - alpha(p_,q_+1)
+         !  Da/DP is GANGL(p_+2,q_+1) - GANGL(p_,q_+1)
          DaDPL = GridInfo%var5(p_+2,q_+1) - GridInfo%var5(p_,q_+1)
          !
          GSQRL = DXDPL*DYDQL - DXDQL*DYDPL
@@ -176,7 +172,7 @@ DO I2 = LBO(2), UBO(2)
          ANGLL = ATAN2(SINCL,COSCL)*180./3.1415
          DaDXL = DaDPL*DPDXL+DaDQL*DQDXL
          DaDYL = DaDPL*DPDYL+DaDQL*DQDYL
-         AlphaL = GridInfo%var5(p_+1,q_+1)
+         GANGLL = GridInfo%var5(p_+1,q_+1)
          IF (PRESENT(GPPC)) GPPC(I1,I2) = GPPCL
          IF (PRESENT(GQQC)) GQQC(I1,I2) = GQQCL
          IF (PRESENT(GPQC)) GPQC(I1,I2) = GPQCL
@@ -202,7 +198,7 @@ DO I2 = LBO(2), UBO(2)
          IF (PRESENT(DADQ)) DADQ(I1,I2) = DADQL
          IF (PRESENT(DADX)) DADX(I1,I2) = DADXL
          IF (PRESENT(DADY)) DADY(I1,I2) = DADYL
-         IF (PRESENT(Alpha)) Alpha(I1,I2) = AlphaL
+         IF (PRESENT(GANGL)) GANGL(I1,I2) = GANGLL
       else
          IF (PRESENT(GPPC)) GPPC(I1,I2) = 0.
          IF (PRESENT(GQQC)) GQQC(I1,I2) = 0.
@@ -229,7 +225,7 @@ DO I2 = LBO(2), UBO(2)
          IF (PRESENT(DADQ)) DADQ(I1,I2) = 0.
          IF (PRESENT(DADX)) DADX(I1,I2) = 0.
          IF (PRESENT(DADY)) DADY(I1,I2) = 0.
-         IF (PRESENT(Alpha)) Alpha(I1,I2) = 0.
+         IF (PRESENT(GANGL)) GANGL(I1,I2) = 0.
       endif
    enddo
 enddo

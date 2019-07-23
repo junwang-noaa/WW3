@@ -392,9 +392,7 @@
       USE W3GDATMD, ONLY: NK, NTH, SIG, ECOS, ESIN, NX, NY, NSEA,     &
                           MAPSF, DTCFL, ICLOSE, CLATS, FLCX, FLCY,    &
                           ICLOSE_NONE, ICLOSE_SMPL, ICLOSE_TRPL,      &
-                          FLAGLL, DPDX, DPDY, DQDX, DQDY, GSQRT,      &
-                          DPDX_GLOC, DPDY_GLOC, DQDX_GLOC,            &
-                          DQDY_GLOC, GSQRT_GLOC
+                          FLAGLL, DPDX, DPDY, DQDX, DQDY, GSQRT
       USE W3WDATMD, ONLY: TIME
       USE W3ADATMD, ONLY: CG, CX, CY, ATRNX, ATRNY, FACVX, FACVY
       USE W3IDATMD, ONLY: FLCUR
@@ -562,12 +560,7 @@
            DO ISEA=1, NSEA
               IX     = MAPSF(ISEA,1)
               IY     = MAPSF(ISEA,2)
-!/GLOC              IF (.FALSE.) THEN
-                 CP = CXTOT2D(IY,IX)*(DPDX(IY,IX))+CYTOT2D(IY,IX)*(DPDY(IY,IX))
-!/GLOC              ELSE
-!/GLOC                CP = CXTOT2D(IY,IX)*(DPDX_GLOC(IY,IX)) +&
-!/GLOC                     CYTOT2D(IY,IX)*(DPDY_GLOC(IY,IX))
-!/GLOC              ENDIF
+              CP = CXTOT2D(IY,IX)*(DPDX(IY,IX))+CYTOT2D(IY,IX)*(DPDY(IY,IX))
               VCX2D(IY,IX) = CP*DTRAD
            END DO
         ELSE
@@ -578,12 +571,7 @@
            DO ISEA=1, NSEA
               IX     = MAPSF(ISEA,1)
               IY     = MAPSF(ISEA,2)
-!/GLOC              IF (.FALSE.) THEN
-                 CQ = CXTOT2D(IY,IX)*DQDX(IY,IX)+CYTOT2D(IY,IX)*DQDY(IY,IX)
-!/GLOC              ELSE
-!/GLOC                 CQ = CXTOT2D(IY,IX)*DQDX_GLOC(IY,IX) +&
-!/GLOC                      CYTOT2D(IY,IX)*DQDY_GLOC(IY,IX)
-!/GLOC              ENDIF
+              CQ = CXTOT2D(IY,IX)*DQDX(IY,IX)+CYTOT2D(IY,IX)*DQDY(IY,IX)
               VCY2D(IY,IX) = CQ*DTRAD
            END DO
         ELSE
@@ -594,14 +582,9 @@
 ! Bugfix: This is now done *before* adding the ghost row, so that ghost
 !   row will be in index space (bug applied only to global, irregular
 !   grids, so it did not apply to any test case that existed w/v4.18)
-!/GLOC        IF (.FALSE.) THEN
            FLD2D(1:NY,1:NX) = FLD2D(1:NY,1:NX)*GSQRT(1:NY,1:NX)
-!/GLOC        ELSE
-!/GLOC          FLD2D(1:NY,1:NX) = FLD2D(1:NY,1:NX) *&
-!/GLOC                             GSQRT_GLOC(1:NY,1:NX)
 !/GLOC          FLD2D_180(1:NY,1:NX) = FLD2D_180(1:NY,1:NX) *&
-!/GLOC                                 GSQRT_GLOC(1:NY,1:NX)
-!/GLOC        ENDIF
+!/GLOC                                 GSQRT(1:NY,1:NX)
 !
 ! Deal with longitude closure by duplicating one row *to the right*
 !   in FIELD/FLD2D, VCX
@@ -766,7 +749,7 @@
 !/GLOC           IF (.FALSE.) THEN
            FLD2D(1:NY,1:NX)=FLD2D(1:NY,1:NX)/GSQRT(1:NY,1:NX)
 !/GLOC           ELSE
-!/GLOC             FLD2D(1:NY,1:NX)=FLD2D(1:NY,1:NX)/GSQRT_GLOC(1:NY,1:NX)
+!/GLOC             FLD2D(1:NY,1:NX)=FLD2D(1:NY,1:NX)/GSQRT(1:NY,1:NX)
 !/GLOC           ENDIF
 
 !
@@ -832,7 +815,7 @@
       SUBROUTINE W3KTP1 ( ISEA, FACTH, FACK, CTHG0, CG, WN, DEPTH,    &
                           DDDX, DDDY, CX, CY, DCXDX, DCXDY, DCYDX,    &
                           DCYDY, DCDX, DCDY, VA, &
-                          DADP, DADQ, DPDX, DPDY, DQDX, DQDY, ALPHA )
+                          DADP, DADQ, DPDX, DPDY, DQDX, DQDY, GANGL )
 !/
 !/                  +-----------------------------------+
 !/                  | WAVEWATCH III           NOAA/NCEP |
@@ -947,7 +930,7 @@
                                  CX, CY, DCXDX, DCXDY, DCYDX, DCYDY
       REAL, OPTIONAL, &
             INTENT(IN)        :: DADP, DADQ, DPDX, DPDY, DQDX, DQDY,  &
-                                 ALPHA
+                                 GANGL
       REAL, INTENT(IN)        :: DCDX(0:NK+1), DCDY(0:NK+1)
       REAL, INTENT(INOUT)     :: VA(NSPEC)
 !/
@@ -959,7 +942,7 @@
       REAL                    :: FDDMAX, FDG, DCYX, DCXXYY, DCXY,     &
                                  DCXX, DCXYYX, DCYY, FKD, FKD0, CTHB, &
                                  CWNB
-!/GLOC       REAL             :: FDG_P, FDG_Q, SIN_ALPHA, COS_ALPHA
+!/GLOC       REAL             :: FDG_P, FDG_Q, SIN_GANGL, COS_GANGL
       REAL                    :: VCTH(NSPEC), VCWN(1-NTH:NSPEC+NTH),  &
                                  VAA(1-NTH:NSPEC+NTH), VFLTH(NSPEC),  &
                                  VFLWN(1-NTH:NSPEC), DSDD(0:NK+1),    &
@@ -978,7 +961,7 @@
 !/GLOC         IF ( .NOT.(PRESENT(DADP) .AND. PRESENT(DADQ) .AND. &
 !/GLOC                    PRESENT(DPDX) .AND. PRESENT(DPDY) .AND. &
 !/GLOC                    PRESENT(DQDX) .AND. PRESENT(DQDY) .AND. &
-!/GLOC                    PRESENT(ALPHA) ) ) THEN
+!/GLOC                    PRESENT(GANGL) ) ) THEN
 !/GLOC            WRITE(*,*)'W3KTP1 needs missing fields for grid-local '//&
 !/GLOC                 'closure (great-circle refraction).  Failing now.'
 !/GLOC            STOP
@@ -1019,8 +1002,8 @@
           FDG    = FACTH * CTHG0
 !/GLOC            FDG_P = max(-1.e-1,min(1.e-1,-FACTH * DERA*(DADP*DPDX+DADP*DPDY)))
 !/GLOC            FDG_Q = max(-1.e-1,min(1.e-1,-FACTH * DERA*(DADQ*DQDX+DADQ*DQDY)))
-!/GLOC            COS_ALPHA = COS(ALPHA*DERA)
-!/GLOC            SIN_ALPHA = SIN(ALPHA*DERA)
+!/GLOC            COS_GANGL = COS(GANGL*DERA)
+!/GLOC            SIN_GANGL = SIN(GANGL*DERA)
           DO ITH=1, NTH
             FDDMAX = MAX ( FDDMAX , ABS (                             &
                ESIN(ITH)*DDDX - ECOS(ITH)*DDDY ) )
@@ -1044,7 +1027,7 @@
 !/GLOC              VCTH(ISP) = FRG_P(MAPWN(ISP)) * ECOS(ISP) +&
 !/GLOC                          FRG_Q(MAPWN(ISP)) * ESIN(ISP) +&
 !/GLOC                          FRG(MAPWN(ISP))*&
-!/GLOC                          (ECOS(ISP)*COS_ALPHA-ESIN(ISP)*SIN_ALPHA)
+!/GLOC                          (ECOS(ISP)*COS_GANGL-ESIN(ISP)*SIN_GANGL)
 !/GLOC            ENDIF
             END DO
 
@@ -1053,6 +1036,7 @@
 !/DEBUG      WRITE(740+IAPROC,*) 'pro1 FDG=', FDG
 !/DEBUG      WRITE(740+IAPROC,*) 'pro1 FDDMAX=', FDDMAX
 !/DEBUG      WRITE(740+IAPROC,*) 'pro1 sum(FRK)=', sum(FRK)
+!/DEBUG      WRITE(740+IAPROC,*) 'pro1 sum(FRG)=', sum(FRG)
 !/DEBUG      WRITE(740+IAPROC,*) 'pro1 sum(DSDD)=', sum(DSDD)
 !/DEBUG      WRITE(740+IAPROC,*) 'ISEA=', ISEA, ' sum(VCTH)=', sum(VCTH)
 !/DEBUG      FLUSH(740+IAPROC)
@@ -1073,6 +1057,7 @@
 !/REFRX          DO IK=1, NK
 !/REFRX            FRK(IK) = FACTH * CG(IK) * WN(IK) / SIG(IK)
 !/REFRX            FRK(IK) = FRK(IK) / MAX ( 1. , FRK(IK)*FDDMAX/CTMAX )
+!/REFRX            FRG(IK) = FDG * CG(IK)
 !/REFRX          END DO
 !/REFRX          DO ISP=1, NSPEC
 !/GLOC            IF (.FALSE.) THEN

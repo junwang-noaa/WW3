@@ -469,7 +469,7 @@
                Y      = YGRD(IY,IX)
             ENDIF
 
-!/GLOC               ITHM   = 1 + NINT ( (THM-ALPHA_GLOC(IY,IX)*DERA) / DTH )
+!/GLOC               ITHM   = 1 + NINT ( (THM-GANGL(IY,IX)*DERA) / DTH )
 !/GLOC               DO ITH=1, NTH
 !/GLOC                  IF (FLONE) THEN
 !/GLOC                     IF ( ITH .EQ. ITHM ) THEN
@@ -478,7 +478,7 @@
 !/GLOC                        DD(ITH) = 0.
 !/GLOC                     END IF
 !/GLOC                  ELSE
-!/GLOC                     DD(ITH) = MAX ( COS(TH(ITH)-(THM-ALPHA_GLOC(IY,IX)*DERA)) , 0. )**NCOS
+!/GLOC                     DD(ITH) = MAX ( COS(TH(ITH)-(THM-GANGL(IY,IX)*DERA)) , 0. )**NCOS
 !/GLOC                  END IF
 !/GLOC               END DO
 !/GLOC               ETOT   = 0.
