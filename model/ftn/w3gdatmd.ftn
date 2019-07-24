@@ -581,9 +581,6 @@
 !/ Specify default accessibility
 !/
       PUBLIC
-!{
-      LOGICAL, private, allocatable, dimension (:,:) :: MASK
-!}
 !/
 !/ Module private variable for checking error returns
 !/
@@ -1449,9 +1446,6 @@
 !
 ! NB: Some array start at 0 because MAPFS(IY,IX)=0 for missing points 
 !
-!{
-      allocate(MASK(NY,NX))
-!}
       ALLOCATE ( GRIDS(IMOD)%MAPSTA(MY,MX),  &
                  GRIDS(IMOD)%MAPST2(MY,MX),  &
                  GRIDS(IMOD)%MAPFS(MY,MX),   &
@@ -2509,17 +2503,6 @@
 ! -------------------------------------------------------------------- /
 ! 1.  Test input and module status
 !
-!{
-      do i=1,nx
-         do j=1,ny
-            if (MAPSTA(j,i)==1) then
-               MASK(j,i)=.false.
-            else
-               MASK(j,i)=.true.
-            end if
-         enddo
-      enddo
-!}
       IF ( NGRIDS .EQ. -1 ) THEN
           WRITE (NDSE,1001)
           CALL EXTCDE (1)
@@ -2610,7 +2593,7 @@
             END IF
 !/GLOC    ELSE
 !/GLOC            call ReadTriPolFile(XGRD,YGRD,LBI,UBI,LBO,UBO, &
-!/GLOC                                MASK=MASK, DPDX=DPDX, &
+!/GLOC                                DPDX=DPDX, &
 !/GLOC                                DPDY=DPDY, DQDX=DQDX, DQDY=DQDY, &
 !/GLOC                                GSQR=GSQRT, DADP=DADP, DADQ=DADQ, &
 !/GLOC                                GANGL=GANGL)
