@@ -3956,8 +3956,7 @@
                             HPFC, HQFC, APPC, AQQC, APQC, &
                             DXDP, DYDP, DXDQ, DYDQ, &
                             DPDX, DPDY, DQDX, DQDY, &
-                            COSA, COSC, SINC, ANGL, RC, &
-                            DADP, DADQ, DADX, DADY)
+                            COSA, COSC, SINC, ANGL, RC )
 !     Single precision interface
       LOGICAL, INTENT(IN)   :: IJG
       LOGICAL, INTENT(IN)   :: LLG
@@ -3995,10 +3994,6 @@
       REAL(4), INTENT(OUT), OPTIONAL :: SINC(LBO(1):UBO(1),LBO(2):UBO(2))
       REAL(4), INTENT(OUT), OPTIONAL :: ANGL(LBO(1):UBO(1),LBO(2):UBO(2))
       INTEGER, INTENT(OUT), OPTIONAL :: RC
-      REAL, INTENT(OUT), OPTIONAL :: DADP(LBO(1):UBO(1),LBO(2):UBO(2))
-      REAL, INTENT(OUT), OPTIONAL :: DADQ(LBO(1):UBO(1),LBO(2):UBO(2))
-      REAL, INTENT(OUT), OPTIONAL :: DADX(LBO(1):UBO(1),LBO(2):UBO(2))
-      REAL, INTENT(OUT), OPTIONAL :: DADY(LBO(1):UBO(1),LBO(2):UBO(2))
 
 !     Local parameters
       INTEGER, PARAMETER :: M = 1 ! order of derivative
@@ -4301,7 +4296,6 @@
 !
       DEALLOCATE ( K, C, K2, C2 )
 
-
       END SUBROUTINE W3CGDM_R4
 !/
 !/ ------------------------------------------------------------------- /
@@ -4313,9 +4307,7 @@
                             HPFC, HQFC, APPC, AQQC, APQC, &
                             DXDP, DYDP, DXDQ, DYDQ, &
                             DPDX, DPDY, DQDX, DQDY, &
-                            COSA, COSC, SINC, ANGL, RC, &
-                            DADP, DADQ, DADX, DADY)
-
+                            COSA, COSC, SINC, ANGL, RC )
 !     Double precision interface
       LOGICAL, INTENT(IN)   :: IJG
       LOGICAL, INTENT(IN)   :: LLG
@@ -4353,10 +4345,6 @@
       REAL(8), INTENT(OUT), OPTIONAL :: SINC(LBO(1):UBO(1),LBO(2):UBO(2))
       REAL(8), INTENT(OUT), OPTIONAL :: ANGL(LBO(1):UBO(1),LBO(2):UBO(2))
       INTEGER, INTENT(OUT), OPTIONAL :: RC
-      REAL, INTENT(OUT), OPTIONAL :: DADP(LBO(1):UBO(1),LBO(2):UBO(2))
-      REAL, INTENT(OUT), OPTIONAL :: DADQ(LBO(1):UBO(1),LBO(2):UBO(2))
-      REAL, INTENT(OUT), OPTIONAL :: DADX(LBO(1):UBO(1),LBO(2):UBO(2))
-      REAL, INTENT(OUT), OPTIONAL :: DADY(LBO(1):UBO(1),LBO(2):UBO(2))
 
 !     Local parameters
       INTEGER, PARAMETER :: M = 1 ! order of derivative
@@ -4654,7 +4642,6 @@
               IF (PRESENT(ANGL)) ANGL(I1,I2) = ANGLL
             END DO !I1
         END DO !I2
-
 !
 ! -------------------------------------------------------------------- /
 ! 4.  Clean up

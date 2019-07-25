@@ -424,7 +424,6 @@
       REAL                    :: RD1, RD2
       REAL                    :: CP, CQ
       REAL                    :: TO_SPHERICAL
-
 !/T3      REAL                    :: AOLD
 !/
 !/ Automatic work arrays
@@ -437,7 +436,7 @@
       REAL                    :: VCY2D(NY+1,NX)
       REAL                    :: VFLX2D(1:NY,0:NX)
       REAL                    :: VFLY2D(NY,NX)
-      
+
 !/
 !/ ------------------------------------------------------------------- /
 !/
@@ -523,7 +522,7 @@
           IY     = MAPSF(ISEA,2)
           IXY    = MAPSF(ISEA,3)
           TO_SPHERICAL     = CLATS(ISEA)
-!/GLOC    TO_SPHERICAL     = 1.0          
+!/GLOC    TO_SPHERICAL     = 1.0
 
           IF (TO_SPHERICAL==0.0) THEN
              WRITE(*,*)'You have an open pole without a proper '//&
@@ -549,7 +548,7 @@
               IX     = MAPSF(ISEA,1)
               IY     = MAPSF(ISEA,2)
               TO_SPHERICAL     = CLATS(ISEA)
-!/GLOC              TO_SPHERICAL     = 1.0          
+!/GLOC              TO_SPHERICAL     = 1.0
               CXTOT2D(IY,IX) = CXTOT2D(IY,IX) + CX(ISEA)/TO_SPHERICAL
               CYTOT2D(IY,IX) = CYTOT2D(IY,IX) + CY(ISEA)
 
@@ -737,7 +736,7 @@
 !
           END IF !  IF (MAPSTA(IXY).EQ.1) THEN
           TO_SPHERICAL     = CLATS(ISEA)
-!/GLOC          TO_SPHERICAL     = 1.0          
+!/GLOC          TO_SPHERICAL     = 1.0
           FLD2D(IY,IX) = CG(IK,ISEA) / TO_SPHERICAL * FLD2D(IY,IX)
 
         END DO !  DO ISEA=1, NSEA
@@ -1070,7 +1069,7 @@
 !/GLOC                       + FRK(MAPWN(ISP)) * ( ESIN(ISP)*DCDX(MAPWN(ISP))&
 !/GLOC                       - ECOS(ISP)*DCDY(MAPWN(ISP)) )
 !/GLOC            ENDIF
-!/REFRX          END DO 
+!/REFRX          END DO
 !
 ! 2.d Current refraction
 !
