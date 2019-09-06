@@ -1025,6 +1025,8 @@
 !/OASOCM      USE W3OGCMMD, ONLY: RCV_FIELDS_FROM_OCEAN
 !/OASICM      USE W3IGCMMD, ONLY: RCV_FIELDS_FROM_ICE
 !/OASIS       USE W3ODATMD, ONLY: DTOUT 
+!/GLOC       USE W3GDATMD,  ONLY: GANGL 
+!/GLOC       USE CONSTANTS, ONLY: DERA
       IMPLICIT NONE
 !/
 !/ ------------------------------------------------------------------- /
@@ -1049,6 +1051,7 @@
       INTEGER                 :: IX, IY, J, ISTAT
 !/S      INTEGER, SAVE           :: IENT = 0
       REAL                    :: DTTST
+      REAL                    :: tempx,tempy,COS_GANGL,SIN_GANGL
       LOGICAL                 :: WRITE, FL2D, FLFRST, FLBE, FLST,    &
                                  FLINTERP, FLCOUPL
       LOGICAL, PARAMETER      :: FLAGSC_DEFAULT = .FALSE.
@@ -1136,6 +1139,28 @@
 ! Process fields, write --------------------------------------------- *
 !
         IF ( WRITE ) THEN
+
+!  Rotate field here: 
+            IF (IDFLD.EQ.'CUR'.OR.IDFLD.EQ.'WND'.OR.IDFLD.EQ.'WNS') THEN
+              write(*,*) 'JDM we update the wind here', IDFLD
+              DO IX=1,NX
+                DO IY=1,NY
+!/GLOC            COS_GANGL = COS(GANGL(IX,IY)*DERA)
+!/GLOC            SIN_GANGL = SIN(GANGL(IX,IY)*DERA)
+                  write(*,*) 'ix iy GANGL COS SIN:',IX,IY,GANGL(IX,IY),COS_GANGL,SIN_GANGL
+                  write(*,*) 'ix iy FX0 FY0', FX0(ix,iy), FY0(ix,iy)
+                  tempx = COS_GANGL*FX0(ix,iy)+SIN_GANGL*FY0(ix,iy)
+                  tempy = COS_GANGL*FY0(ix,iy)-SIN_GANGL*FX0(ix,iy)
+                  if (abs(FX0(ix,iy)-tempx)>0) write(*,*) 'x diff', ix,iy, FX0(ix,iy)-tempx
+                  if (abs(FY0(ix,iy)-tempy)>0) write(*,*) 'y diff', ix,iy, FY0(ix,iy)-tempy
+                  FX0(ix,iy) = tempx
+                  FY0(ix,iy) = tempy
+                ENDDO
+              END DO
+            END IF
+
+
+
 !
 !/T            WRITE (NDST,9030) TF0
             WRITE (NDS,ERR=803,IOSTAT=ISTAT) TF0
@@ -1210,6 +1235,7 @@
               END IF
 !/OASIS            END IF
 !
+
 ! Check time, branch back if necessary
 !
             DTTST  = DSEC21 ( T0 , TFN )
