@@ -1143,12 +1143,13 @@
 !  Rotate field here: 
             IF (IDFLD.EQ.'CUR'.OR.IDFLD.EQ.'WND'.OR.IDFLD.EQ.'WNS') THEN
               write(*,*) 'JDM we update the wind here', IDFLD
+              write(*,*) 'JDM maxval in fld', maxval(GANGL)
               DO IX=1,NX
                 DO IY=1,NY
 !/GLOC            COS_GANGL = COS(GANGL(IX,IY)*DERA)
 !/GLOC            SIN_GANGL = SIN(GANGL(IX,IY)*DERA)
-                  write(*,*) 'ix iy GANGL COS SIN:',IX,IY,GANGL(IX,IY),COS_GANGL,SIN_GANGL
-                  write(*,*) 'ix iy FX0 FY0', FX0(ix,iy), FY0(ix,iy)
+!                  write(*,*) 'ix iy GANGL COS SIN:',IX,IY,GANGL(IX,IY),COS_GANGL,SIN_GANGL
+!                  write(*,*) 'ix iy FX0 FY0', FX0(ix,iy), FY0(ix,iy)
                   tempx = COS_GANGL*FX0(ix,iy)+SIN_GANGL*FY0(ix,iy)
                   tempy = COS_GANGL*FY0(ix,iy)-SIN_GANGL*FX0(ix,iy)
                   if (abs(FX0(ix,iy)-tempx)>0) write(*,*) 'x diff', ix,iy, FX0(ix,iy)-tempx

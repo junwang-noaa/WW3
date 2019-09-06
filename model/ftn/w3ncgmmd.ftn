@@ -123,6 +123,7 @@
 !/
         INTEGER :: I2, I1, P, Q, P_, Q_
 !/
+        write(*,*) 'JDM in READ_METRICS'
         IF (FIRST) THEN
 
            WRITE(*,*)'  Reading Grid Metric Terms from file ',&
@@ -266,9 +267,12 @@
                  IF (PRESENT(DADX)) DADX(I1,I2) = 0.
                  IF (PRESENT(DADY)) DADY(I1,I2) = 0.
                  IF (PRESENT(GANGL)) GANGL(I1,I2) = 0.
+                 IF (PRESENT(GANGL)) write(*,*) 'JDM GANGL Set To Zero'
               ENDIF
            ENDDO
         ENDDO
+        
+        WRITE(*,*) 'JDM MAXVAL GANGL', maxval(GANGL)
 
         RETURN
       ENDSUBROUTINE READ_METRICS
