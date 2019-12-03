@@ -47,6 +47,10 @@ case "$MACHINE" in
 	export WWATCH3_NETCDF=NC4
 	export NETCDF_CONFIG="${NETCDF}/bin/nc-config"
 	;;
+    hera)
+	export WWATCH3_NETCDF=NC4
+	export NETCDF_CONFIG="${NETCDF}/bin/nc-config"
+	;;
     *)
 	echo "WARNING: Unkown machine" 1>&2
 	echo "WARNING: WWATCH3_NETCDF not defined" 1>&2
