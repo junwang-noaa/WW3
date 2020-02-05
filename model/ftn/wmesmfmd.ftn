@@ -2240,8 +2240,8 @@
           wy0 = wyn
 !/WRST          wxn = WXNwrst !replace with values from restart
 !/WRST          wyn = WYNwrst 
-!/WRST          wx0 = WXNwrst 
-!/WRST          wy0 = WYNwrst  
+!/WRST          wx0 = WX0wrst 
+!/WRST          wy0 = WY0wrst  
 !/WRST          do imod = 1,nrgrd
 !/WRST            call w3setg ( imod, mdse, mdst )
 !/WRST            call w3setw ( imod, mdse, mdst )
@@ -2252,8 +2252,8 @@
 !/WRST            INPUTS(IMOD)%TFN(:,3) = INPUTS(impGridID)%TFN(:,3)              
 !/WRST            wxn = WXNwrst !replace with values from restart
 !/WRST            wyn = WYNwrst 
-!/WRST            wx0 = WXNwrst 
-!/WRST            wy0 = WYNwrst  
+!/WRST            wx0 = WX0wrst 
+!/WRST            wy0 = WY0wrst  
 !/WRST            if (ESMF_LogFoundError(rc, PASSTHRU)) return
 !/WRST          enddo
 !/WRST        endif
@@ -2262,7 +2262,9 @@
 !/WRST        !If the time of the field is still initial time, replace
 !/WRST        !with restart field
 !/WRST        wxn = WXNwrst !replace with values from restart
-!/WRST        wyn = WYNwrst     
+!/WRST        wyn = WYNwrst
+!/WRST        wx0 = WX0wrst 
+!/WRST        wy0 = WY0wrst      
 !/WRST       else    !twn>tw0
         do imod = 1,nrgrd
           call w3setg ( imod, mdse, mdst )
