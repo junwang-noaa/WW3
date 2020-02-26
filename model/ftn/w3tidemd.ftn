@@ -287,6 +287,7 @@
 !
 ! 10. Source code :
 !
+!/S      USE W3SERVMD, ONLY: STRACE
 !/ ------------------------------------------------------------------- /
       IMPLICIT NONE   
 !/
@@ -372,6 +373,7 @@
 !       !/T  Enable test output.
 !
 ! 10. Source code :
+!/S      USE W3SERVMD, ONLY: STRACE
 !
 !/ ------------------------------------------------------------------- /
       IMPLICIT NONE   
@@ -412,11 +414,7 @@
 
       INDS(:) = 0
       IF (TRIM(LIST(1)).EQ.'ALL') THEN 
-        TIDE_MF = TIDE_MF_ALL
-        IF (ALLOCATED(TIDE_FREQC)) DEALLOCATE(TIDE_FREQC)
-        ALLOCATE(TIDE_FREQC(TIDE_MF),TIDECON_NAME(TIDE_MF))
-        TIDECON_NAME = TIDECON_NAME_ALL
-        TIDE_FREQC = TIDE_FREQC_ALL
+        WRITE(6,*) 'Tidal constituent ALL not available anymore.'
         RETURN
         END IF
 !
@@ -583,11 +581,11 @@
 !
               RR=EE(J)
               L2=IR(J)+1
-              GO TO (901,902,903),L2
-  902         RR=EE(J)*0.36309*(1.-5.*SLAT*SLAT)/SLAT
-              GO TO 901
-  903         RR=EE(J)*2.59808*SLAT
-  901         CONTINUE
+              IF (L2.EQ.2) THEN
+                RR=EE(J)*0.36309*(1.-5.*SLAT*SLAT)/SLAT
+              ELSE IF (L2.EQ.3) THEN
+                RR=EE(J)*2.59808*SLAT
+              END IF
               UUDBL=LDEL(J)*P+MDEL(J)*ENP+NDEL(J)*PP+PH(J)
               IUU=UUDBL
               UU=UUDBL-IUU
@@ -1377,7 +1375,7 @@
         resi=abs(b(i)-sum)
 !      TIDE_MF addition
         q(i,N2)=b(i)-sum
-        res=max(res,resi)
+        res=max(res,REAL(resi))
         ssq=ssq+resi**2
       enddo
 ! compute variances, covariances, these may need to be given dimension
@@ -1907,11 +1905,11 @@
 !
       RR=EE(J)
       L=IR(J)+1
-      GO TO (901,902,903),L
-  902 RR=EE(J)*0.36309*(1.-5.*SLAT*SLAT)/SLAT
-      GO TO 901
-  903 RR=EE(J)*2.59808*SLAT
-  901 CONTINUE
+      IF (L.EQ.2) THEN
+        RR=EE(J)*0.36309*(1.-5.*SLAT*SLAT)/SLAT
+      ELSE IF (L.EQ.3) THEN
+        RR=EE(J)*2.59808*SLAT
+      END IF
       UUDBL=LDEL(J)*P+MDEL(J)*ENP+NDEL(J)*PP+PH(J)
       IUU=UUDBL
       UU=UUDBL-IUU
