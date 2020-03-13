@@ -1168,6 +1168,7 @@
 
       REAL*8                  :: JDMstart, JDMfinish
       REAL*8                  :: startJDM, finishJDM
+      REAL*8                  :: startJDM1, finishJDM1
 
 
 !/SCRIP      TYPE ALLWGT
@@ -1490,6 +1491,11 @@
                IF(IMPROC.EQ.NMPERR)WRITE(MDSE,'(A)') &
                    'Starting MAPBDI 1st loop.'
 
+
+              finishJDM=MPI_wtime()
+              write(*,*) 'JDM Time BL1 WMGHGH:', IMPROC, finishJDM-startJDM
+              startJDM1=MPI_wtime()
+
                DO IDST=NX_BEG(IMPROC), NX_END(IMPROC)
                   IF(MOD(IDST,250).EQ.0)THEN
                      IF(LMPIBDI)THEN
@@ -1512,6 +1518,10 @@
                      ENDIF ! IF MAPSTA
                   END DO ! DO JDST...
                END DO ! DO IDST...
+
+              finishJDM1=MPI_wtime()
+              write(*,*) 'JDM Time BL2 WMGHGH:', IMPROC, finishJDM1-startJDM1
+              startJDM1=MPI_wtime()
 
 ! -------------------------------------------------------------------- /
 
@@ -1550,6 +1560,9 @@
 
                   END DO ! DO JBND
                END DO ! DO IBND
+
+              finishJDM1=MPI_wtime()
+              write(*,*) 'JDM Time BL3 WMGHGH:', IMPROC, finishJDM1-startJDM1
 
                IF(IMPROC.EQ.NMPERR)WRITE(MDSE,'(A)') &
                    'Finished MAPBDI 2nd loop.'
