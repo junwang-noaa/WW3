@@ -1165,6 +1165,11 @@
       REAL                    :: DX_MAX_GDST,DY_MAX_GDST
       REAL                    :: DX_MIN_GSRC,DY_MIN_GSRC
 
+
+      REAL*8                  :: JDMstart, JDMfinish
+      REAL*8                  :: startJDM, finishJDM
+
+
 !/SCRIP      TYPE ALLWGT
 !/SCRIP        TYPE(WEIGHT_DATA), POINTER :: WGTDATA(:)
 !/SCRIP      END TYPE ALLWGT      
@@ -1227,6 +1232,11 @@
 !/T38      OPEN (NMYOUT, FILE=CMYOUT, STATUS="REPLACE")
 !/S      CALL STRACE (IENT, 'WMGHGH')
 !
+
+      JDMstart=MPI_wtime()
+      startJDM=MPI_wtime()
+
+
 !/MPI    CALL MPI_BARRIER(MPI_COMM_MWAVE, IERR_MPI)
 !/T38         CALL DATE_AND_TIME ( CDATE_TIME(1), CDATE_TIME(2), CDATE_TIME(3), DATE_TIME)
 !/T38         BEG_TIME(1) = ((DATE_TIME(5)*60 + DATE_TIME(6))*60 + DATE_TIME(7))*1000 + DATE_TIME(8)
@@ -1294,6 +1304,13 @@
       GDST=-999 ! unset grid
       GSRC=-999 ! unset grid
 
+
+      finishJDM=MPI_wtime()
+      write(*,*) 'JDM Time in 0 WMGHGH:', IMPROC, finishJDM-startJDM
+      startJDM=MPI_wtime()
+
+
+
 !/T38      CALL DATE_AND_TIME (CDATE_TIME(1), CDATE_TIME(2), CDATE_TIME(3), DATE_TIME)
 !/T38      END_TIME = ((DATE_TIME(5)*60 + DATE_TIME(6))*60 + DATE_TIME(7))*1000 + DATE_TIME(8)
 !/T38      ELAPSED_TIME = END_TIME - BEG_TIME(2)
@@ -1326,6 +1343,12 @@
 
       IF (DO_CHECKING .OR. (.NOT.LSCRIP)) OLD_METHOD=.TRUE.
 
+
+      finishJDM=MPI_wtime()
+      write(*,*) 'JDM Time in 0a WMGHGH:', IMPROC, finishJDM-startJDM
+      startJDM=MPI_wtime()
+
+
 ! -------------------------------------------------------------------- /
 ! 0.b Check solution method
 
@@ -1338,6 +1361,10 @@
          CALL EXTCDE ( 999 )
       END IF
       
+      finishJDM=MPI_wtime()
+      write(*,*) 'JDM Time in 0b WMGHGH:', IMPROC, finishJDM-startJDM
+      startJDM=MPI_wtime()
+
 !
 ! -------------------------------------------------------------------- /
 ! 1.  Set boundary distance maps
@@ -1352,6 +1379,11 @@
 !!HT: could provide data to a low-res grid. The high-res grid with data
 !!HT: furthest away from its own open boundary will be used.
 
+
+      finishJDM=MPI_wtime()
+      write(*,*) 'JDM Time in 1a WMGHGH:', IMPROC, finishJDM-startJDM
+
+
 !/SCRIPNC      IF (.NOT. L_STOP) THEN   ! Do not need MAPBDI if going to stop after generating mappings
       IF ( .NOT. FLGBDI ) THEN
 !
@@ -1361,6 +1393,7 @@
          ELSE
             FACTOR = 1.
          END IF
+
 !
 !/T          WRITE (MDST,9010)
 !
@@ -1371,6 +1404,9 @@
 !/T38         ELAPSED_TIME = BEG_TIME(3) - BEG_TIME(1)
 !/T38         WRITE(NMYOUT,*) "WMGHGH, BEGINNING BOTTLENECK LOOP AT ", ELAPSED_TIME, " MSEC"
          DO GDST=1, NRGRD
+
+            startJDM=MPI_wtime()
+
 
 !/T38       IF(IMPROC.EQ.NMPERR)WRITE(MDSE,*)'GDST = ',GDST,' OUT OF ',NRGRD
 
@@ -1396,6 +1432,8 @@
                   WRITE (MDSE,'(/2A)') ' WARNING in WMGHGH:   ', &
                   'NBI=0 AND RANK > 1 '
             END IF
+
+
 
 ! -------------------------------------------------------------------- /
 ! 1.c NBI=0, so computations not needed (test output only)
@@ -1581,11 +1619,20 @@
 !/T                END DO
 !
             END IF
+
+            finishJDM=MPI_wtime()
+            write(*,*) 'JDM Time in BigLoop WMGHGH:', IMPROC, finishJDM-startJDM
+
          END DO
          FLGBDI = .TRUE.
       END IF
 !/SCRIPNC      END IF
 !
+
+      startJDM=MPI_wtime()
+
+
+
 ! -------------------------------------------------------------------- /
 ! 2.  Data sources for reconcilliation
 ! 2.a Loop over grids, processing check
@@ -1629,7 +1676,16 @@
 !/SCRIPNC      END DO
 !/MPI              IF (LSCRIPNC) CALL MPI_BARRIER(MPI_COMM_MWAVE, IERR_MPI)
 
+
+      finishJDM=MPI_wtime()
+      write(*,*) 'JDM Time in 2a WMGHGH:', IMPROC, finishJDM-startJDM
+      startJDM=MPI_wtime()
+
+
       LOWRANK_GRID : DO GDST=1, NRGRD
+
+
+
 
 !/T38         CALL DATE_AND_TIME ( CDATE_TIME(1), CDATE_TIME(2), CDATE_TIME(3), DATE_TIME)
 !/T38         BEG_TIME(2) = ((DATE_TIME(5)*60 + DATE_TIME(6))*60 + DATE_TIME(7))*1000 + DATE_TIME(8)
@@ -1639,6 +1695,9 @@
 ! Test output
 !/T        WRITE (MDST,9020) GDST, GRDHGH(GDST,0)
 !/SCRIP    IF ( IMPROC.EQ.NMPERR.AND.T38 )WRITE(MDST,*)'GDST = ',GDST,' OUT OF ',NRGRD
+
+
+
 
 !
          IF ( GRDHGH(GDST,0) .EQ. 0 ) THEN ! no grids of higher rank than this
@@ -1929,6 +1988,14 @@
 !/SCRIPNC                CYCLE LOWRANK_GRID
 !/SCRIPNC              END IF
 
+
+      finishJDM=MPI_wtime()
+      write(*,*) 'JDM Time in 2b1 WMGHGH:', IMPROC, finishJDM-startJDM
+      startJDM=MPI_wtime()
+
+
+
+
 !################################################################
 ! End new block of code: Calculate weights by calling SCRIP interface
 !################################################################
@@ -1973,6 +2040,13 @@
             END DO
             GSRC   = -999 ! unset grid
 !
+
+      finishJDM=MPI_wtime()
+      write(*,*) 'JDM Time in 2b2 WMGHGH:', IMPROC, finishJDM-startJDM
+      startJDM=MPI_wtime()
+
+
+
 ! 2.b.3 Range of coverage per grid
 
 !!HT:
@@ -2092,6 +2166,11 @@
             ENDIF ! IF ( (GTYPE .EQ. CLGTYPE ) .or. (GTYPE .EQ. UNGTYPE))
 
 ! loop through higher ranked grids
+
+      finishJDM=MPI_wtime()
+      write(*,*) 'JDM Time in 2b3 WMGHGH:', IMPROC, finishJDM-startJDM
+      startJDM=MPI_wtime()
+
 
 !
 ! 2.b.4 Point by point check
@@ -2550,6 +2629,10 @@
                      INFLND(JDST,IDST) = 0
 
                   END IF
+
+
+
+
 !
 ! 2.b.5 Select source grid
 !
@@ -2806,6 +2889,12 @@
                TMPRL=TMPRL_OM
             END IF
 
+
+      finishJDM=MPI_wtime()
+      write(*,*) 'JDM Time in 2b5 WMGHGH:', IMPROC, finishJDM-startJDM
+      startJDM=MPI_wtime()
+
+
 !/T         WRITE (MDST,9023) GDST, NRTOT
 !
 ! 2.c Set up masks based on stencil width of scheme and inferred land
@@ -2822,6 +2911,12 @@
                END DO
             END DO
 !
+
+      finishJDM=MPI_wtime()
+      write(*,*) 'JDM Time in 2c1 WMGHGH:', IMPROC, finishJDM-startJDM
+      startJDM=MPI_wtime()
+
+
 ! 2.c.2 Masking
 !
 !!HT: This is masking in the low-res grid to identify where the grid
@@ -2923,6 +3018,12 @@
 !!HT: Should require no modifications for newer grids ...
 !!HT:    ... unless more data is needed than for old grids .....
 
+
+      finishJDM=MPI_wtime()
+      write(*,*) 'JDM Time in 2c2 WMGHGH:', IMPROC, finishJDM-startJDM
+      startJDM=MPI_wtime()
+
+
 !
 ! 2.d Set up mapping for staging data
 ! 2.d.1 Set counters / required array sizes
@@ -2962,6 +3063,12 @@
 
             HGSTGE(GDST,:)%NREC = I1(:,IMPROC)
             HGSTGE(GDST,:)%NRC1 = I2(:,IMPROC)
+
+      finishJDM=MPI_wtime()
+      write(*,*) 'JDM Time in 2d1 WMGHGH:', IMPROC, finishJDM-startJDM
+      startJDM=MPI_wtime()
+
+
 !
 ! 2.d.2 ALLOCATE (DEALLOCATE in section 0 as needed)
 !
@@ -2994,6 +3101,11 @@
                END IF
                HGSTGE(GDST,GSRC)%INIT = .TRUE.
             END DO
+
+      finishJDM=MPI_wtime()
+      write(*,*) 'JDM Time in 2d2 WMGHGH:', IMPROC, finishJDM-startJDM
+      startJDM=MPI_wtime()
+
 !
 ! 2.d.3 Fill allocated arrays
 !
@@ -3054,6 +3166,7 @@
 !/DIST              LTAG0  = LTAG0 + NR0
 !
             END DO
+
 !
 ! 2.e Adjust FLAGST using MAPTST
 !
@@ -3071,6 +3184,7 @@
 !/T                  MAPST(JDST,IDST)  = 'X'
 !/T                END IF
             END DO
+
 !
 ! 2.f Test output map
 !
@@ -3181,6 +3295,12 @@
 !/T38         WRITE(NMYOUT,*) "WMGHGH, LOOP LOWRANK_GRID, GDST= ", GDST, " TOOK ", ELAPSED_TIME, " MSEC"
       END DO LOWRANK_GRID
 
+      finishJDM=MPI_wtime()
+      write(*,*) 'JDM Time in LOWRANK_GRID loop WMGHGH:', IMPROC, finishJDM-startJDM
+      startJDM=MPI_wtime()
+
+
+
 ! If SCRIPNC and L_STOP, then we are done
       IF ( LSCRIPNC .AND. L_STOP ) THEN
           ! WW3 processes wait here till all have finished
@@ -3236,6 +3356,15 @@
 !/T38         END_TIME = ((DATE_TIME(5)*60 + DATE_TIME(6))*60 + DATE_TIME(7))*1000 + DATE_TIME(8)
 !/T38         ELAPSED_TIME = END_TIME - BEG_TIME(1)
 !/T38         WRITE(NMYOUT,*) "WMGHGH, ALL TOOK ", ELAPSED_TIME, " MSEC"
+
+
+      finishJDM=MPI_wtime()
+      write(*,*) 'JDM Time in last part WMGHGH:', IMPROC, finishJDM-startJDM
+
+      JDMfinish=MPI_wtime()
+      write(*,*) 'JDM Total Time in WMGHGH:', IMPROC, JDMfinish-JDMstart
+
+
 
       RETURN
 !
