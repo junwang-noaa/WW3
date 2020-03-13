@@ -442,6 +442,10 @@
       CHARACTER(LEN=80)       :: LINEIN
       CHARACTER(LEN=8)        :: WORDS(6)
 
+      REAL*8                  :: JDMstart, JDMfinish
+      REAL*8                  :: startJDM, finishJDM
+
+
       TYPE OT2TPE
         INTEGER                    :: NPTS
         REAL, POINTER              :: X(:), Y(:)
@@ -488,6 +492,10 @@
 !/MPI      CALL MPI_COMM_RANK ( MPI_COMM_MWAVE, IMPROC, IERR_MPI )
 !/MPI      IMPROC = IMPROC + 1
 !
+
+      JDMstart=MPI_wtime()
+      startJDM=MPI_wtime()
+
       IF ( PRESENT(PREAMB) ) FNMPRE = PREAMB
 !/
 !/ ------------------------------------------------------------------- /
@@ -598,6 +606,11 @@
 !
 !/T      WRITE(MDST,9000) IDSI, IDSO, IDSS, IDST, IDSE, IFNAME
 !
+
+      finishJDM=MPI_wtime()
+      write(*,*) 'JDM Time in Step 1 of WMINIT', IMPROC, finishJDM - startJDM
+      startJDM=MPI_wtime()
+
 ! 2.  Set-up of data structures and I/O  ----------------------------- /
 ! 2.a Get number of grids
 !     Note: grid for consolidated point output always generated.
@@ -694,6 +707,11 @@
 !/T        WRITE (MDST,9021) I, MDS(:,I), NTRACE(:,I)
 !/T        END DO
 !
+      finishJDM=MPI_wtime()
+      write(*,*) 'JDM Time in Step 2 of WMINIT',IMPROC,finishJDM-startJDM
+      startJDM=MPI_wtime()
+
+
 ! 3.  Get individual grid information -------------------------------- /
 !
 !     Version 3.07: For now we simply read the input data flags,
@@ -1061,6 +1079,13 @@
       IF ( MDSS.NE.MDSO .AND. NMPSCR.EQ.IMPROC ) WRITE (MDSS,935)
       IF ( NMPLOG .EQ. IMPROC ) WRITE (MDSO,935)
 !
+
+
+      finishJDM=MPI_wtime()
+      write(*,*) 'JDM Time in Step 3 of WMINIT',IMPROC, finishJDM-startJDM
+      startJDM=MPI_wtime()
+
+
 ! 4.  Model run time information etc. -------------------------------- /
 !
 !     Version 3.07: Same for all grids, diversify later ....
@@ -1105,6 +1130,11 @@
             END IF
         END IF
 !
+      finishJDM=MPI_wtime()
+      write(*,*) 'JDM Time in Step 4 of WMINIT',IMPROC, finishJDM-startJDM
+      startJDM=MPI_wtime()
+
+
 ! 5.  Output requests ------------------------------------------------ /
 !
       IF ( MDSS.NE.MDSO .AND. NMPSCR.EQ.IMPROC ) WRITE (MDSS,950)
@@ -1641,6 +1671,11 @@
 !/T          WRITE (MDST,9052) FLGRD(:,:,I)
 !/T        END DO
 !
+      finishJDM=MPI_wtime()
+      write(*,*) 'JDM Time in Step 5 of WMINIT',IMPROC, finishJDM-startJDM
+      startJDM=MPI_wtime()
+
+
 ! 6.  Read moving grid data ------------------------------------------ /
 !
 !     Only a single set of data are provided to be applied to all
@@ -1730,6 +1765,12 @@
             END DO
 !
         END IF
+
+
+      finishJDM=MPI_wtime()
+      write(*,*) 'JDM Time in Step 6 of WMINIT',IMPROC, finishJDM-startJDM
+      startJDM=MPI_wtime()
+
 !
 ! 7.  Work load distribution ----------------------------------------- /
 ! 7.a Initialize arrays
@@ -2076,6 +2117,12 @@
 !
 !/MPI      CALL MPI_BARRIER ( MPI_COMM_MWAVE, IERR_MPI )
 !
+
+      finishJDM=MPI_wtime()
+      write(*,*) 'JDM Time in Step 7 of WMINIT',IMPROC, finishJDM-startJDM
+      startJDM=MPI_wtime()
+
+
 ! 8.  Actual initializations ----------------------------------------- /
 !
 !/MPRF      CALL PRTIME ( PRFTN )
@@ -2492,6 +2539,15 @@
       DO I=1, NRGRD-1
         IF ( GRIDS(I)%FLAGLL .NEQV. GRIDS(I+1)%FLAGLL ) GOTO 2070
         END DO
+
+
+      finishJDM=MPI_wtime()
+      write(*,*) 'JDM Time in Step 8a of WMINIT',IMPROC, finishJDM-startJDM
+      startJDM=MPI_wtime()
+
+
+
+
 !
 ! 8.b Input files
 !
@@ -2548,6 +2604,12 @@
 !
       DEALLOCATE ( USEINP )
       DEALLOCATE ( CPLINP )
+
+      finishJDM=MPI_wtime()
+      write(*,*) 'JDM Time in Step 8b of WMINIT',IMPROC,finishJDM-startJDM
+      startJDM=MPI_wtime()
+
+
 !
 ! 8.c Inter model initialization
 !
@@ -2563,6 +2625,12 @@
         CALL W3SETG ( I, MDSE, MDST )
         FLAGST = .TRUE.
         END DO
+
+      finishJDM=MPI_wtime()
+      write(*,*) 'JDM Time in Step 8c1 of WMINIT',IMPROC,finishJDM-startJDM
+      startJDM=MPI_wtime()
+
+
 !
 ! 8.c.2 Relation to lower ranked grids
 !       Includes update of unit numbers, and bound. data initialization.
@@ -2584,6 +2652,9 @@
 !
 ! ..... Unit numbers
 !
+      finishJDM=MPI_wtime()
+      write(*,*) 'JDM Time in Step 8c2a of WMINIT',IMPROC,finishJDM-startJDM
+      startJDM=MPI_wtime()
 
       DO I=1, NRGRD
 !
@@ -2622,6 +2693,12 @@
           END IF
 !
         END DO
+
+      finishJDM=MPI_wtime()
+      write(*,*) 'JDM Time in Step 8c2b ofWMINIT',IMPROC,finishJDM-startJDM
+      startJDM=MPI_wtime()
+
+
 !
 ! ..... Data initialization
 !
@@ -2631,20 +2708,39 @@
 !/SHRD        CALL WMIOBS ( I )
         END DO
 !
+      finishJDM=MPI_wtime()
+      write(*,*) 'JDM Time in Step 8c2c ofWMINIT',IMPROC,finishJDM-startJDM
+      startJDM=MPI_wtime()
+
+
       DO I=1, NRGRD
 !/MPI        CALL WMSETM ( I, MDSE, MDST )
 !/MPI        IF ( MPI_COMM_GRD .NE. MPI_COMM_NULL ) CALL WMIOBG ( I )
 !/SHRD        CALL WMIOBG ( I )
         END DO
 !
+      finishJDM=MPI_wtime()
+      write(*,*) 'JDM Time in Step 8c2d ofWMINIT',IMPROC,finishJDM-startJDM
+      startJDM=MPI_wtime()
+
+
 !/MPI      DO I=1, NRGRD
 !/MPI        CALL WMSETM ( I, MDSE, MDST )
 !/MPI        IF ( MPI_COMM_GRD .NE. MPI_COMM_NULL ) CALL WMIOBF ( I )
 !/MPI        END DO
 !
+      finishJDM=MPI_wtime()
+      write(*,*) 'JDM Time in Step 8c2e ofWMINIT',IMPROC,finishJDM-startJDM
+      startJDM=MPI_wtime()
 ! 8.c.3 Relation to same ranked grids
 !
       CALL WMGEQL
+
+
+      finishJDM=MPI_wtime()
+      write(*,*) 'JDM Time in Step 8c3 of WMINIT',IMPROC,finishJDM-startJDM
+      startJDM=MPI_wtime()
+
 !
 ! 8.c.4 Relation to higher ranked grids
 !
@@ -2653,6 +2749,12 @@
       CALL WMGHGH
       IF ( MDSS.NE.MDSO .AND. NMPSC2.EQ.IMPROC ) WRITE (MDSS,938) &
            'Finished computing relation to higher ranked grids'
+
+      finishJDM=MPI_wtime()
+      write(*,*) 'JDM Time in Step 8c4 of WMINIT',IMPROC,finishJDM-startJDM
+      startJDM=MPI_wtime()
+
+
 !
 ! 8.c.5 Unified point output
 !
@@ -2699,6 +2801,11 @@
 !/MPI            END DO
 !
         END IF
+
+      finishJDM=MPI_wtime()
+      write(*,*) 'JDM Time in Step 8c5 of WMINIT',IMPROC,finishJDM-startJDM
+      startJDM=MPI_wtime()
+
 !
 ! 8.c.6 Output
 !
@@ -2798,6 +2905,12 @@
           IF ( NMPLOG .EQ. IMPROC )                                   &
               WRITE (MDSO,937) 'No higher rank grid dependencies'
         END IF
+
+
+      finishJDM=MPI_wtime()
+      write(*,*) 'JDM Time in Step 8c6a of WMINIT',IMPROC,finishJDM-startJDM
+      startJDM=MPI_wtime()
+
 !
 !/T      WRITE (MDST,9083)
 !/T      DO I=-NRINP, NRGRD
@@ -2812,8 +2925,18 @@
       DEALLOCATE ( MDS, NTRACE, ODAT, FLGRD, FLGR2, FLGD, FLG2, INAMES,&
                    MNAMES                                              &
                    ,OUTFF )
+      finishJDM=MPI_wtime()
+      write(*,*) 'JDM Time in Step 8c6b of WMINIT',IMPROC,finishJDM-startJDM
+      startJDM=MPI_wtime()
+
 !
 !/MPI      CALL MPI_BARRIER ( MPI_COMM_MWAVE, IERR_MPI )
+
+      finishJDM=MPI_wtime()
+      write(*,*) 'JDM Time in Step 8c6c of WMINIT',IMPROC,finishJDM-startJDM
+      startJDM=MPI_wtime()
+
+
 !
 !/F90      CALL DATE_AND_TIME ( VALUES=CLKDT2 )
 !/F90      CLKFIN = TDIFF ( CLKDT1,CLKDT2 )
@@ -2827,6 +2950,16 @@
 !!!!!/MPI CALL MPI_FINALIZE  ( IERR_MPI )
 !!!!!/MPI stop 'Ending in wminitmd, case 1'
 !
+
+      finishJDM=MPI_wtime()
+      write(*,*) 'JDM Time in Step 8c6d of WMINIT',IMPROC, finishJDM-startJDM
+      startJDM=MPI_wtime()
+
+      JDMfinish=MPI_wtime()
+      write(*,*) 'JDM Total Time in WMINIT', IMPROC, JDMfinish - JDMstart
+
+
+
       RETURN
 !
 ! Escape locations read errors :
@@ -5710,6 +5843,9 @@
 !!!!!/MPI CALL MPI_FINALIZE  ( IERR_MPI )
 !!!!!/MPI stop
 !
+
+
+
       RETURN
 !
 ! Escape locations read errors :
