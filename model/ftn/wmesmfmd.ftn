@@ -1974,8 +1974,17 @@
 !
 ! 1.e Get import fields
 !
+
+      if (verbosity.gt.0) call ESMF_LogWrite(trim(cname)// &
+        ':before GetImport', ESMF_LOGMSG_INFO)
+
       call GetImport(gcomp, rc=rc)
       if (ESMF_LogFoundError(rc, PASSTHRU)) return
+
+      if (verbosity.gt.0) call ESMF_LogWrite(trim(cname)// &
+        ':after GetImport', ESMF_LOGMSG_INFO)
+
+
 !
 ! 1.f Advance model
 !
@@ -1983,8 +1992,16 @@
 !
 ! 1.g Set export fields
 !
+
+      if (verbosity.gt.0) call ESMF_LogWrite(trim(cname)// &
+        ':before SetExport', ESMF_LOGMSG_INFO)
+
       call SetExport(gcomp, rc=rc)
       if (ESMF_LogFoundError(rc, PASSTHRU)) return
+
+      if (verbosity.gt.0) call ESMF_LogWrite(trim(cname)// &
+        ':after SetExport', ESMF_LOGMSG_INFO)
+
 !
 ! -------------------------------------------------------------------- /
 ! Post
