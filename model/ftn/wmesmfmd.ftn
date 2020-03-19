@@ -4771,20 +4771,20 @@
 
 !      call ESMF_FieldWrite(field,fileName="ww3_import_dump.nc",overwrite=.true.,rc=rc)
       if ( (GTYPE.eq.RLGTYPE).or.(GTYPE.eq.CLGTYPE) ) then
-        do k = 0,npet-1
-          call ESMF_FieldGather( field,  floc, rootPet=k, vm=vm, rc=rc )
-          if (ESMF_LogFoundError(rc, PASSTHRU)) return
-        enddo
+        count = n1 * n2
+        call ESMF_FieldGather( field,  floc, rootPet=0, vm=vm, rc=rc )
+        if (ESMF_LogFoundError(rc, PASSTHRU)) return
+        call ESMF_VMbroadcast( vm, floc, count, 0, rc=rc)
+        if (ESMF_LogFoundError(rc, PASSTHRU)) return
         fout(1:n1,1:n2) = floc(1:n1,1:n2)
       elseif (GTYPE.eq.UNGTYPE) then
-        do k = 0,npet-1
-          call ESMF_FieldGather( field,  floc1d, rootPet=k, vm=vm, rc=rc )
-          if (ESMF_LogFoundError(rc, PASSTHRU)) return
-        enddo
+        count = n1
+        call ESMF_FieldGather( field,  floc1d, rootPet=0, vm=vm, rc=rc)
+        if (ESMF_LogFoundError(rc, PASSTHRU)) return
+        call ESMF_VMbroadcast( vm, floc1d, count, 0, rc=rc)
+        if (ESMF_LogFoundError(rc, PASSTHRU)) return
 !/PDLIB      if ( LPDLIB == .FALSE. ) then
-        do k = 1, n1
-          fout(k,1) = floc1d(k)
-        enddo
+          fout(1:n1,1) = floc1d(1:n1)
 !/PDLIB      else
 !/PDLIB         count = 0
 !/PDLIB         do ir = 1, npet
